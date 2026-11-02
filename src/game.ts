@@ -149,7 +149,7 @@ export class Game {
       }
       if (!best) continue;
       t.cd = st.cooldown;
-      this.bullets.push({ x: tx, y: ty, target: best.uid, dmg: st.dmg, text: p.quote, color: '' });
+      this.bullets.push({ x: tx, y: ty, target: best.uid, dmg: st.dmg, text: p.quote, color: p.tier >= 4 ? 'gold' : '' });
     }
 
     // 말풍선 탄환

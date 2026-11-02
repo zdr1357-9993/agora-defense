@@ -21,7 +21,7 @@ const philosophers = rows('Philosophers_50').map((r) => ({
 const recipes = rows('Recipes_40').map((r) => ({
   id: r.recipe_id,
   result: r.result_phil_id,
-  materials: [r.mat_1_id, r.mat_2_id].filter(Boolean),
+  materials: [r.mat_1_id, r.mat_2_id, r.mat_3_id].filter(Boolean),
   catalyst: r.catalyst_id === 'NONE' ? null : r.catalyst_id,
   logic: r.synthesis_logic,
 }));
@@ -37,6 +37,8 @@ const errors = [];
 for (const r of recipes) {
   for (const id of [r.result, ...r.materials]) if (!ids.has(id)) errors.push(`${r.id}: 없는 철학자 ${id}`);
   if (r.catalyst && !catIds.has(r.catalyst)) errors.push(`${r.id}: 없는 촉매 ${r.catalyst}`);
+  const tier = (id) => philosophers.find((p) => p.id === id)?.tier ?? 0;
+  for (const m of r.materials) if (tier(m) >= tier(r.result)) errors.push(`${r.id}: 재료 ${m}의 등급이 결과보다 낮지 않음`);
 }
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
 

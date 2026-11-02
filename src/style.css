@@ -1,5 +1,5 @@
 * { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; background: #07090e; color: #e2e8f0; font-family: system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
+html, body { height: 100%; background: #07090e; color: #e2e8f0; font-family: 'Noto Sans KR', system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
 #app { max-width: 480px; height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; padding: 8px; gap: 8px; }
 #hud { display: flex; justify-content: space-between; align-items: center; background: #0f1420; border-radius: 10px; padding: 8px 12px; font-size: 15px; }
 #hud b { color: #fbbf24; }
@@ -13,3 +13,16 @@ html, body { height: 100%; background: #07090e; color: #e2e8f0; font-family: sys
 button { background: #26324d; color: #e2e8f0; border: 0; border-radius: 10px; padding: 12px 6px; font-size: 15px; font-weight: 700; font-family: inherit; }
 button:disabled { opacity: .4; }
 #hud button { padding: 4px 10px; font-size: 13px; }
+
+.title { font-family: 'Nanum Myeongjo', serif; font-size: 17px; text-align: center; color: #fef3c7; letter-spacing: .02em; }
+.gold { background: linear-gradient(135deg, #fbbf24, #d97706); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 900; }
+#hud, #context { border: 1px solid rgba(245,158,11,.2); box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+#field { border: 1px solid rgba(245,158,11,.2); }
+#context { display: flex; flex-direction: column; }
+#info { display: flex; gap: 10px; align-items: flex-start; }
+#info img { width: 48px; height: 48px; image-rendering: pixelated; flex: none; background: #182032; border-radius: 8px; animation: bob 1.2s infinite ease-in-out; }
+#info.t1 { border-left: 4px solid #94a3b8; } #info.t2 { border-left: 4px solid #38bdf8; } #info.t3 { border-left: 4px solid #a855f7; } #info.t4 { border-left: 4px solid #f59e0b; } #info.t5 { border-left: 4px solid #ef4444; }
+#info[class^="t"] { padding-left: 8px; }
+@keyframes bob { 50% { transform: translateY(-3px); } }
+#dock button:first-child { background: linear-gradient(135deg, #f59e0b, #d97706); color: #07090e; }
+#dock button:first-child:disabled { background: #26324d; color: #e2e8f0; }
