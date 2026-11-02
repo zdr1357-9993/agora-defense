@@ -97,7 +97,7 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
 // 웨이브 구간별 몬스터: 1~3 궤변론자, 4~6 동굴의 그림자, 7~9 이단 심문관, 10 보스
 const monsterCache = new Map<string, HTMLCanvasElement>();
 export function monsterSprite(wave: number, boss: boolean): HTMLCanvasElement {
-  const key = boss ? 'boss' : wave <= 3 ? 'sophist' : wave <= 6 ? 'shadow' : 'inquisitor';
+  const key = boss ? (wave === 10 ? 'jury' : wave === 20 ? 'hunter' : 'boss') : wave <= 5 ? 'sophist' : wave < 10 ? 'shadow' : wave < 20 ? 'inquisitor' : 'clockwork';
   const hit = monsterCache.get(key);
   if (hit) return hit;
   const s = makeSprite((px) => {
@@ -111,6 +111,15 @@ export function monsterSprite(wave: number, boss: boolean): HTMLCanvasElement {
       px(7, 3, 10, 5, '#991b1b'); px(6, 8, 12, 12, '#7f1d1d');
       px(9, 9, 2, 2, '#fde047'); px(13, 9, 2, 2, '#fde047');
       px(19, 7, 3, 5, '#f97316'); px(20, 12, 1, 6, '#78350f');
+    } else if (key === 'clockwork') {
+      px(7, 5, 10, 14, '#64748b'); px(8, 6, 8, 5, '#94a3b8');
+      px(9, 8, 2, 2, '#22d3ee'); px(13, 8, 2, 2, '#22d3ee'); px(11, 2, 2, 3, '#f59e0b');
+    } else if (key === 'jury') {
+      px(3, 6, 18, 14, '#e2e8f0'); px(5, 3, 14, 4, '#94a3b8');
+      px(7, 9, 3, 2, '#0f172a'); px(14, 9, 3, 2, '#0f172a'); px(18, 12, 4, 5, '#16a34a'); px(19, 11, 2, 1, '#bbf7d0');
+    } else if (key === 'hunter') {
+      px(6, 1, 12, 7, '#18181b'); px(4, 7, 16, 2, '#18181b'); px(6, 9, 12, 12, '#7f1d1d');
+      px(8, 10, 3, 2, '#fde047'); px(13, 10, 3, 2, '#fde047'); px(19, 4, 4, 6, '#f97316'); px(20, 10, 2, 9, '#78350f');
     } else {
       px(4, 4, 16, 16, '#18181b'); px(6, 6, 12, 12, '#4c1d95');
       px(8, 9, 3, 3, '#f43f5e'); px(13, 9, 3, 3, '#f43f5e'); px(8, 15, 8, 2, '#fbbf24');
@@ -120,5 +129,4 @@ export function monsterSprite(wave: number, boss: boolean): HTMLCanvasElement {
   return s;
 }
 
-export const MONSTER_NAMES = (wave: number, boss: boolean) =>
-  boss ? '아테네 배심원단' : wave <= 3 ? '궤변론자' : wave <= 6 ? '동굴의 그림자' : '이단 심문관';
+

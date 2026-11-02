@@ -1,4 +1,6 @@
-import { Game, GRID, trackPos, type Tower } from './game';
+import { Game, GRID, trackPos, QA_MODE, CATALYST_IDS, type Tower } from './game';
+import catalystsJson from './data/catalysts.json';
+const CAT_ICON: Record<string, string> = Object.fromEntries(catalystsJson.map((c) => [c.id, c.name.split(' ')[0]]));
 import { PHIL, TIER_STATS } from './data';
 import { philosopherSprite, monsterSprite, TIER_AURA } from './sprites';
 
@@ -46,6 +48,7 @@ $('speed').onclick = () => { speed = speed === 3 ? 1 : speed + 1; $('speed').tex
 
 // ---------- 하단 UI ----------
 let lastSynthKey = '';
+let lastCatKey = '';
 let lastInfoKey = '';
 function updateUI() {
   $('gold').textContent = String(game.gold);
@@ -63,7 +66,7 @@ function updateUI() {
   if (infoKey !== lastInfoKey) {
   lastInfoKey = infoKey;
   info.className = '';
-  if (game.over) info.innerHTML = game.over === 'win' ? '<b>🏛 아고라 수호 성공!</b> 10웨이브를 모두 논파했습니다.' : '<b>💀 멘탈 붕괴...</b> 도그마가 아고라를 점령했습니다.';
+  if (game.over) info.innerHTML = game.over === 'win' ? '<b>🏛 아고라 수호 성공!</b> 30웨이브를 모두 논파했습니다.' : '<b>💀 멘탈 붕괴...</b> 도그마가 아고라를 점령했습니다.';
   else if (selected) {
     const p = PHIL.get(selected.philId)!;
     info.className = `t${p.tier}`;
@@ -72,9 +75,21 @@ function updateUI() {
 
   }
 
+  // 촉매 보유 현황
+  const cats = $('cats');
+  const catKey = JSON.stringify(game.catalysts);
+  if (catKey !== lastCatKey) {
+    const fresh = new Set(game.drops.splice(0));
+    lastCatKey = catKey;
+    cats.innerHTML = (QA_MODE ? '<span class="qa">QA</span>' : '') + CATALYST_IDS.map((id) =>
+      `<span class="c ${game.catalysts[id] ? 'on' : ''} ${fresh.has(id) ? 'flash' : ''}">${CAT_ICON[id]} ${game.catalysts[id]}</span>`).join('');
+  }
+
   // 원터치 연성 버튼 (목록이 바뀔 때만 다시 그림)
-  const recipes = game.over ? [] : game.availableRecipes();
-  const key = recipes.map((r) => r.id).join();
+  const recipes = game.over ? [] : game.availableRecipes()
+    .sort((a, b) => Number(game.hasCatalyst(b)) - Number(game.hasCatalyst(a)) || PHIL.get(b.result)!.tier - PHIL.get(a.result)!.tier)
+    .slice(0, 3);
+  const key = recipes.map((r) => r.id + game.hasCatalyst(r)).join();
   if (key !== lastSynthKey) {
     lastSynthKey = key;
     const box = $('synth');
@@ -82,7 +97,10 @@ function updateUI() {
     for (const r of recipes) {
       const b = document.createElement('button');
       const res = PHIL.get(r.result)!;
-      b.textContent = `⚗ 즉시 연성! ${r.materials.map((m) => PHIL.get(m)!.name).join('+')} → ${res.name}`;
+      const cat = r.catalyst ? ` + ${CAT_ICON[r.catalyst]}` : '';
+      const ok = game.hasCatalyst(r);
+      b.textContent = `⚗ ${ok ? '즉시 연성!' : '촉매 부족'} ${r.materials.map((m) => PHIL.get(m)!.name).join('+')}${cat} → ${res.name}`;
+      if (!ok) { b.disabled = true; b.classList.add('locked'); }
       b.onclick = () => { const t = game.synthesize(r); selected = t; updateUI(); };
       box.appendChild(b);
     }

@@ -2,7 +2,16 @@ import { PHIL, PHILOSOPHERS, RECIPES, TIER_STATS, type Recipe } from './data';
 
 // 7x7 격자: 바깥 테두리 24칸은 적의 트랙, 안쪽 5x5는 타워 배치 칸
 export const GRID = 7;
-export const MAX_WAVE = 10;
+export const MAX_WAVE = 30;
+export const BOSS_WAVES = [10, 20, 30];
+
+// QA 모드: 주소 뒤에 ?qa=0 을 붙이면 일반 모드
+export const QA_MODE = new URLSearchParams(location.search).get('qa') !== '0';
+const START_GOLD = QA_MODE ? 10000 : 200;
+
+export const CATALYST_IDS = ['C001', 'C002', 'C003', 'C004', 'C005'];
+// 보스 확정 드랍 (명세 기준: 10R 🔴, 20R 🔴+🟡)
+const BOSS_DROPS: Record<number, string[]> = { 10: ['C001'], 20: ['C001', 'C004'] };
 
 export interface Tower { uid: number; philId: string; cx: number; cy: number; cd: number }
 export interface Enemy { uid: number; hp: number; maxHp: number; dist: number; speed: number; boss: boolean; reward: number }
@@ -22,7 +31,9 @@ export function trackPos(dist: number): [number, number] {
 let uidSeq = 1;
 
 export class Game {
-  gold = 200;
+  gold = START_GOLD;
+  catalysts: Record<string, number> = Object.fromEntries(CATALYST_IDS.map((id) => [id, 0]));
+  drops: string[] = []; // 화면에 알릴 최근 드랍
   lives = 20;
   wave = 0;
   summonCost = 50;
@@ -72,7 +83,7 @@ export class Game {
 
   /** 지금 필드 재료로 가능한 조합식 (촉매 필요 조합은 프로토타입에서 제외) */
   availableRecipes(): Recipe[] {
-    return RECIPES.filter((r) => !r.catalyst && this.pickMaterials(r) !== null);
+    return RECIPES.filter((r) => this.pickMaterials(r) !== null);
   }
 
   private pickMaterials(r: Recipe): Tower[] | null {
@@ -85,9 +96,12 @@ export class Game {
     return [...used];
   }
 
+  hasCatalyst(r: Recipe) { return !r.catalyst || this.catalysts[r.catalyst] > 0; }
+
   synthesize(r: Recipe) {
     const mats = this.pickMaterials(r);
-    if (!mats) return null;
+    if (!mats || !this.hasCatalyst(r)) return null;
+    if (r.catalyst) this.catalysts[r.catalyst]--;
     const keep = mats[0];
     this.towers = this.towers.filter((t) => !mats.includes(t) || t === keep);
     keep.philId = r.result;
@@ -95,22 +109,26 @@ export class Game {
     return keep;
   }
 
+  randomCatalyst() { return CATALYST_IDS[Math.floor(Math.random() * CATALYST_IDS.length)]; }
+  gainCatalyst(id: string) { this.catalysts[id]++; this.drops.push(id); }
+
   startWave() {
     if (this.running || this.over || this.wave >= MAX_WAVE) return;
     this.wave++;
     this.running = true;
     this.countdown = -1;
-    this.toSpawn = this.wave === MAX_WAVE ? 1 : 8 + this.wave * 2;
+    this.toSpawn = BOSS_WAVES.includes(this.wave) ? 1 : 8 + Math.min(this.wave, 16) * 2;
     this.spawnTimer = 0;
   }
 
   private spawn() {
-    const boss = this.wave === MAX_WAVE;
-    const hp = boss ? 9000 : Math.round(25 * 1.38 ** (this.wave - 1));
+    const boss = BOSS_WAVES.includes(this.wave);
+    const base = Math.round(25 * 1.27 ** (this.wave - 1));
+    const hp = boss ? base * 30 : base;
     this.enemies.push({
       uid: uidSeq++, hp, maxHp: hp, dist: 0, boss,
       speed: boss ? 0.9 : 1.4 + this.wave * 0.05,
-      reward: boss ? 300 : 5 + Math.floor(this.wave / 2),
+      reward: boss ? 300 * (this.wave / 10) : 5 + Math.floor(this.wave / 2),
     });
   }
 
@@ -163,13 +181,19 @@ export class Game {
     }
     this.bullets = this.bullets.filter((b) => b.dmg > 0);
 
-    for (const e of this.enemies) if (e.hp <= 0) this.gold += e.reward;
+    for (const e of this.enemies) if (e.hp <= 0) {
+      this.gold += e.reward;
+      if (!e.boss && Math.random() < 0.03) this.gainCatalyst(this.randomCatalyst()); // 일반 적 3% 드랍
+    }
     this.enemies = this.enemies.filter((e) => e.hp > 0);
 
     // 웨이브 종료 → 보상 후 3초 뒤 자동 진행
     if (this.running && this.toSpawn === 0 && this.enemies.length === 0) {
       this.running = false;
       this.gold += 40 + this.wave * 5;
+      // 웨이브 클리어: 무작위 촉매 1개 + 보스 확정 드랍
+      this.gainCatalyst(this.randomCatalyst());
+      for (const id of BOSS_DROPS[this.wave] ?? []) this.gainCatalyst(id);
       if (this.wave >= MAX_WAVE) this.over = 'win';
       else this.countdown = 3;
     }

@@ -26,3 +26,13 @@ button:disabled { opacity: .4; }
 @keyframes bob { 50% { transform: translateY(-3px); } }
 #dock button:first-child { background: linear-gradient(135deg, #f59e0b, #d97706); color: #07090e; }
 #dock button:first-child:disabled { background: #26324d; color: #e2e8f0; }
+
+#cats { display: flex; justify-content: space-between; align-items: center; background: #0f1420; border: 1px solid rgba(245,158,11,.2); border-radius: 10px; padding: 4px 10px; font-size: 13px; }
+#cats .c { opacity: .35; } #cats .c.on { opacity: 1; font-weight: 700; }
+#cats .qa { background: #dc2626; color: #fff; border-radius: 6px; padding: 1px 6px; font-size: 11px; font-weight: 900; }
+#cats .flash { animation: flash .9s 2; } @keyframes flash { 50% { transform: scale(1.5); color: #fbbf24; } }
+#synth button.locked { animation: none; background: #26324d; color: #94a3b8; }
+#context { flex: 1 1 auto; min-height: 92px; overflow-y: auto; }
+#synth button { font-size: 12.5px; padding: 7px 10px; text-align: left; }
+#field { flex: none; }
+#dock { flex: none; }
