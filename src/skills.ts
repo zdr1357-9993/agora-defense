@@ -33,6 +33,7 @@ export const SKILLS: Record<string, Skill> = {
   // 6성
   소크라테스: S('auraAtk', 0.35), '임마누엘 칸트': S('globalSlow', 0.3), '자크 데리다': S('execute', 0.2),
   공자: S('auraAtk', 0.4), '고타마 붓다': S('auraSpeed', 0.35), 예수: S('auraAtk', 0.5),
+  '알베르 카뮈': S('stack', 0.04),
 };
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;

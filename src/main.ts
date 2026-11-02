@@ -4,7 +4,7 @@ import { STAGE_PATHS } from './paths';
 import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
 import { ITEM, isOwner, ITEM_BONUS } from './items';
 import {
-  PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, MAX_MERGE_TIER, UPGRADE, type Stage,
+  homage, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, MAX_MERGE_TIER, UPGRADE, type Stage,
 } from './data';
 import { philosopherSprite, monsterSprite, itemSprite, TIER_AURA } from './sprites';
 import { SKILLS } from './skills';
@@ -96,7 +96,7 @@ function renderCodex() {
       const tool = progress.loadout[p.id];
       const d = document.createElement('div');
       d.className = `card t${p.tier} ${known ? '' : 'unknown'} ${n ? 'owned' : ''}`;
-      d.innerHTML = `${lv ? `<span class="lv">Lv.${lv}</span>` : ''}${tool ? `<img class="tool-badge" src="${itemUrl(tool)}">` : ''}<img src="${portrait(p.id)}"><b>${known ? p.name : '???'}</b><small>${n ? `🎴${n}` : ERA_ICON[p.era] ?? ''}</small>`;
+      d.innerHTML = `${progress.favorite === p.id ? '<span class="fav">💗</span>' : ''}${lv ? `<span class="lv">Lv.${lv}</span>` : ''}${tool ? `<img class="tool-badge" src="${itemUrl(tool)}">` : ''}<img src="${portrait(p.id)}"><b>${known ? p.name : '???'}</b><small>${n ? `🎴${n}` : ERA_ICON[p.era] ?? ''}</small>`;
       if (known) d.onclick = () => showCard(p.id);
       grid.appendChild(d);
     }
@@ -126,21 +126,25 @@ function cardHtml(id: string) {
 function showCard(id: string) {
   const p = PHIL.get(id)!;
   const n = progress.cards[id] ?? 0, lv = cardLevel(n), next = nextLevelAt(n);
-  const ownedTools = ITEMS.filter((it) => progress.items[it.id]).sort((a, b) => Number(isOwner(b.id, p.name)) - Number(isOwner(a.id, p.name)));
+  const ownedTools = ITEMS.filter((it) => progress.items[it.id]).sort((a, b) => Number(isOwner(b.id, p.realName)) - Number(isOwner(a.id, p.realName)));
   const cur = progress.loadout[id];
   const growth = `<div class="pc-growth"><b>🎴 카드 Lv.${lv}</b> <span>${n}장${next ? ` · 다음 레벨까지 ${next - n}장` : ' · MAX'}</span>
     <div class="bar"><i style="width:${next ? Math.min(100, (n / next) * 100) : 100}%"></i></div>
     <small>전투 공격력 ×${cardMult(n).toFixed(1)}</small></div>
-    <div class="pc-tools"><b>🧰 장착 도구</b>${ownedTools.length ? ownedTools.map((it) => `<button data-equip="${it.id}" class="${cur === it.id ? 'on' : ''} ${isOwner(it.id, p.name) ? 'own' : ''}"><img src="${itemUrl(it.id)}">${it.name}${isOwner(it.id, p.name) ? ' ★' : ''}</button>`).join('') + (cur ? '<button data-equip="">해제</button>' : '') : '<small>도구 상자에서 도구를 뽑아 오세요</small>'}</div>
-    ${n ? '<button class="chunky blue room-set">🤔 고민방 주인으로 삼기</button>' : ''}`;
+    <div class="pc-tools"><b>🧰 장착 도구</b>${ownedTools.length ? ownedTools.map((it) => `<button data-equip="${it.id}" class="${cur === it.id ? 'on' : ''} ${isOwner(it.id, p.realName) ? 'own' : ''}"><img src="${itemUrl(it.id)}">${it.name}${isOwner(it.id, p.realName) ? ' ★' : ''}</button>`).join('') + (cur ? '<button data-equip="">해제</button>' : '') : '<small>도구 상자에서 도구를 뽑아 오세요</small>'}</div>
+    ${n ? `<button class="chunky ${progress.favorite === id ? 'pink' : 'blue'} fav-set">${progress.favorite === id ? '💗 나의 최애 (해제하기)' : '💗 최애로 지정 · 고민방 주인'}</button>` : ''}`;
   alertBox(cardHtml(id).replace('<div class="pc-foot">', growth + '<div class="pc-foot">'));
   for (const b of document.querySelectorAll<HTMLButtonElement>('[data-equip]')) b.onclick = (e) => {
     e.stopPropagation();
     if (b.dataset.equip) progress.loadout[id] = b.dataset.equip; else delete progress.loadout[id];
     saveProgress(progress); document.querySelector('.overlay')?.remove(); renderCodex(); showCard(id);
   };
-  const rs = document.querySelector<HTMLButtonElement>('.room-set');
-  if (rs) rs.onclick = (e) => { e.stopPropagation(); roomThinker = id; document.querySelector('.overlay')?.remove(); switchTab('room'); };
+  const fs = document.querySelector<HTMLButtonElement>('.fav-set');
+  if (fs) fs.onclick = (e) => {
+    e.stopPropagation();
+    if (progress.favorite === id) delete progress.favorite; else { progress.favorite = id; roomThinker = id; sfx.reveal(5); }
+    saveProgress(progress); document.querySelector('.overlay')?.remove(); renderCodex(); showCard(id);
+  };
 }
 
 function toast(text: string) {
@@ -387,7 +391,7 @@ function draw() {
 
   // ---- 오라 철학자: 주변 8칸에 은은한 빛 ----
   for (const t of g.towers) {
-    const s = SKILLS[PHIL.get(t.philId)!.name];
+    const s = SKILLS[PHIL.get(t.philId)!.realName];
     if (!s || (s.kind !== 'auraAtk' && s.kind !== 'auraSpeed' && s.kind !== 'globalSlow')) continue;
     const pulse = 0.5 + 0.5 * Math.sin(tick * 0.06 + t.uid);
     ctx.fillStyle = s.kind === 'auraAtk' ? `rgba(255,159,67,${0.08 + pulse * 0.06})` : s.kind === 'auraSpeed' ? `rgba(95,198,160,${0.08 + pulse * 0.06})` : `rgba(96,165,250,${0.05 + pulse * 0.04})`;
@@ -418,7 +422,7 @@ function draw() {
       ctx.fillText('💤', cx + cell * 0.28, foot - cell * 0.9 + Math.sin(tick * 0.15) * 3);
     }
     // 이름표
-    const nm = shortName(p.name);
+    const nm = (progress.favorite === t.philId ? '💗' : '') + shortName(p.name);
     const fs = Math.max(9, cell * 0.21);
     ctx.font = `${fs}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const nw = ctx.measureText(nm).width + 8, ny = foot + fs * 0.35;
@@ -434,7 +438,7 @@ function draw() {
     const tool = g.toolOf(t);
     if (tool) {
       const isz = cell * 0.38, ix = (t.cx + 0.62) * cell, iy = (t.cy + 0.42) * cell;
-      if (isOwner(tool, p.name)) { ctx.fillStyle = 'rgba(253,224,71,.55)'; ctx.beginPath(); ctx.arc(ix + isz / 2, iy + isz / 2, isz * 0.62, 0, Math.PI * 2); ctx.fill(); }
+      if (isOwner(tool, p.realName)) { ctx.fillStyle = 'rgba(253,224,71,.55)'; ctx.beginPath(); ctx.arc(ix + isz / 2, iy + isz / 2, isz * 0.62, 0, Math.PI * 2); ctx.fill(); }
       ctx.drawImage(itemSprite(tool), ix, iy, isz, isz);
     }
     if (t.level) {
@@ -534,7 +538,7 @@ function drawDecor(kind: string, x: number, y: number, c: number) {
   }
 }
 
-const SHORT: Record<string, string> = { '고타마 붓다': '붓다', '다산 정약용': '정약용', '퇴계 이황': '이황', '루트비히 비트겐슈타인': '비트겐', '아르투어 쇼펜하우어': '쇼펜하우어', '고트프리트 라이프니츠': '라이프니츠', '쇠렌 키르케고르': '키르케고르', '헤라클레이토스': '헤라클레', '아리스토텔레스': '아리스토', '나가르주나': '나가르',  '엘레아의 제논': '제논', '오컴의 윌리엄': '오컴', '이븐 시나': '이븐시나', '이븐 루시드': '이븐루시드', '알 킨디': '알킨디', '힐데가르트 폰 빙엔': '힐데가르트' };
+const SHORT: Record<string, string> = { '마르틴 로우데거': '로우데거', '장 폴 사리티리': '사리티리', '자크 디리타': '디리타', '에마뉘엘 리비나스': '리비나스', '테오도어 아도로노': '아도로노', '알베르 카뮈': '카뮈',  '고타마 붓다': '붓다', '다산 정약용': '정약용', '퇴계 이황': '이황', '루트비히 비트겐슈타인': '비트겐', '아르투어 쇼펜하우어': '쇼펜하우어', '고트프리트 라이프니츠': '라이프니츠', '쇠렌 키르케고르': '키르케고르', '헤라클레이토스': '헤라클레', '아리스토텔레스': '아리스토', '나가르주나': '나가르',  '엘레아의 제논': '제논', '오컴의 윌리엄': '오컴', '이븐 시나': '이븐시나', '이븐 루시드': '이븐루시드', '알 킨디': '알킨디', '힐데가르트 폰 빙엔': '힐데가르트' };
 function shortName(name: string) {
   const s = SHORT[name] ?? name.split(' ').pop()!;
   return s.length > 5 ? s.slice(0, 4) + '…' : s;
@@ -547,7 +551,7 @@ function toolLine(g: Game, t: Tower) {
   const tool = g.toolOf(t);
   const parts: string[] = [];
   if (lv) parts.push(`🎴 카드 Lv.${lv} (공격 ×${cardMult(progress.cards[p.id] ?? 0).toFixed(1)})`);
-  if (tool) { const it = ITEM.get(tool)!; parts.push(`<img src="${itemUrl(tool)}">${it.name}${isOwner(tool, p.name) ? ' <b class="match">찰떡!</b>' : ''}`); }
+  if (tool) { const it = ITEM.get(tool)!; parts.push(`<img src="${itemUrl(tool)}">${it.name}${isOwner(tool, p.realName) ? ' <b class="match">찰떡!</b>' : ''}`); }
   return parts.length ? `<br><small class="equip">${parts.join(' · ')}</small>` : '';
 }
 
@@ -575,6 +579,7 @@ let roomThinker = 'T104';
 function renderRoom() {
   const idle = settleIdle(progress, clearedStages());
   saveProgress(progress);
+  if (progress.favorite && progress.cards[progress.favorite]) roomThinker = progress.favorite;
   const owned = PHILOSOPHERS.filter((p) => progress.cards[p.id]);
   if (!progress.cards[roomThinker] && owned.length) roomThinker = owned.sort((a, b) => b.tier - a.tier)[0].id;
   const p = PHIL.get(roomThinker)!;
@@ -666,7 +671,7 @@ function gachaShow(o: PullOption, got: string[], before: Record<string, number>)
     if (isTool) {
       const it = ITEMS.find((x) => x.id === id)!;
       el.className = 'gcard tool';
-      el.innerHTML = `<img src="${itemUrl(id)}"><b>${it.name}</b><small>${it.owners.map((x) => x.split(' ').pop()).join('·')}의 찰떡</small>`;
+      el.innerHTML = `<img src="${itemUrl(id)}"><b>${it.name}</b><small>${it.owners.map((x) => homage(x).split(' ').pop()).join('·')}의 찰떡</small>`;
     } else {
       const p = PHIL.get(id)!;
       const prev = cardLevel(counted[id] ?? 0);

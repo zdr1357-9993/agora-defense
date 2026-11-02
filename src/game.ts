@@ -147,7 +147,7 @@ export class Game {
   itemMult(t: Tower) {
     const tool = this.toolOf(t);
     if (!tool) return { dmg: 1, range: 0 };
-    return isOwner(tool, PHIL.get(t.philId)!.name)
+    return isOwner(tool, PHIL.get(t.philId)!.realName)
       ? { dmg: 1 + ITEM_BONUS.ownerDmg, range: ITEM_BONUS.ownerRange }
       : { dmg: 1 + ITEM_BONUS.dmg, range: 0 };
   }
@@ -331,7 +331,7 @@ export class Game {
   private auras() {
     const atk = new Map<number, number>(), spd = new Map<number, number>();
     for (const a of this.towers) {
-      const s = SKILLS[PHIL.get(a.philId)!.name];
+      const s = SKILLS[PHIL.get(a.philId)!.realName];
       if (!s || (s.kind !== 'auraAtk' && s.kind !== 'auraSpeed') || (a.stunT ?? 0) > 0) continue;
       for (const t of this.towers) if (t !== a && Math.abs(t.cx - a.cx) <= 1 && Math.abs(t.cy - a.cy) <= 1) {
         const m = s.kind === 'auraAtk' ? atk : spd;
@@ -353,7 +353,7 @@ export class Game {
 
     // 맵 전체 둔화 (가장 강한 것 하나)
     let gSlow = 0;
-    for (const t of this.towers) { const s = SKILLS[PHIL.get(t.philId)!.name]; if (s?.kind === 'globalSlow') gSlow = Math.max(gSlow, s.v); }
+    for (const t of this.towers) { const s = SKILLS[PHIL.get(t.philId)!.realName]; if (s?.kind === 'globalSlow') gSlow = Math.max(gSlow, s.v); }
 
     const escaped: Enemy[] = [];
     for (const e of this.enemies) {
@@ -378,7 +378,7 @@ export class Game {
       if (t.cd > 0) continue;
       const p = PHIL.get(t.philId)!;
       const st = TIER_STATS[p.tier]!;
-      const skill = SKILLS[p.name];
+      const skill = SKILLS[p.realName];
       const tx = t.cx + 0.5, ty = t.cy + 0.5;
       const im = this.itemMult(t);
       let best: Enemy | null = null;

@@ -30,6 +30,8 @@ export interface Progress {
   purchases: string[];
   firstClears: string[];
   tutorialDone: boolean;
+  /** 최애 철학자 (고민방 주인 · 전장 하트) */
+  favorite?: string;
 }
 
 const fresh = (): Progress => ({ cleared: [], seen: [], gonoe: 300, idleAt: Date.now(), cards: { T101: 1 }, items: {}, loadout: {}, tapLevel: 0, gems: 100, pity: 0, tickets: 0, purchases: [], firstClears: [], tutorialDone: false });

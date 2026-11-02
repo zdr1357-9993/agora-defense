@@ -52,7 +52,7 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
   const hit = cache.get(p.id);
   if (hit) return hit;
   const n = parseInt(p.id.slice(1), 10);
-  const is = (...names: string[]) => names.includes(p.name);
+  const is = (...names: string[]) => names.includes(p.realName ?? p.name);
 
   const sprite = makeSprite((px) => {
     px(5, 21, 14, 2, TIER_AURA[p.tier]);
@@ -168,6 +168,7 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
     else if (is('바울')) { px(19, 7, 1, 8, '#cbd5e1'); px(18, 14, 3, 1, '#ca8a04'); px(2, 12, 3, 5, '#fef3c7'); }
     else if (is('이븐 시나')) { px(18, 11, 4, 5, '#38bdf8'); px(19, 10, 2, 1, '#e0f2fe'); }
     else if (is('블레즈 파스칼')) { px(18, 12, 5, 4, '#a16207'); px(19, 13, 1, 1, '#fde047'); px(21, 13, 1, 1, '#fde047'); }
+    else if (is('알베르 카뮈')) { px(15, 11, 5, 1, '#f5f5f4'); px(20, 11, 1, 1, '#f97316'); px(20, 8, 2, 2, '#e5e7eb'); px(1, 16, 4, 4, '#a8a29e'); }
     else if (is('지그문트 프로이트')) { px(15, 11, 5, 1, '#92400e'); px(20, 11, 1, 1, '#f97316'); px(20, 8, 2, 2, '#e5e7eb'); }
     else if (is('자크 라캉')) { px(18, 8, 4, 6, '#f0abfc'); px(19, 9, 2, 4, '#e0f2fe'); px(19, 14, 2, 3, '#a16207'); }
     else if (is('한나 아렌트')) { px(15, 11, 5, 1, '#f5f5f4'); px(20, 11, 1, 1, '#f97316'); px(20, 8, 2, 2, '#e5e7eb'); }
@@ -248,6 +249,7 @@ export function itemSprite(id: string): HTMLCanvasElement {
     case 'book': px(2, 2, 8, 9, '#b45309'); px(3, 3, 6, 7, '#fef3c7'); px(5, 3, 1, 7, '#b45309'); break;
     case 'crane': px(5, 1, 1, 10, '#78350f'); px(2, 1, 8, 1, '#78350f'); px(3, 2, 1, 4, '#94a3b8'); px(8, 2, 1, 4, '#94a3b8'); break;
     case 'axe': px(5, 2, 2, 9, '#92400e'); px(6, 1, 4, 4, '#94a3b8'); break;
+    case 'boulder': px(2, 3, 8, 7, '#a8a29e'); px(3, 4, 3, 2, '#d6d3d1'); px(1, 10, 10, 1, '#78716c'); break;
     case 'lantern': px(3, 2, 6, 8, '#fde047'); px(4, 3, 4, 6, '#fef9c3'); px(4, 1, 4, 1, '#1c1917'); px(4, 10, 4, 1, '#1c1917'); break;
   }
   itemCache.set(id, c);
