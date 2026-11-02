@@ -363,6 +363,14 @@ function draw() {
     const rc = recoil.get(t.uid) ?? 0;
     const sx = sz * (1 + rc * 0.12), sy = sz * (1 - rc * 0.1);
     ctx.drawImage(philosopherSprite(p), cx - sx / 2, foot - sy * 0.97 + bob, sx, sy);
+    // 이름표
+    const nm = shortName(p.name);
+    const fs = Math.max(9, cell * 0.21);
+    ctx.font = `${fs}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const nw = ctx.measureText(nm).width + 8, ny = foot + fs * 0.35;
+    ctx.fillStyle = isSel ? '#ffd36b' : 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(cx - nw / 2, ny - fs * 0.62, nw, fs * 1.24, fs * 0.6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#3b2a1e'; ctx.fillText(nm, cx, ny + 0.5);
     // 등급 배지
     const bx = (t.cx + 0.14) * cell, by = (t.cy + 0.14) * cell, br = cell * 0.15;
     ctx.fillStyle = TIER_AURA[p.tier]; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
@@ -463,10 +471,10 @@ function drawDecor(kind: string, x: number, y: number, c: number) {
   }
 }
 
-const SHORT: Record<string, string> = { '엘레아의 제논': '제논', '오컴의 윌리엄': '오컴', '이븐 시나': '이븐시나', '이븐 루시드': '이븐루시드', '알 킨디': '알킨디', '힐데가르트 폰 빙엔': '힐데가르트' };
+const SHORT: Record<string, string> = { '고타마 붓다': '붓다', '다산 정약용': '정약용', '퇴계 이황': '이황', '루트비히 비트겐슈타인': '비트겐', '아르투어 쇼펜하우어': '쇼펜하우어', '고트프리트 라이프니츠': '라이프니츠', '쇠렌 키르케고르': '키르케고르', '헤라클레이토스': '헤라클레', '아리스토텔레스': '아리스토', '나가르주나': '나가르',  '엘레아의 제논': '제논', '오컴의 윌리엄': '오컴', '이븐 시나': '이븐시나', '이븐 루시드': '이븐루시드', '알 킨디': '알킨디', '힐데가르트 폰 빙엔': '힐데가르트' };
 function shortName(name: string) {
   const s = SHORT[name] ?? name.split(' ').pop()!;
-  return s.length > 5 ? s.slice(0, 5) : s;
+  return s.length > 5 ? s.slice(0, 4) + '…' : s;
 }
 
 // ---------- 장착 ----------
