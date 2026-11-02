@@ -6,12 +6,44 @@ export const TIER_AURA = ['', '#64748b', '#38bdf8', '#a855f7', '#f59e0b', '#ef44
 
 type Px = (x: number, y: number, w: number, h: number, c: string) => void;
 
+/** 도트 후처리: 위쪽 하이라이트 · 아래/오른쪽 음영 · 스티커 외곽선 → 2배 해상도로 출력 */
+function polish(src: HTMLCanvasElement, outline = [59, 42, 30]): HTMLCanvasElement {
+  const n = src.width;
+  const sctx = src.getContext('2d')!;
+  const img = sctx.getImageData(0, 0, n, n), d = img.data;
+  const A = (x: number, y: number) => x >= 0 && y >= 0 && x < n && y < n && d[(y * n + x) * 4 + 3] > 0;
+  const out = new ImageData(n, n);
+  const o = out.data;
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const i = (y * n + x) * 4;
+    if (A(x, y)) {
+      let k = 1;
+      if (!A(x, y - 1)) k = 1.18;                       // 윗면 하이라이트
+      else if (!A(x, y + 1) || !A(x + 1, y)) k = 0.8;   // 아랫면·오른쪽 음영
+      o[i] = Math.min(255, d[i] * k); o[i + 1] = Math.min(255, d[i + 1] * k); o[i + 2] = Math.min(255, d[i + 2] * k); o[i + 3] = 255;
+    } else if (A(x - 1, y) || A(x + 1, y) || A(x, y - 1) || A(x, y + 1)) {
+      o[i] = outline[0]; o[i + 1] = outline[1]; o[i + 2] = outline[2]; o[i + 3] = 255;
+    }
+  }
+  const tmp = document.createElement('canvas');
+  tmp.width = tmp.height = n;
+  tmp.getContext('2d')!.putImageData(out, 0, 0);
+  // 2배 확대(선명한 픽셀) 후 1px 반짝이 점
+  const big = document.createElement('canvas');
+  big.width = big.height = n * 2;
+  const b = big.getContext('2d')!;
+  b.imageSmoothingEnabled = false;
+  b.drawImage(tmp, 0, 0, n * 2, n * 2);
+  return big;
+}
+
 function makeSprite(draw: (px: Px) => void): HTMLCanvasElement {
   const c = document.createElement('canvas');
-  c.width = c.height = 24;
+  c.width = c.height = 26;
   const ctx = c.getContext('2d')!;
+  ctx.translate(1, 1); // 외곽선 여백
   draw((x, y, w, h, col) => { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); });
-  return c;
+  return polish(c);
 }
 
 const cache = new Map<string, HTMLCanvasElement>();
@@ -68,7 +100,7 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
 
     // 얼굴과 눈
     px(8, 5, 8, 8, skin);
-    px(9, 8, 2, 2, '#0f172a'); px(13, 8, 2, 2, '#0f172a');
+    px(9, 8, 2, 2, '#0f172a'); px(13, 8, 2, 2, '#0f172a'); px(8, 10, 1, 1, '#fda4af'); px(15, 10, 1, 1, '#fda4af');
     px(9, 8, 1, 1, '#ffffff'); px(13, 8, 1, 1, '#ffffff');
     if (is('바뤼흐 스피노자', '임마누엘 칸트', '에드문트 후설', '고틀로프 프레게', '장 폴 사르트르', '엠마누엘 레비나스', '에마뉘엘 레비나스', '지그문트 프로이트', '테오도어 아도르노', '니시다 기타로', '미셸 푸코')) {
       px(8, 7, 4, 3, '#38bdf8'); px(12, 7, 4, 3, '#38bdf8');

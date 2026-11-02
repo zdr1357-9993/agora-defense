@@ -14,7 +14,7 @@
     <section id="home" class="screen">
       <header class="hub-top">
         <h1 class="title"><span class="gold">AGORA</span> 철학사 랜덤 디펜스</h1>
-        <span id="wallet" class="wallet">🤔 0</span>
+        <span class="top-right"><button id="mute" class="icon-btn">🔊</button><span id="wallet" class="wallet">🤔 0</span></span>
       </header>
       <div id="tab-stages" class="tab">
         <p class="slogan">사유하라, 조합하라, 도그마를 논파하라!</p>
@@ -27,6 +27,7 @@
       </div>
       <div id="tab-room" class="tab hidden"></div>
       <div id="tab-gacha" class="tab hidden"></div>
+      <div id="tab-shop" class="tab hidden"></div>
       <div id="tab-codex" class="tab hidden">
         <h2>📖 도감 <small id="codex-count"></small></h2>
         <div id="codex-list"></div>
@@ -36,6 +37,7 @@
         <button data-tab="room">🤔<span>고민방</span></button>
         <button data-tab="gacha">🎴<span>뽑기</span></button>
         <button data-tab="codex">📖<span>도감</span></button>
+        <button data-tab="shop">🛍<span>상점</span></button>
       </nav>
     </section>
 
@@ -49,6 +51,7 @@
         <span>🧠 <b id="lives">0</b></span>
         <span class="wave-pill">🌊 <b id="wave">0</b>/<i id="wave-max">20</i><em class="wave-track"><em id="wave-bar"></em></em></span>
         <button id="b-recipes">📜</button>
+        <button id="mute-b">🔊</button>
         <button id="speed">1x</button>
       </header>
       <div id="cats"></div>

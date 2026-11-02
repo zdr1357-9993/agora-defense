@@ -1,4 +1,4 @@
-import { Game, GRID, QA_MODE, CATALYST_IDS, type Tower } from './game';
+import { Game, GRID, QA_MODE, CATALYST_IDS, type Tower, type FxEvent } from './game';
 import { STAGE_PATHS } from './paths';
 import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
 import { ITEM, isOwner, ITEM_BONUS } from './items';
@@ -6,8 +6,10 @@ import {
   PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, MAX_MERGE_TIER, UPGRADE, type Stage,
 } from './data';
 import { philosopherSprite, monsterSprite, itemSprite, TIER_AURA } from './sprites';
+import { SKILLS } from './skills';
+import { sfx, isMuted, toggleMute } from './sfx';
 import { loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL } from './save';
-import { settleIdle, tapGain, tapUpgradeCost, battleReward, pull, CARD_COST, CARD_COST_10, TOOL_COST, TOOL_COST_10, CARD_RATES, QA_GONOE, IDLE_PER_SEC } from './meta';
+import { settleIdle, tapGain, tapUpgradeCost, battleReward, pull, canAfford, PULLS, SHOP, buy, CUR_ICON, PITY_LIMIT, FIRST_CLEAR_GEMS, CARD_RATES, QA_GONOE, QA_GEMS, IDLE_PER_SEC, type PullOption } from './meta';
 import { ITEMS } from './items';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -19,6 +21,8 @@ const portrait = (id: string) => {
 };
 
 let progress = loadProgress();
+
+const clearedStages = () => STAGES.filter((s) => progress.cleared.includes(s.id)).length;
 
 // =============== 화면 전환 ===============
 function show(id: 'home' | 'battle') {
@@ -57,6 +61,13 @@ function renderHome() {
     b.className = `stage ${open ? '' : 'locked'} ${cleared ? 'cleared' : ''}`;
     b.disabled = !open;
     const hero = PHIL.get(s.counter)!;
+    if (!isUnlocked(s)) {
+      const b2 = document.createElement('button');
+      b2.className = 'stage locked mystery'; b2.disabled = true;
+      b2.innerHTML = `<img src="${portrait(hero.id)}"><div><b>🔒 ???</b><small>${STAGES.find((x) => x.id === s.unlockAfter)?.name ?? '이전 스테이지'}을(를) 깨면 열립니다</small></div>`;
+      box.appendChild(b2);
+      continue;
+    }
     b.innerHTML = `<img src="${portrait(hero.id)}"><div><b>${ERA_ICON[s.era]} ${s.name}</b>${cleared ? ' <span class="badge">CLEAR</span>' : ''}
       <small><span class="marks">${marks}</span> ${open ? `${STAGE_PATHS[s.id].caption}<br>최종 보스: ${s.boss20} · 수호자: ${hero.name}` : !isUnlocked(s) ? `🔒 ${STAGES.find((x) => x.id === s.unlockAfter)?.name} 클리어 시 해금` : `🔒 이 스테이지의 ${DIFFICULTIES[DIFFICULTIES.findIndex((d) => d.id === diffId) - 1]?.name} 클리어 시 해금`}</small></div>`;
     b.onclick = () => startBattle(s);
@@ -83,7 +94,7 @@ function renderCodex() {
       const tool = progress.loadout[p.id];
       const d = document.createElement('div');
       d.className = `card t${p.tier} ${known ? '' : 'unknown'} ${n ? 'owned' : ''}`;
-      d.innerHTML = `${lv ? `<span class="lv">Lv.${lv}</span>` : ''}${tool ? `<img class="tool-badge" src="${itemUrl(tool)}">` : ''}<img src="${portrait(p.id)}"><b>${known ? p.name : p.hidden ? '???' : '미발견'}</b><small>${n ? `🎴${n}` : ERA_ICON[p.era] ?? ''}</small>`;
+      d.innerHTML = `${lv ? `<span class="lv">Lv.${lv}</span>` : ''}${tool ? `<img class="tool-badge" src="${itemUrl(tool)}">` : ''}<img src="${portrait(p.id)}"><b>${known ? p.name : '???'}</b><small>${n ? `🎴${n}` : ERA_ICON[p.era] ?? ''}</small>`;
       if (known) d.onclick = () => showCard(p.id);
       grid.appendChild(d);
     }
@@ -189,6 +200,12 @@ function endBattle() {
       if (!progress.cleared.includes(game.stage.id)) progress.cleared.push(game.stage.id);
       const k = clearKey(game.stage.id, game.diff.id);
       if (!progress.cleared.includes(k)) progress.cleared.push(k);
+      if (!progress.firstClears.includes(k)) {
+        progress.firstClears.push(k);
+        const gems = FIRST_CLEAR_GEMS[DIFFICULTIES.findIndex((d) => d.id === game!.diff.id)] ?? 30;
+        progress.gems += gems;
+        setTimeout(() => toast(`💎 첫 클리어 보상 +${gems}`), 400);
+      }
     }
     saveProgress(progress);
   }
@@ -211,7 +228,7 @@ canvas.addEventListener('pointerdown', (ev) => {
   updateUI();
 });
 
-$('summon').onclick = () => { game?.summon(); updateUI(); };
+$('summon').onclick = () => { if (game?.summon()) sfx.summon(); updateUI(); };
 $('sell').onclick = () => { if (game && selected) { game.sell(selected); selected = null; updateUI(); } };
 $('start').onclick = () => { game?.startWave(); updateUI(); };
 $('speed').onclick = () => { speed = speed === 3 ? 1 : speed + 1; $('speed').textContent = `${speed}x`; };
@@ -237,6 +254,7 @@ function updateUI() {
 
   if (g.over && !resultShown) {
     resultShown = true;
+    if (g.over === 'win') sfx.win(); else sfx.lose();
     const newOnes = [...g.discovered].filter((id) => !progress.seen.includes(id));
     const s = g.stage;
     const unlocks = g.over === 'win' ? STAGES.filter((x) => x.unlockAfter === s.id && !progress.cleared.includes(s.id)).map((x) => x.name) : [];
@@ -363,6 +381,16 @@ function draw() {
     ctx.restore();
     ctx.fillStyle = 'rgba(56,189,248,.28)';
     for (const [x, y] of g.emptyCells()) { ctx.beginPath(); ctx.arc((x + 0.5) * cell, (y + 0.62) * cell, cell * 0.16, 0, Math.PI * 2); ctx.fill(); }
+  }
+
+  // ---- 오라 철학자: 주변 8칸에 은은한 빛 ----
+  for (const t of g.towers) {
+    const s = SKILLS[PHIL.get(t.philId)!.name];
+    if (!s || (s.kind !== 'auraAtk' && s.kind !== 'auraSpeed' && s.kind !== 'globalSlow')) continue;
+    const pulse = 0.5 + 0.5 * Math.sin(tick * 0.06 + t.uid);
+    ctx.fillStyle = s.kind === 'auraAtk' ? `rgba(255,159,67,${0.08 + pulse * 0.06})` : s.kind === 'auraSpeed' ? `rgba(95,198,160,${0.08 + pulse * 0.06})` : `rgba(96,165,250,${0.05 + pulse * 0.04})`;
+    if (s.kind === 'globalSlow') { ctx.beginPath(); ctx.arc((t.cx + 0.5) * cell, (t.cy + 0.5) * cell, cell * (1.6 + pulse * 0.3), 0, Math.PI * 2); ctx.fill(); }
+    else { ctx.beginPath(); ctx.roundRect((t.cx - 1) * cell + 4, (t.cy - 1) * cell + 4, cell * 3 - 8, cell * 3 - 8, cell * 0.5); ctx.fill(); }
   }
 
   // ---- 철학자: 그림자 + 큰 도트 + 등급 배지 ----
@@ -530,11 +558,12 @@ function switchTab(tab: string) {
   if (tab === 'room') renderRoom();
   if (tab === 'gacha') renderGacha();
   if (tab === 'codex') renderCodex();
+  if (tab === 'shop') renderShop();
   refreshWallet();
 }
 function refreshWallet() {
   const w = document.getElementById('wallet');
-  if (w) w.textContent = `🤔 ${Math.floor(progress.gonoe).toLocaleString()}`;
+  if (w) w.innerHTML = `🤔 ${Math.floor(progress.gonoe).toLocaleString()} <i>💎 ${progress.gems.toLocaleString()}</i>${progress.tickets ? ` <i>🎫 ${progress.tickets}</i>` : ''}`;
   const r = document.getElementById('room-gonoe');
   if (r) r.textContent = Math.floor(progress.gonoe).toLocaleString();
 }
@@ -542,7 +571,7 @@ function refreshWallet() {
 // ---------- 고민방 ----------
 let roomThinker = 'T104';
 function renderRoom() {
-  const idle = settleIdle(progress);
+  const idle = settleIdle(progress, clearedStages());
   saveProgress(progress);
   const owned = PHILOSOPHERS.filter((p) => progress.cards[p.id]);
   if (!progress.cards[roomThinker] && owned.length) roomThinker = owned.sort((a, b) => b.tier - a.tier)[0].id;
@@ -554,7 +583,7 @@ function renderRoom() {
         <button id="thinker" class="thinker"><img src="${portrait(p.id)}"></button>
         <div class="room-floor"></div></div>
       <div class="room-stat"><span>고뇌</span><b id="room-gonoe">${Math.floor(progress.gonoe).toLocaleString()}</b></div>
-      <p class="hint">${p.name}을(를) 톡톡 두드려 고뇌를 짜내세요. 가만히 둬도 초당 ${(IDLE_PER_SEC * (1 + STAGES.filter((s) => progress.cleared.includes(s.id)).length * 0.5)).toFixed(1)}씩 쌓여요 (스테이지 클리어마다 증가, 최대 8시간).${idle ? `<br><b>자리를 비운 사이 고뇌 +${idle.toLocaleString()}</b>` : ''}</p>
+      <p class="hint">${p.name}을(를) 톡톡 두드려 고뇌를 짜내세요. 가만히 둬도 초당 ${(IDLE_PER_SEC * (1 + clearedStages() * 0.5)).toFixed(1)}씩 쌓여요 (스테이지 클리어마다 증가, 최대 8시간).${idle ? `<br><b>자리를 비운 사이 고뇌 +${idle.toLocaleString()}</b>` : ''}</p>
       <div class="row"><button id="tap-up" class="chunky blue">💭 고민의 깊이 Lv.${progress.tapLevel + 1} → ${progress.tapLevel + 2}<small>탭당 +${tapGain(progress)} → +${tapGain(progress) + 1} · ${cost.toLocaleString()} 고뇌</small></button></div>
       <p class="hint">고민방 주인은 도감에서 바꿀 수 있어요.</p>
     </div>`;
@@ -562,6 +591,7 @@ function renderRoom() {
     progress.gonoe += tapGain(progress);
     saveProgress(progress);
     refreshWallet();
+    sfx.tap();
     const f = document.createElement('span');
     f.className = 'float'; f.textContent = `+${tapGain(progress)}`;
     f.style.left = `${(ev as MouseEvent).offsetX + 20}px`;
@@ -574,50 +604,127 @@ function renderRoom() {
 }
 
 // ---------- 뽑기 ----------
+function pullBtn(id: string, cls: string) {
+  const o = PULLS.find((x) => x.id === id)!;
+  return `<button class="chunky ${cls}" data-pull="${id}">${o.label}<small>${CUR_ICON[o.currency]} ${o.cost.toLocaleString()}</small></button>`;
+}
 function renderGacha() {
   const rates = CARD_RATES.map((r) => `<span class="tier-chip t${r.tier}">${r.tier}★ ${(r.rate * 100).toFixed(1)}%</span>`).join(' ');
   $('tab-gacha').innerHTML = `
+    <div class="gacha-box master-box">
+      <div class="banner-art">${PHILOSOPHERS.filter((p) => p.tier === 6 && !p.hidden).map((p) => `<img src="${portrait(p.id)}">`).join('')}</div>
+      <h2>✨ 거장 초대 <span class="hot">5성 이상 확정</span></h2>
+      <p class="hint">10회 중 마지막 1장은 반드시 5성 또는 6성! 🎫 초대장으로 1장 확정 소환도 가능해요.</p>
+      <div class="row">${pullBtn('m10', 'gold')}${pullBtn('m1', 'pink')}</div>
+    </div>
     <div class="gacha-box card-box">
       <h2>🎴 철학자 카드</h2>
-      <p class="hint">같은 철학자 카드가 1·2·4·8·16…장 모일 때마다 레벨업! 레벨당 전투 공격력 +${CARD_ATK_PER_LEVEL * 100}% (최대 Lv.${CARD_MAX_LEVEL})</p>
+      <p class="hint">같은 카드 1·2·4·8…장마다 레벨업 · 레벨당 전투 공격력 +${CARD_ATK_PER_LEVEL * 100}% (최대 Lv.${CARD_MAX_LEVEL})</p>
       <div class="rates-line">${rates}</div>
-      <div class="row"><button class="chunky pink" data-pull="card1">1회 <small>${CARD_COST} 고뇌</small></button><button class="chunky gold" data-pull="card10">10회 <small>${CARD_COST_10} 고뇌</small></button></div>
+      <div class="pity">천장까지 <b>${PITY_LIMIT - progress.pity}</b>회 <span class="bar"><i style="width:${(progress.pity / PITY_LIMIT) * 100}%"></i></span></div>
+      <div class="row">${pullBtn('c1', 'pink')}${pullBtn('c10', 'gold')}${pullBtn('c10g', 'blue')}</div>
     </div>
     <div class="gacha-box tool-box">
       <h2>🧰 도구 상자</h2>
-      <p class="hint">뽑은 도구는 도감에서 철학자에게 장착해요. 아무에게나 공격 +20%, <b>주인에게 끼우면 찰떡!</b> 공격 +60%·사거리 증가</p>
-      <div class="row"><button class="chunky mint" data-pull="tool1">1회 <small>${TOOL_COST} 고뇌</small></button><button class="chunky gold" data-pull="tool10">10회 <small>${TOOL_COST_10} 고뇌</small></button></div>
+      <p class="hint">도감에서 철학자에게 장착 · 주인에게 끼우면 <b>찰떡!</b> 공격 +60%</p>
+      <div class="row">${pullBtn('t1', 'mint')}${pullBtn('t10', 'gold')}${pullBtn('t10g', 'blue')}</div>
     </div>`;
   for (const b of $('tab-gacha').querySelectorAll<HTMLButtonElement>('[data-pull]')) {
-    const kind = b.dataset.pull!.startsWith('card') ? 'card' : 'tool';
-    const times = b.dataset.pull!.endsWith('10') ? 10 : 1;
-    const cost = kind === 'card' ? (times === 1 ? CARD_COST : CARD_COST_10) : (times === 1 ? TOOL_COST : TOOL_COST_10);
-    b.disabled = progress.gonoe < cost;
+    const o = PULLS.find((x) => x.id === b.dataset.pull)!;
+    b.disabled = !canAfford(progress, o);
     b.onclick = () => {
       const before = { ...progress.cards };
-      const got = pull(progress, kind, times as 1 | 10);
+      const got = pull(progress, o);
       if (!got) return;
       saveProgress(progress); refreshWallet(); renderGacha();
-      revealPulls(kind, got, before);
+      gachaShow(o, got, before);
     };
   }
 }
 
-function revealPulls(kind: 'card' | 'tool', got: string[], before: Record<string, number>) {
+/** 뽑기 연출: 봉인된 두루마리(최고 등급 색으로 빛남) → 터치 → 광선 폭발 → 한 장씩 공개 */
+function gachaShow(o: PullOption, got: string[], before: Record<string, number>) {
+  const isTool = o.kind === 'tool';
+  const tiers = got.map((id) => (isTool ? 3 : PHIL.get(id)!.tier));
+  const top = Math.max(...tiers);
+  const glow = top >= 6 ? 'rainbow' : top >= 5 ? 'gold' : top >= 4 ? 'orange' : 'blue';
+  const ov = document.createElement('div');
+  ov.className = `gacha-stage glow-${glow}`;
+  ov.innerHTML = `<div class="rays"></div><div class="scroll-wrap"><div class="scroll">${isTool ? '🧰' : '📜'}</div><p>터치해서 펼치기</p></div>
+    <div class="cards ${got.length === 1 ? 'single' : ''}"></div><div class="g-actions"><button class="chunky blue skip">모두 열기</button><button class="chunky gold done hidden">확인</button></div>`;
+  document.body.appendChild(ov);
+  sfx.drumroll(1.2);
   const counted: Record<string, number> = { ...before };
-  const cells = got.map((id, i) => {
-    if (kind === 'tool') {
+  const cardsEl = ov.querySelector('.cards')!;
+  let opened = false, idx = 0, timer = 0;
+  const flipNext = (chain = true) => {
+    if (idx >= got.length) { ov.querySelector('.skip')!.classList.add('hidden'); ov.querySelector('.done')!.classList.remove('hidden'); return; }
+    const id = got[idx], tier = tiers[idx];
+    const el = document.createElement('div');
+    if (isTool) {
       const it = ITEMS.find((x) => x.id === id)!;
-      return `<div class="reveal tool" style="animation-delay:${i * 0.08}s"><img src="${itemUrl(id)}"><b>${it.name}</b><small>${it.owners.map((o) => o.split(' ').pop()).join('·')}의 찰떡</small></div>`;
+      el.className = 'gcard tool';
+      el.innerHTML = `<img src="${itemUrl(id)}"><b>${it.name}</b><small>${it.owners.map((x) => x.split(' ').pop()).join('·')}의 찰떡</small>`;
+    } else {
+      const p = PHIL.get(id)!;
+      const prev = cardLevel(counted[id] ?? 0);
+      counted[id] = (counted[id] ?? 0) + 1;
+      const now = cardLevel(counted[id]);
+      const tag = prev === 0 ? '<i class="new">NEW</i>' : now > prev ? `<i class="lvup">Lv.${now}!</i>` : '';
+      el.className = `gcard t${tier} ${tier >= 5 ? 'legend' : ''} ${tier >= 6 ? 'mythic' : ''}`;
+      el.innerHTML = `${tag}<img src="${portrait(id)}"><b>${p.name}</b><small>${'★'.repeat(tier)}</small>`;
+      if (tier >= 5) { burst(ov, tier); shakeEl(ov); }
     }
-    const p = PHIL.get(id)!;
-    const prev = cardLevel(counted[id] ?? 0);
-    counted[id] = (counted[id] ?? 0) + 1;
-    const now = cardLevel(counted[id]);
-    const tag = prev === 0 ? '<i class="new">NEW</i>' : now > prev ? `<i class="lvup">Lv.${now}!</i>` : '';
-    return `<div class="reveal t${p.tier} ${p.tier >= 5 ? 'shine' : ''}" style="animation-delay:${i * 0.08}s">${tag}<img src="${portrait(id)}"><b>${p.name}</b><small>${'★'.repeat(p.tier)}</small></div>`;
-  }).join('');
-  alertBox(`<h2>${kind === 'card' ? '🎴 카드 공개!' : '🧰 도구 획득!'}</h2><div class="reveal-grid ${got.length === 1 ? 'single' : ''}">${cells}</div>`);
+    sfx.reveal(tier);
+    cardsEl.appendChild(el);
+    idx++;
+    if (chain) timer = window.setTimeout(() => flipNext(), tier >= 5 ? 700 : 160);
+    else if (idx >= got.length) flipNext(false);
+  };
+  const open = () => {
+    if (opened) return; opened = true;
+    ov.classList.add('opened');
+    setTimeout(() => flipNext(), 450);
+  };
+  ov.querySelector('.scroll-wrap')!.addEventListener('click', open);
+  setTimeout(open, 1400);
+  ov.querySelector('.skip')!.addEventListener('click', (e) => {
+    e.stopPropagation();
+    opened = true; ov.classList.add('opened'); clearTimeout(timer);
+    while (idx < got.length) flipNext(false);
+  });
+  ov.querySelector('.done')!.addEventListener('click', () => { ov.remove(); renderGacha(); });
+}
+
+function burst(host: HTMLElement, tier: number) {
+  for (let i = 0; i < (tier >= 6 ? 60 : 30); i++) {
+    const s = document.createElement('span');
+    s.className = 'confetti';
+    s.style.left = '50%'; s.style.top = '45%';
+    s.style.setProperty('--dx', `${(Math.random() - 0.5) * 600}px`);
+    s.style.setProperty('--dy', `${(Math.random() - 0.7) * 600}px`);
+    s.style.background = ['#ffb3c7', '#ffd36b', '#a7ecd2', '#a9d8ff', '#c7a6ff'][i % 5];
+    host.appendChild(s);
+    setTimeout(() => s.remove(), 1200);
+  }
+}
+function shakeEl(el: HTMLElement) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+
+// ---------- 상점 ----------
+function renderShop() {
+  $('tab-shop').innerHTML = `<h2>🛍 상점</h2>
+    <p class="hint">프로토타입이라 실제 결제 없이 바로 지급돼요. 가격과 구성은 출시 전 조정합니다.</p>
+    <div class="shop-grid">${SHOP.map((s) => {
+      const sold = s.once && progress.purchases.includes(s.id);
+      return `<div class="shop-item ${sold ? 'sold' : ''}">${s.tag ? `<i class="tag-hot">${s.tag}</i>` : ''}<div class="shop-icon">${s.icon}</div><b>${s.name}</b><small>${s.desc}</small>
+        <button class="chunky ${s.costGems ? 'blue' : 'gold'}" data-buy="${s.id}" ${sold ? 'disabled' : ''}>${sold ? '구매 완료' : s.price}</button></div>`;
+    }).join('')}</div>`;
+  for (const b of $('tab-shop').querySelectorAll<HTMLButtonElement>('[data-buy]')) b.onclick = () => {
+    const item = SHOP.find((x) => x.id === b.dataset.buy)!;
+    if (!item.costGems && !window.confirm(`[모의 결제] ${item.name} (${item.price})\n실제 결제는 일어나지 않아요. 지급할까요?`)) return;
+    if (buy(progress, item)) { saveProgress(progress); refreshWallet(); renderShop(); sfx.reveal(5); toast(`🎉 ${item.name} 지급 완료!`); }
+    else toast('💎 지혜석이 부족해요');
+  };
 }
 
 // ---------- 조합표 · 확률표 ----------
@@ -634,7 +741,8 @@ function recipeSheet() {
     }).join('<b class="plus">+</b>');
     const cat = r.catalyst ? `<b class="plus">+</b><span class="mat cat ${g && g.catalysts[r.catalyst] ? 'have' : ''}">${CAT_ICON[r.catalyst]}</span>` : '';
     const ready = g && owned.every(Boolean) && g.hasCatalyst(r);
-    return `<div class="rrow ${ready ? 'ready' : ''}"><div class="res t${res.tier}"><img src="${portrait(res.id)}"><b>${res.name}</b><i>${'★'.repeat(res.tier)}</i></div>
+    const known = QA_MODE || progress.seen.includes(res.id);
+    return `<div class="rrow ${ready ? 'ready' : ''}"><div class="res t${res.tier} ${known ? '' : 'unknown'}"><img src="${portrait(res.id)}"><b>${known ? res.name : '??? (처음 연성하면 공개)'}</b><i>${'★'.repeat(res.tier)}</i></div>
       <div class="mats">${mats}${cat}</div><small>${r.logic}</small></div>`;
   }).join('');
   alertBox(`<h2>📜 조합표</h2><p class="hint">초록 테두리 = 지금 전장에 있는 재료</p><div class="rlist">${html}</div>`);
@@ -654,16 +762,32 @@ function rateSheet() {
 }
 
 // ---------- 타격감 연출 ----------
+interface Shape { kind: string; x: number; y: number; tx?: number; ty?: number; r?: number; life: number; max: number }
+const shapes: Shape[] = [];
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; text?: string; star?: boolean }
 const particles: Particle[] = [];
 const recoil = new Map<number, number>();
 let shake = 0;
 let banner: { text: string; t: number } | null = null;
+let bossIntro: { name: string; t: number } | null = null;
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 const PASTEL = ['#ffb3c7', '#ffd36b', '#a7ecd2', '#a9d8ff', '#c7a6ff'];
 
+function soundFor(f: FxEvent) {
+  if (f.type === 'hit') sfx.hit();
+  else if (f.type === 'kill') { if (f.boss) sfx.coin(); else sfx.kill(); }
+}
+
 function consumeFx(g: Game) {
   for (const f of g.fx.splice(0)) {
+    soundFor(f);
+    if (f.type === 'skill') {
+      const life = { splash: 0.35, chain: 0.25, slow: 0.5, stun: 0.6, execute: 0.45, crit: 0.3, vuln: 0.5, dot: 0.5 }[f.kind] ?? 0.4;
+      shapes.push({ kind: f.kind, x: f.x, y: f.y, tx: f.tx, ty: f.ty, r: f.r, life, max: life });
+      if (f.kind === 'execute') particles.push({ x: f.x, y: f.y - 0.4, vx: 0, vy: -1, life: 0.7, max: 0.7, color: '#dc2626', size: 0.3, text: '처형!' });
+      if (f.kind === 'crit') particles.push({ x: f.x, y: f.y - 0.6, vx: 0, vy: -1.2, life: 0.5, max: 0.5, color: '#f59e0b', size: 0.26, text: '치명!' });
+      continue;
+    }
     if (f.type === 'shot') recoil.set(f.uid, 1);
     else if (f.type === 'hit') {
       for (let i = 0; i < (f.big ? 7 : 3); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-2.5, 2.5), vy: rnd(-3, -0.5), life: 0.35, max: 0.35, color: f.big ? '#ffd36b' : '#ffffff', size: rnd(0.04, 0.08), star: f.big });
@@ -673,10 +797,11 @@ function consumeFx(g: Game) {
       particles.push({ x: f.x, y: f.y - 0.2, vx: 0, vy: -0.8, life: 0.9, max: 0.9, color: '#e3a72f', size: 0.28, text: `+${f.gold}G` });
       if (f.boss) { shake = 0.6; banner = { text: '🎉 논파 성공!', t: 1.8 }; }
     } else if (f.type === 'morph') {
+      if (f.tier >= 5) sfx.synth(f.tier); else sfx.merge();
       for (let i = 0; i < 24 + f.tier * 6; i++) { const a = (i / 24) * Math.PI * 2; particles.push({ x: f.x, y: f.y, vx: Math.cos(a) * rnd(1.5, 3), vy: Math.sin(a) * rnd(1.5, 3), life: 0.7, max: 0.7, color: f.tier >= 5 ? PASTEL[i % 5] : '#fff3b0', size: rnd(0.06, 0.11), star: true }); }
       if (f.tier >= 5) shake = 0.35;
-    } else if (f.type === 'boss') { banner = { text: `⚠️ ${f.name} 등장!`, t: 2.2 }; shake = 0.4; }
-    else if (f.type === 'bossSkill' && f.text) { banner = { text: f.text, t: 1.6 }; shake = 0.25; }
+    } else if (f.type === 'boss') { bossIntro = { name: f.name, t: 2.6 }; shake = 0.4; sfx.boss(); }
+    else if (f.type === 'bossSkill' && f.text) { banner = { text: f.text, t: 1.6 }; shake = 0.25; sfx.bossSkill(); }
     else if (f.type === 'stun') { const t = g.towers.find((x) => x.uid === f.uid); if (t) for (let i = 0; i < 8; i++) particles.push({ x: t.cx + 0.5, y: t.cy + 0.3, vx: rnd(-1, 1), vy: rnd(-2, -0.5), life: 0.6, max: 0.6, color: '#c7a6ff', size: 0.07 }); }
   }
 }
@@ -685,9 +810,12 @@ const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math
 function updateFx(dt: number) {
   for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; if (!p.text) p.vy += 6 * dt; p.life -= dt; }
   for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
+  for (const s of shapes) s.life -= dt;
+  for (let i = shapes.length - 1; i >= 0; i--) if (shapes[i].life <= 0) shapes.splice(i, 1);
   for (const [k, v] of recoil) { const n = v - dt * 6; if (n <= 0) recoil.delete(k); else recoil.set(k, n); }
   if (shake > 0) shake = Math.max(0, shake - dt);
   if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
+  if (bossIntro) { bossIntro.t -= dt; if (bossIntro.t <= 0) bossIntro = null; }
 }
 
 function drawStar(x: number, y: number, r: number) {
@@ -696,7 +824,46 @@ function drawStar(x: number, y: number, r: number) {
   ctx.closePath(); ctx.fill();
 }
 
+function drawShapes() {
+  for (const s of shapes) {
+    const k = 1 - s.life / s.max, a = s.life / s.max, X = s.x * cell, Y = s.y * cell;
+    ctx.save(); ctx.globalAlpha = a;
+    switch (s.kind) {
+      case 'splash': // 원형 폭발
+        ctx.fillStyle = 'rgba(255,179,107,.35)'; ctx.strokeStyle = '#ff9f43'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(X, Y, (s.r ?? 1) * cell * (0.3 + k * 0.7), 0, Math.PI * 2); ctx.fill(); ctx.stroke(); break;
+      case 'chain': { // 지그재그 번개
+        const TX = (s.tx ?? s.x) * cell, TY = (s.ty ?? s.y) * cell;
+        ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 3; ctx.shadowColor = '#e0f2fe'; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.moveTo(X, Y);
+        for (let i = 1; i < 5; i++) { const t = i / 5; ctx.lineTo(X + (TX - X) * t + rnd(-6, 6), Y + (TY - Y) * t + rnd(-6, 6)); }
+        ctx.lineTo(TX, TY); ctx.stroke(); break;
+      }
+      case 'slow': // 파란 물결
+        ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 2;
+        for (let i = 0; i < 2; i++) { ctx.beginPath(); ctx.arc(X, Y, cell * (0.2 + k * 0.4 + i * 0.12), 0, Math.PI * 2); ctx.stroke(); } break;
+      case 'stun': // 빙글 별
+        ctx.fillStyle = '#facc15';
+        for (let i = 0; i < 3; i++) { const an = k * 6 + (i * Math.PI * 2) / 3; drawStar(X + Math.cos(an) * cell * 0.3, Y - cell * 0.4 + Math.sin(an) * cell * 0.1, cell * 0.08); } break;
+      case 'execute': // 붉은 사선 베기
+        ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 4 * a + 1;
+        ctx.beginPath(); ctx.moveTo(X - cell * 0.5, Y - cell * 0.5); ctx.lineTo(X - cell * 0.5 + cell * k, Y - cell * 0.5 + cell * k); ctx.stroke(); break;
+      case 'crit': // 노란 섬광
+        ctx.fillStyle = '#fde047';
+        drawStar(X, Y - cell * 0.3, cell * (0.2 + k * 0.35)); break;
+      case 'vuln': // 표적 고리
+        ctx.strokeStyle = '#f43f5e'; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.arc(X, Y, cell * (0.45 - k * 0.15), 0, Math.PI * 2); ctx.stroke(); break;
+      case 'dot': // 보라 연기
+        ctx.fillStyle = 'rgba(168,85,247,.4)';
+        for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(X + (i - 1) * cell * 0.15, Y - k * cell * 0.4 - i * 4, cell * 0.1, 0, Math.PI * 2); ctx.fill(); } break;
+    }
+    ctx.restore();
+  }
+}
+
 function drawFx(w: number) {
+  drawShapes();
   for (const p of particles) {
     const a = Math.max(0, p.life / p.max);
     ctx.globalAlpha = a;
@@ -715,6 +882,34 @@ function drawFx(w: number) {
   const v = ctx.createRadialGradient(w / 2, w / 2, w * 0.35, w / 2, w / 2, w * 0.75);
   v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(59,42,30,.18)');
   ctx.fillStyle = v; ctx.fillRect(0, 0, w, w);
+  // 대형 보스 HP바 (상단)
+  const boss = game?.enemies.find((e) => e.boss);
+  if (boss) {
+    const bw = w - cell * 1.2, bx = cell * 0.6, by = cell * 0.18, r = Math.max(0, boss.hp / boss.maxHp);
+    ctx.fillStyle = '#3b2a1e'; ctx.beginPath(); ctx.roundRect(bx - 3, by - 3, bw + 6, cell * 0.42 + 6, 12); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(bx, by, bw, cell * 0.42, 10); ctx.fill();
+    const grad = ctx.createLinearGradient(bx, 0, bx + bw, 0); grad.addColorStop(0, '#ff8f8f'); grad.addColorStop(1, '#ffb3c7');
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.roundRect(bx, by, Math.max(8, bw * r), cell * 0.42, 10); ctx.fill();
+    if ((boss.shieldT ?? 0) > 0) { ctx.strokeStyle = '#ffd36b'; ctx.lineWidth = 3; ctx.stroke(); }
+    ctx.fillStyle = '#3b2a1e'; ctx.font = `${cell * 0.26}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(`👑 ${boss.name}  ${Math.ceil(r * 100)}%`, w / 2, by + cell * 0.22);
+  }
+  // 보스 등장 컷인
+  if (bossIntro) {
+    const T = 2.6 - bossIntro.t, slide = Math.min(1, T * 4), out = Math.min(1, bossIntro.t * 3);
+    ctx.save(); ctx.globalAlpha = out;
+    ctx.fillStyle = 'rgba(59,42,30,.55)'; ctx.fillRect(0, 0, w, w);
+    const bandY = w * 0.36, bandH = cell * 2.2;
+    ctx.fillStyle = '#ff8f8f'; ctx.fillRect(0, bandY, w, bandH);
+    ctx.fillStyle = '#ffb3c7'; ctx.fillRect(0, bandY + 6, w, bandH - 12);
+    for (let i = 0; i < 8; i++) { ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(((T * 600 + i * 90) % (w + 80)) - 80, bandY + 10 + (i % 3) * 18, 50, 4); }
+    const ix = -cell * 2 + slide * (cell * 2.6);
+    ctx.drawImage(monsterSprite(game!.stage.era, 'boss'), ix, bandY - cell * 0.4, cell * 2.6, cell * 2.6);
+    ctx.fillStyle = '#3b2a1e'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = `${cell * 0.3}px "Jua", sans-serif`; ctx.fillText('WARNING · 도그마 출현', w - slide * (w - cell * 3.1), bandY + cell * 0.6);
+    ctx.font = `${cell * 0.55}px "Jua", sans-serif`; ctx.fillText(bossIntro.name, w - slide * (w - cell * 3.1), bandY + cell * 1.35);
+    ctx.restore();
+  }
   if (banner) {
     const s = Math.min(1, (2.2 - banner.t) * 6, banner.t * 3);
     ctx.save(); ctx.translate(w / 2, w * 0.3); ctx.scale(s, s);
@@ -748,13 +943,26 @@ function loop(now: number) {
 // ---------- 시작 ----------
 $('open-recipes').onclick = recipeSheet;
 $('open-rates').onclick = rateSheet;
-for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.onclick = () => switchTab(b.dataset.tab!);
+for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.onclick = () => { sfx.click(); switchTab(b.dataset.tab!); };
+for (const id of ['mute', 'mute-b']) { const b = document.getElementById(id); if (b) { b.textContent = isMuted() ? '🔇' : '🔊'; b.onclick = () => { const mu = toggleMute(); for (const x of ['mute', 'mute-b']) { const e = document.getElementById(x); if (e) e.textContent = mu ? '🔇' : '🔊'; } }; } }
 $('b-recipes').onclick = recipeSheet;
 $('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); progress = loadProgress(); bootQA(); renderHome(); switchTab('stages'); } };
-function bootQA() { if (QA_MODE && progress.gonoe < 1000 && !progress.cards.qa) { progress.gonoe += QA_GONOE; progress.cards.qa = 1; saveProgress(progress); } }
+function bootQA() { if (QA_MODE && !progress.purchases.includes('qa')) { progress.gonoe += QA_GONOE; progress.gems += QA_GEMS; progress.tickets += 5; progress.purchases.push('qa'); saveProgress(progress); } }
 bootQA();
+if (!progress.tutorialDone) {
+  progress.tutorialDone = true; saveProgress(progress);
+  setTimeout(() => alertBox(`<h2>🏛 아고라에 오신 걸 환영해요!</h2>
+    <p>도그마들이 아고라로 몰려오고 있어요.<br>철학자를 소환하고, 합치고, 조합해서 막아 주세요.</p>
+    <div class="welcome">
+      <div>🎲 <b>소환</b> 골드로 철학자를 불러요</div>
+      <div>🔁 <b>합성</b> 같은 등급 3명 → 한 등급 위</div>
+      <div>📜 <b>조합</b> 5성 이상은 조합표대로 모아야 탄생</div>
+      <div>🤔 <b>고민방</b> 고뇌를 모아 카드를 뽑고 성장</div>
+    </div>
+    <p>첫 선물로 🤔 300 · 💎 100 · 탈레스 카드를 드려요.<br>먼저 <b>아테네의 광장 · 쉬움</b>부터!</p>`), 300);
+}
 renderHome();
 show('home');
 switchTab('stages');
-setInterval(() => { if (!game) { settleIdle(progress); saveProgress(progress); refreshWallet(); } }, 1000);
+setInterval(() => { if (!game) { settleIdle(progress, clearedStages()); saveProgress(progress); refreshWallet(); } }, 1000);
 requestAnimationFrame(loop);

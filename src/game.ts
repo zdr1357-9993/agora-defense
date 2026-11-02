@@ -15,8 +15,8 @@ export const BOSS_WAVES = [10, 20];
 /** 웨이브마다 적 체력 증가율 (밸런스 핵심 값) */
 export const HP_GROWTH = 1.3;
 
-// QA 모드: 주소 뒤에 ?qa=0 을 붙이면 일반 모드
-export const QA_MODE = typeof location === 'undefined' ? false : new URLSearchParams(location.search).get('qa') !== '0';
+// QA 모드: 주소 뒤에 ?qa=1 (전 스테이지 해금·재화 지급). 기본은 처음 시작하는 상태
+export const QA_MODE = typeof location === 'undefined' ? false : new URLSearchParams(location.search).get('qa') === '1';
 const START_GOLD = QA_MODE ? 10000 : 200;
 export const CATALYST_IDS = ['C001', 'C002', 'C003', 'C004', 'C005'];
 
@@ -36,7 +36,8 @@ export type FxEvent =
   | { type: 'morph'; x: number; y: number; tier: number }
   | { type: 'boss'; name: string }
   | { type: 'bossSkill'; text: string }
-  | { type: 'stun'; uid: number };
+  | { type: 'stun'; uid: number }
+  | { type: 'skill'; kind: string; x: number; y: number; tx?: number; ty?: number; r?: number };
 export interface Bullet { x: number; y: number; target: number; dmg: number; text: string; color: string; src: number; skill?: Skill }
 
 let uidSeq = 1;
@@ -299,17 +300,23 @@ export class Game {
     const [ex, ey] = this.enemyPos(e);
     this.fx.push({ type: 'hit', x: ex, y: ey, dmg: dealt, big: dmg > 150 });
     if (!skill) return;
+    const fx = (kind: string, extra: Partial<{ tx: number; ty: number; r: number }> = {}) => this.fx.push({ type: 'skill', kind, x: ex, y: ey, ...extra });
+    if (skill.kind === 'slow') fx('slow');
+    if (skill.kind === 'splash') fx('splash', { r: 1.2 });
+    if (skill.kind === 'vuln') fx('vuln');
+    if (skill.kind === 'dot') fx('dot');
     switch (skill.kind) {
       case 'slow': e.slowT = 1.5; e.slowV = Math.max(e.slowV ?? 0, skill.v); break;
-      case 'stun': if (!e.boss && Math.random() < skill.v) e.stunT = 0.8; break;
+      case 'stun': if (!e.boss && Math.random() < skill.v) { e.stunT = 0.8; fx('stun'); } break;
       case 'vuln': e.vulnT = 3; e.vulnV = Math.max(e.vulnT > 0 ? e.vulnV ?? 0 : 0, skill.v); break;
       case 'dot': e.dotT = 3; e.dotV = skill.v; break;
-      case 'execute': if (!e.boss && e.hp > 0 && e.hp / e.maxHp <= skill.v) { e.hp = 0; } break;
+      case 'execute': if (!e.boss && e.hp > 0 && e.hp / e.maxHp <= skill.v) { e.hp = 0; fx('execute'); } break;
       case 'splash': for (const o of this.enemies) if (o !== e) { const [ox, oy] = this.enemyPos(o); if (Math.hypot(ox - ex, oy - ey) <= 1.2) this.damage(o, dmg * skill.v); } break;
       case 'chain': {
         const others = this.enemies.filter((o) => o !== e && o.hp > 0).map((o) => { const [ox, oy] = this.enemyPos(o); return { o, d: Math.hypot(ox - ex, oy - ey) }; })
           .filter((x) => x.d <= 2.2).sort((a, b) => a.d - b.d).slice(0, skill.v);
-        for (const { o } of others) { this.damage(o, dmg * 0.7); const [ox, oy] = this.enemyPos(o); this.fx.push({ type: 'hit', x: ox, y: oy, dmg: dmg * 0.7, big: false }); }
+        let px = ex, py = ey;
+        for (const { o } of others) { this.damage(o, dmg * 0.7); const [ox, oy] = this.enemyPos(o); this.fx.push({ type: 'skill', kind: 'chain', x: px, y: py, tx: ox, ty: oy }); this.fx.push({ type: 'hit', x: ox, y: oy, dmg: dmg * 0.7, big: false }); px = ox; py = oy; }
         break;
       }
       case 'stack': if (src) src.stacks = Math.min(1 / skill.v, (src.stacks ?? 0) + 1); break;
@@ -383,8 +390,8 @@ export class Game {
       let dmg = st.dmg * (1 + UPGRADE.perLevel * t.level) * im.dmg * this.meta.cardMult(t.philId) * (1 + (atk.get(t.uid) ?? 0));
       if (best.boss && t.philId === this.stage.counter) dmg *= COUNTER_MULT;
       if (skill) {
-        if (skill.kind === 'crit' && Math.random() < skill.v) dmg *= 2;
-        if (skill.kind === 'third' && t.shots % skill.v === 0) dmg *= skill.v2 ?? 2;
+        if (skill.kind === 'crit' && Math.random() < skill.v) { dmg *= 2; this.fx.push({ type: 'skill', kind: 'crit', x: tx, y: ty }); }
+        if (skill.kind === 'third' && t.shots % skill.v === 0) { dmg *= skill.v2 ?? 2; this.fx.push({ type: 'skill', kind: 'crit', x: tx, y: ty }); }
         if (skill.kind === 'boss' && best.boss) dmg *= 1 + skill.v;
         if (skill.kind === 'stack') dmg *= 1 + (t.stacks ?? 0) * skill.v;
         if (skill.kind === 'lonely' && !this.towers.some((o) => o !== t && Math.abs(o.cx - t.cx) <= 1 && Math.abs(o.cy - t.cy) <= 1)) dmg *= 1 + skill.v;

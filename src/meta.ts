@@ -1,9 +1,10 @@
-// 고민방(방치·탭) + 철학자 카드 뽑기 + 도구 뽑기
+// 고민방(방치·탭) + 철학자 카드/도구 뽑기 + 상점
 import { PHILOSOPHERS } from './data';
 import { ITEMS } from './items';
 import type { Progress } from './save';
 
 export const QA_GONOE = 100000;
+export const QA_GEMS = 10000;
 
 // ---------- 고민방 ----------
 export const IDLE_PER_SEC = 0.5;
@@ -12,47 +13,93 @@ export const tapGain = (p: Progress) => 1 + p.tapLevel;
 export const tapUpgradeCost = (p: Progress) => Math.round(50 * 1.6 ** p.tapLevel);
 
 /** 지난번 계산 이후 쌓인 방치 고뇌를 정산하고 얼마 들어왔는지 돌려줌 */
-export function settleIdle(p: Progress, now = Date.now()) {
+export function settleIdle(p: Progress, clearedStages: number, now = Date.now()) {
   const sec = Math.min((now - p.idleAt) / 1000, IDLE_CAP_HOURS * 3600);
-  const gain = Math.floor(sec * IDLE_PER_SEC * (1 + p.cleared.length * 0.5));
+  const gain = Math.floor(sec * IDLE_PER_SEC * (1 + clearedStages * 0.5));
   if (gain > 0) { p.gonoe += gain; p.idleAt = now; }
   return gain;
 }
 
 /** 전투 보상 */
 export const battleReward = (wave: number, win: boolean) => wave * 15 + (win ? 300 : 0);
+/** 스테이지·난이도 첫 클리어 보상 지혜석 */
+export const FIRST_CLEAR_GEMS = [30, 50, 80, 120, 200];
 
 // ---------- 뽑기 ----------
 export const CARD_COST = 100, CARD_COST_10 = 900;
 export const TOOL_COST = 150, TOOL_COST_10 = 1350;
 
-/** 철학자 카드 등급 확률 (5·6성 카드도 뽑을 수 있음, 히든 제외) */
+/** 철학자 카드 등급 확률 (히든 제외) */
 export const CARD_RATES = [
   { tier: 1, rate: 0.45 }, { tier: 2, rate: 0.28 }, { tier: 3, rate: 0.15 },
   { tier: 4, rate: 0.08 }, { tier: 5, rate: 0.035 }, { tier: 6, rate: 0.005 },
 ];
+/** 천장: 이 횟수 안에 5성 이상이 반드시 나온다 */
+export const PITY_LIMIT = 60;
 
 const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 
-export function drawCard(): string {
-  let r = Math.random(), tier = 1;
-  for (const c of CARD_RATES) { if (r < c.rate) { tier = c.tier; break; } r -= c.rate; }
+export function drawCard(minTier = 1): string {
+  const rates = CARD_RATES.filter((c) => c.tier >= minTier);
+  let r = Math.random() * rates.reduce((a, c) => a + c.rate, 0), tier = rates[rates.length - 1].tier;
+  for (const c of rates) { if (r < c.rate) { tier = c.tier; break; } r -= c.rate; }
   return pick(PHILOSOPHERS.filter((p) => p.tier === tier && !p.hidden)).id;
 }
-
 export function drawTool(): string { return pick(ITEMS).id; }
 
-export function pull(p: Progress, kind: 'card' | 'tool', times: 1 | 10): string[] | null {
-  const cost = kind === 'card' ? (times === 1 ? CARD_COST : CARD_COST_10) : (times === 1 ? TOOL_COST : TOOL_COST_10);
-  if (p.gonoe < cost) return null;
-  p.gonoe -= cost;
+export type Currency = 'gonoe' | 'gems' | 'ticket';
+export interface PullOption { id: string; kind: 'card' | 'tool' | 'master'; times: 1 | 10; currency: Currency; cost: number; label: string }
+export const PULLS: PullOption[] = [
+  { id: 'c1', kind: 'card', times: 1, currency: 'gonoe', cost: CARD_COST, label: '1회' },
+  { id: 'c10', kind: 'card', times: 10, currency: 'gonoe', cost: CARD_COST_10, label: '10회' },
+  { id: 'c10g', kind: 'card', times: 10, currency: 'gems', cost: 270, label: '10회' },
+  { id: 'm10', kind: 'master', times: 10, currency: 'gems', cost: 450, label: '거장 확정 10회' },
+  { id: 'm1', kind: 'master', times: 1, currency: 'ticket', cost: 1, label: '초대장 사용' },
+  { id: 't1', kind: 'tool', times: 1, currency: 'gonoe', cost: TOOL_COST, label: '1회' },
+  { id: 't10', kind: 'tool', times: 10, currency: 'gonoe', cost: TOOL_COST_10, label: '10회' },
+  { id: 't10g', kind: 'tool', times: 10, currency: 'gems', cost: 300, label: '10회' },
+];
+export const CUR_ICON: Record<Currency, string> = { gonoe: '🤔', gems: '💎', ticket: '🎫' };
+
+const wallet = (p: Progress, c: Currency) => (c === 'gonoe' ? p.gonoe : c === 'gems' ? p.gems : p.tickets);
+export const canAfford = (p: Progress, o: PullOption) => wallet(p, o.currency) >= o.cost;
+
+/** 뽑기 실행. 카드는 천장 적용, 거장 뽑기는 5성 이상 1장(10회면 마지막 장) 확정 */
+export function pull(p: Progress, o: PullOption): string[] | null {
+  if (!canAfford(p, o)) return null;
+  if (o.currency === 'gonoe') p.gonoe -= o.cost; else if (o.currency === 'gems') p.gems -= o.cost; else p.tickets -= o.cost;
   const got: string[] = [];
-  for (let i = 0; i < times; i++) {
-    const id = kind === 'card' ? drawCard() : drawTool();
+  for (let i = 0; i < o.times; i++) {
+    if (o.kind === 'tool') { const id = drawTool(); p.items[id] = (p.items[id] ?? 0) + 1; got.push(id); continue; }
+    const guarantee = (o.kind === 'master' && i === o.times - 1) || p.pity + 1 >= PITY_LIMIT;
+    const id = drawCard(guarantee ? 5 : 1);
+    const tier = PHILOSOPHERS.find((x) => x.id === id)!.tier;
+    p.pity = tier >= 5 ? 0 : p.pity + 1;
+    p.cards[id] = (p.cards[id] ?? 0) + 1;
+    if (!p.seen.includes(id)) p.seen.push(id);
     got.push(id);
-    const bag = kind === 'card' ? p.cards : p.items;
-    bag[id] = (bag[id] ?? 0) + 1;
-    if (kind === 'card' && !p.seen.includes(id)) p.seen.push(id);
   }
   return got;
+}
+
+// ---------- 상점 (프로토타입: 실제 결제 없이 지급) ----------
+export interface ShopItem { id: string; name: string; price: string; desc: string; gems?: number; tickets?: number; gonoe?: number; costGems?: number; once?: boolean; tag?: string; icon: string }
+export const SHOP: ShopItem[] = [
+  { id: 'starter', icon: '🎁', name: '아고라 입문 패키지', price: '₩4,900', desc: '💎 300 + 🎫 거장 초대장 1장', gems: 300, tickets: 1, once: true, tag: '1회 한정' },
+  { id: 'gem60', icon: '💎', name: '지혜석 한 줌', price: '₩1,200', desc: '💎 60', gems: 60 },
+  { id: 'gem330', icon: '💰', name: '지혜석 주머니', price: '₩5,900', desc: '💎 300 + 보너스 30', gems: 330, tag: '인기' },
+  { id: 'gem1100', icon: '🧳', name: '지혜석 상자', price: '₩19,000', desc: '💎 1,000 + 보너스 100', gems: 1100 },
+  { id: 'master3', icon: '🎫', name: '거장 초대장 3장', price: '₩9,900', desc: '5성 이상 1장 확정 × 3', tickets: 3, tag: '추천' },
+  { id: 'gonoe5k', icon: '🌙', name: '밤샘 고민 묶음', price: '💎 120', desc: '🤔 고뇌 5,000', gonoe: 5000, costGems: 120 },
+];
+
+/** 구매 처리 (원화 상품은 모의 결제). 성공 시 true */
+export function buy(p: Progress, item: ShopItem): boolean {
+  if (item.once && p.purchases.includes(item.id)) return false;
+  if (item.costGems) { if (p.gems < item.costGems) return false; p.gems -= item.costGems; }
+  p.gems += item.gems ?? 0;
+  p.tickets += item.tickets ?? 0;
+  p.gonoe += item.gonoe ?? 0;
+  p.purchases.push(item.id);
+  return true;
 }

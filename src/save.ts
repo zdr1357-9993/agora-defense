@@ -1,5 +1,5 @@
 // 진행 상황 저장 (브라우저 localStorage, 실패해도 게임은 계속)
-const KEY = 'agora_progress_v2';
+const KEY = 'agora_progress_v3';
 
 export interface Progress {
   cleared: string[];
@@ -16,9 +16,19 @@ export interface Progress {
   loadout: Record<string, string>;
   /** 고민방 탭 강화 단계 */
   tapLevel: number;
+  /** 유료 재화 💎 지혜석 */
+  gems: number;
+  /** 5성 이상이 안 나온 연속 카드 뽑기 수 (천장) */
+  pity: number;
+  /** 거장 초대장: 5성 이상 1장 확정 */
+  tickets: number;
+  /** 구매 기록 / 첫 클리어 보상 기록 */
+  purchases: string[];
+  firstClears: string[];
+  tutorialDone: boolean;
 }
 
-const fresh = (): Progress => ({ cleared: [], seen: [], gonoe: 0, idleAt: Date.now(), cards: {}, items: {}, loadout: {}, tapLevel: 0 });
+const fresh = (): Progress => ({ cleared: [], seen: [], gonoe: 300, idleAt: Date.now(), cards: { T101: 1 }, items: {}, loadout: {}, tapLevel: 0, gems: 100, pity: 0, tickets: 0, purchases: [], firstClears: [], tutorialDone: false });
 
 export function loadProgress(): Progress {
   try {
