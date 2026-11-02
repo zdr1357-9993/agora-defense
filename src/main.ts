@@ -4,26 +4,31 @@ import { STAGE_PATHS } from './paths';
 import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
 import { ITEM, isOwner, ITEM_BONUS } from './items';
 import {
-  homage, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, MAX_MERGE_TIER, UPGRADE, type Stage,
+  homage, statsOf, TYPE_ICON, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, MAX_MERGE_TIER, UPGRADE, type Stage,
 } from './data';
-import { philosopherSprite, monsterSprite, itemSprite, TIER_AURA } from './sprites';
+import { philosopherSprite, skinnedSprite, SKINS, monsterSprite, itemSprite, TIER_AURA } from './sprites';
 import { SKILLS } from './skills';
 import { sfx, isMuted, toggleMute } from './sfx';
-import { setAccount, hasSave, loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL } from './save';
+import { setAccount, hasSave, loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, awakenLevel, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL, AWAKEN_MAX, AWAKEN_EVERY } from './save';
+import { LINES, UNLOCK_LEVELS } from './lines';
 import { settleIdle, tapGain, tapUpgradeCost, battleReward, pull, canAfford, PULLS, SHOP, buy, CUR_ICON, PITY_LIMIT, FIRST_CLEAR_GEMS, CARD_RATES, QA_GONOE, QA_GEMS, IDLE_PER_SEC, type PullOption } from './meta';
 import { ITEMS } from './items';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const spriteUrl = new Map<string, string>();
 const itemUrl = (id: string) => itemSprite(id).toDataURL();
+/** 착용 스킨이 반영된 도트 */
+const spriteFor = (id: string) => skinnedSprite(PHIL.get(id)!, progress?.skinOn?.[id]);
 const portrait = (id: string) => {
-  if (!spriteUrl.has(id)) spriteUrl.set(id, philosopherSprite(PHIL.get(id)!).toDataURL());
-  return spriteUrl.get(id)!;
+  const key = id + (progress?.skinOn?.[id] ?? '');
+  if (!spriteUrl.has(key)) spriteUrl.set(key, spriteFor(id).toDataURL());
+  return spriteUrl.get(key)!;
 };
 
 let progress = loadProgress();
 let me: Account | null = null;
 
+const SKIN_PRICE = 120;
 const clearedStages = () => STAGES.filter((s) => progress.cleared.includes(s.id)).length;
 
 // =============== 화면 전환 ===============
@@ -50,6 +55,14 @@ function renderHome() {
   chips.innerHTML = DIFFICULTIES.map((d) => `<button data-diff="${d.id}" class="${d.id === diffId ? 'on' : ''}" style="--c:${d.color}">${d.icon}<span>${d.name}</span></button>`).join('');
   box.appendChild(chips);
   for (const b of chips.querySelectorAll<HTMLButtonElement>('button')) b.onclick = () => { diffId = b.dataset.diff!; renderHome(); };
+  if (progress.favorite && progress.cards[progress.favorite]) {
+    const fav = PHIL.get(progress.favorite)!;
+    const ot = document.createElement('button');
+    ot.className = 'onetool';
+    ot.innerHTML = `<img src="${portrait(fav.id)}"><div><b>💗 최애 원툴 도전</b><small>${fav.name} 한 명 + 1성만으로 어디까지 버틸까? · 최고 기록 ${progress.oneToolBest[fav.id] ?? 0}웨이브</small></div>`;
+    ot.onclick = () => startBattle(STAGES[0], fav.id);
+    box.appendChild(ot);
+  }
   const cur = DIFF.get(diffId)!;
   const note = document.createElement('p');
   note.className = 'hint diff-note';
@@ -96,7 +109,7 @@ function renderCodex() {
       const tool = progress.loadout[p.id];
       const d = document.createElement('div');
       d.className = `card t${p.tier} ${known ? '' : 'unknown'} ${n ? 'owned' : ''}`;
-      d.innerHTML = `${progress.favorite === p.id ? '<span class="fav">💗</span>' : ''}${lv ? `<span class="lv">Lv.${lv}</span>` : ''}${tool ? `<img class="tool-badge" src="${itemUrl(tool)}">` : ''}<img src="${portrait(p.id)}"><b>${known ? p.name : '???'}</b><small>${n ? `🎴${n}` : ERA_ICON[p.era] ?? ''}</small>`;
+      d.innerHTML = `${progress.favorite === p.id ? '<span class="fav">💗</span>' : ''}${lv ? `<span class="lv ${awakenLevel(n) ? 'aw' : ''}">${awakenLevel(n) ? '✦' + awakenLevel(n) : 'Lv.' + lv}</span>` : ''}${tool ? `<img class="tool-badge" src="${itemUrl(tool)}">` : ''}<img src="${portrait(p.id)}"><b>${known ? p.name : '???'}</b><small>${n ? `🎴${n}` : ERA_ICON[p.era] ?? ''}</small>`;
       if (known) d.onclick = () => showCard(p.id);
       grid.appendChild(d);
     }
@@ -111,13 +124,20 @@ const CARD_BG: Record<string, string> = {
 function cardHtml(id: string) {
   const p = PHIL.get(id)!;
   const recipes = RECIPES.filter((r) => r.result === id);
-  const st = TIER_STATS[p.tier]!;
+  const st = statsOf(id);
+  const bar = (v: number, max: number) => `<span class="sbar"><i style="width:${Math.min(100, (v / max) * 100)}%"></i></span>`;
   return `<div class="pcard tc${p.tier}">
     <div class="pc-head"><span class="pc-tier">${'★'.repeat(p.tier)}</span><b>${p.name}</b><span class="pc-era">${ERA_ICON[p.era] ?? ''} ${p.school}</span></div>
     <div class="pc-art" style="background:${CARD_BG[p.era] ?? CARD_BG['고대']}"><img src="${portrait(id)}"></div>
     <div class="pc-quote">“${p.quote}”</div>
     <div class="pc-skill"><b>✦ ${p.skill}</b><span>${p.skillDesc}</span></div>
-    <div class="pc-stats"><span>⚔ ${st.dmg}</span><span>◎ ${st.range}</span><span>⏱ ${st.cooldown}s</span></div>
+    <div class="pc-combat"><b>${TYPE_ICON[st.type]} ${st.type}</b> · 노리는 대상 <b>${st.target}</b><small>${st.note}</small></div>
+    <div class="pc-stats2">
+      <div>⚔ 위력 ${bar(st.dmg, 1800)}<em>${Math.round(st.dmg)}</em></div>
+      <div>◎ 사거리 ${bar(st.range, 3.5)}<em>${st.range}칸</em></div>
+      <div>⏱ 공속 ${bar(1 / st.cooldown, 2.2)}<em>${(1 / st.cooldown).toFixed(2)}/초</em></div>
+      <div>📈 초당 피해 ${bar(st.dmg / st.cooldown, 3200)}<em>${Math.round(st.dmg / st.cooldown)}</em></div>
+    </div>
     <div class="pc-lore">${p.lore}</div>
     ${recipes.map((r) => `<div class="pc-recipe">⚗ ${r.materials.map((m) => PHIL.get(m)!.name).join(' + ')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''}<small>${r.logic}</small></div>`).join('')}
     <div class="pc-foot">AGORA · ${TIER_NAME[p.tier]}</div>
@@ -128,9 +148,16 @@ function showCard(id: string) {
   const n = progress.cards[id] ?? 0, lv = cardLevel(n), next = nextLevelAt(n);
   const ownedTools = ITEMS.filter((it) => progress.items[it.id]).sort((a, b) => Number(isOwner(b.id, p.realName)) - Number(isOwner(a.id, p.realName)));
   const cur = progress.loadout[id];
-  const growth = `<div class="pc-growth"><b>🎴 카드 Lv.${lv}</b> <span>${n}장${next ? ` · 다음 레벨까지 ${next - n}장` : ' · MAX'}</span>
+  const aw = awakenLevel(n);
+  const lines = LINES[p.realName] ?? ['', '', ''];
+  const growth = `<div class="pc-growth"><b>🎴 카드 Lv.${lv}</b>${aw ? ` <b class="awaken">✦ 각성 ${'★'.repeat(aw)}${'☆'.repeat(AWAKEN_MAX - aw)}</b>` : ''} <span>${n}장${next ? ` · 다음 ${lv < CARD_MAX_LEVEL ? '레벨' : '각성'}까지 ${next - n}장` : ' · 완전 각성'}</span>
     <div class="bar"><i style="width:${next ? Math.min(100, (n / next) * 100) : 100}%"></i></div>
-    <small>전투 공격력 ×${cardMult(n).toFixed(1)}</small></div>
+    <small>전투 공격력 ×${cardMult(n).toFixed(2)}${aw ? ` · 스킬 위력 +${aw * 20}%` : ''}</small></div>
+    <div class="pc-lines"><b>📜 일화</b>${UNLOCK_LEVELS.map((L, i) => lv >= L ? `<p>“${homage(lines[i])}”</p>` : `<p class="locked">🔒 카드 Lv.${L}에 열려요</p>`).join('')}</div>
+    ${n ? `<div class="pc-skins"><b>👗 스킨</b>${Object.entries(SKINS).map(([k, s]) => {
+      const own = progress.skins.includes(id + ':' + k), on = progress.skinOn[id] === k;
+      return `<button data-skin="${k}" class="${on ? 'on' : ''}">${s.icon} ${s.name}${on ? ' (착용 중)' : own ? '' : ' · 💎' + SKIN_PRICE}</button>`;
+    }).join('')}${progress.skinOn[id] ? '<button data-skin="">기본 모습</button>' : ''}</div>` : ''}
     <div class="pc-tools"><b>🧰 장착 도구</b>${ownedTools.length ? ownedTools.map((it) => `<button data-equip="${it.id}" class="${cur === it.id ? 'on' : ''} ${isOwner(it.id, p.realName) ? 'own' : ''}"><img src="${itemUrl(it.id)}">${it.name}${isOwner(it.id, p.realName) ? ' ★' : ''}</button>`).join('') + (cur ? '<button data-equip="">해제</button>' : '') : '<small>도구 상자에서 도구를 뽑아 오세요</small>'}</div>
     ${n ? `<button class="chunky ${progress.favorite === id ? 'pink' : 'blue'} fav-set">${progress.favorite === id ? '💗 나의 최애 (해제하기)' : '💗 최애로 지정 · 고민방 주인'}</button>` : ''}`;
   alertBox(cardHtml(id).replace('<div class="pc-foot">', growth + '<div class="pc-foot">'));
@@ -138,6 +165,16 @@ function showCard(id: string) {
     e.stopPropagation();
     if (b.dataset.equip) progress.loadout[id] = b.dataset.equip; else delete progress.loadout[id];
     saveProgress(progress); document.querySelector('.overlay')?.remove(); renderCodex(); showCard(id);
+  };
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-skin]')) b.onclick = (e) => {
+    e.stopPropagation();
+    const k = b.dataset.skin!;
+    if (!k) delete progress.skinOn[id];
+    else if (progress.skins.includes(id + ':' + k)) progress.skinOn[id] = k;
+    else if (progress.gems >= SKIN_PRICE && window.confirm(`${SKINS[k].icon} ${SKINS[k].name} 스킨을 💎${SKIN_PRICE}에 살까요?`)) { progress.gems -= SKIN_PRICE; progress.skins.push(id + ':' + k); progress.skinOn[id] = k; sfx.reveal(5); }
+    else if (progress.gems < SKIN_PRICE) { toast('💎 지혜석이 부족해요'); return; }
+    else return;
+    saveProgress(progress); refreshWallet(); document.querySelector('.overlay')?.remove(); renderCodex(); showCard(id);
   };
   const fs = document.querySelector<HTMLButtonElement>('.fav-set');
   if (fs) fs.onclick = (e) => {
@@ -185,11 +222,12 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 
-function startBattle(s: Stage) {
+function startBattle(s: Stage, oneTool?: string) {
   game = new Game(s, {
     cardMult: (id) => cardMult(progress.cards[id] ?? 0),
+    awaken: (id) => awakenLevel(progress.cards[id] ?? 0),
     tool: (id) => { const t = progress.loadout[id]; return t && progress.items[t] ? t : undefined; },
-  }, diffId);
+  }, oneTool ? 'normal' : diffId, oneTool);
   selected = null;
   resultShown = false;
   introT = 2.8;
@@ -202,6 +240,10 @@ function endBattle() {
   if (game) {
     progress.seen = [...new Set([...progress.seen, ...game.discovered])];
     progress.gonoe += Math.round(battleReward(game.wave, game.over === 'win') * game.diff.reward);
+    if (game.oneTool) {
+      const best = progress.oneToolBest[game.oneTool] ?? 0;
+      if (game.wave > best) { progress.oneToolBest[game.oneTool] = game.wave; setTimeout(() => toast(`💗 원툴 신기록! ${game?.wave ?? ''}웨이브`), 300); }
+    }
     if (game.over === 'win') {
       if (!progress.cleared.includes(game.stage.id)) progress.cleared.push(game.stage.id);
       const k = clearKey(game.stage.id, game.diff.id);
@@ -266,6 +308,7 @@ function updateUI() {
     const unlocks = g.over === 'win' ? STAGES.filter((x) => x.unlockAfter === s.id && !progress.cleared.includes(s.id)).map((x) => x.name) : [];
     alertBox(g.over === 'win'
       ? `<h2>🏛 ${s.boss20} 논파!</h2><p>${s.name}을(를) 지켜 냈습니다.</p>${unlocks.length ? `<p>🔓 새 스테이지: <b>${unlocks.join(', ')}</b></p>` : ''}${newOnes.length ? `<p>📖 도감 등록 ${newOnes.length}명</p>` : ''}`
+      : g.oneTool ? `<h2>💗 원툴 도전 종료</h2><p><b>${PHIL.get(g.oneTool)!.name}</b>와(과) 함께 <b>${g.wave}웨이브</b>까지 버텼어요!</p><p>최고 기록 ${Math.max(g.wave, progress.oneToolBest[g.oneTool] ?? 0)}웨이브</p>`
       : `<h2>💀 멘탈 붕괴</h2><p>${g.wave}웨이브에서 도그마에 잠식당했습니다.</p>${newOnes.length ? `<p>📖 그래도 도감에 ${newOnes.length}명 등록</p>` : ''}`);
     start.textContent = '나가기';
     start.disabled = false;
@@ -283,7 +326,7 @@ function updateUI() {
       const cost = g.upgradeCost(selected);
       const lv = selected.level ? ` <span class="tag lv">Lv.${selected.level}</span>` : '';
       info.className = `t${p.tier}`;
-      info.innerHTML = `<img src="${portrait(p.id)}"><div><b>${'★'.repeat(p.tier)} ${p.name}</b>${lv} · ${p.school}<br>“${p.quote}”<br><small class="skill-line">✦ ${p.skill}: ${p.skillDesc}</small>${p.id === g.stage.counter ? '<br><small class="counter">⚔ 이 스테이지 보스에게 피해 3배</small>' : ''}
+      info.innerHTML = `<img src="${portrait(p.id)}"><div><b>${'★'.repeat(p.tier)} ${p.name}</b>${lv} · ${p.school}<br>“${p.quote}”<br><small class="type-line">${TYPE_ICON[statsOf(p.id).type]} ${statsOf(p.id).type} · ${statsOf(p.id).target} 우선 · 사거리 ${statsOf(p.id).range}칸</small><br><small class="skill-line">✦ ${p.skill}: ${p.skillDesc}</small>${p.id === g.stage.counter ? '<br><small class="counter">⚔ 이 스테이지 보스에게 피해 3배</small>' : ''}
         ${toolLine(g, selected)}
         ${cost !== null ? `<br><button id="upgrade" class="up">⬆ 강화 Lv.${selected.level + 1} (${cost}G) · 공격력 +${Math.round(UPGRADE.perLevel * 100)}%</button>` : ''}</div>`;
       const up = document.getElementById('upgrade');
@@ -379,9 +422,9 @@ function draw() {
 
   // 선택 시: 사거리 + 옮길 수 있는 자리 표시
   if (selected) {
-    const st = TIER_STATS[PHIL.get(selected.philId)!.tier]!;
+    const st = statsOf(selected.philId);
     ctx.save(); ctx.beginPath();
-    ctx.arc((selected.cx + 0.5) * cell, (selected.cy + 0.5) * cell, st.range * cell, 0, Math.PI * 2);
+    ctx.arc((selected.cx + 0.5) * cell, (selected.cy + 0.5) * cell, (st.range + g.itemMult(selected).range) * cell, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(251,191,36,.10)'; ctx.fill();
     ctx.strokeStyle = 'rgba(251,191,36,.6)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); ctx.stroke();
     ctx.restore();
@@ -416,7 +459,7 @@ function draw() {
     const sz = cell * (p.tier >= 5 ? 1.12 : 1.0);
     const rc = recoil.get(t.uid) ?? 0;
     const sx = sz * (1 + rc * 0.12), sy = sz * (1 - rc * 0.1);
-    ctx.drawImage(philosopherSprite(p), cx - sx / 2, foot - sy * 0.97 + bob, sx, sy);
+    ctx.drawImage(spriteFor(p.id), cx - sx / 2, foot - sy * 0.97 + bob, sx, sy);
     if ((t.stunT ?? 0) > 0) {
       ctx.font = `${cell * 0.32}px sans-serif`; ctx.textAlign = 'center';
       ctx.fillText('💤', cx + cell * 0.28, foot - cell * 0.9 + Math.sin(tick * 0.15) * 3);
@@ -550,7 +593,7 @@ function toolLine(g: Game, t: Tower) {
   const lv = cardLevel(progress.cards[p.id] ?? 0);
   const tool = g.toolOf(t);
   const parts: string[] = [];
-  if (lv) parts.push(`🎴 카드 Lv.${lv} (공격 ×${cardMult(progress.cards[p.id] ?? 0).toFixed(1)})`);
+  if (lv) parts.push(`🎴 카드 Lv.${lv}${awakenLevel(progress.cards[p.id] ?? 0) ? ' ✦각성' + awakenLevel(progress.cards[p.id] ?? 0) : ''} (공격 ×${cardMult(progress.cards[p.id] ?? 0).toFixed(2)})`);
   if (tool) { const it = ITEM.get(tool)!; parts.push(`<img src="${itemUrl(tool)}">${it.name}${isOwner(tool, p.realName) ? ' <b class="match">찰떡!</b>' : ''}`); }
   return parts.length ? `<br><small class="equip">${parts.join(' · ')}</small>` : '';
 }
@@ -561,6 +604,7 @@ function switchTab(tab: string) {
   currentTab = tab;
   for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.classList.toggle('on', b.dataset.tab === tab);
   for (const s of document.querySelectorAll<HTMLElement>('.tab')) s.classList.toggle('hidden', s.id !== `tab-${tab}`);
+  if (tab === 'stages') renderHome();
   if (tab === 'room') renderRoom();
   if (tab === 'gacha') renderGacha();
   if (tab === 'codex') renderCodex();
@@ -626,7 +670,7 @@ function renderGacha() {
     </div>
     <div class="gacha-box card-box">
       <h2>🎴 철학자 카드</h2>
-      <p class="hint">같은 카드 1·2·4·8…장마다 레벨업 · 레벨당 전투 공격력 +${CARD_ATK_PER_LEVEL * 100}% (최대 Lv.${CARD_MAX_LEVEL})</p>
+      <p class="hint">카드가 모이면 레벨업(Lv.${CARD_MAX_LEVEL}까지) · 레벨당 공격력 +${CARD_ATK_PER_LEVEL * 100}% · 이후 ${AWAKEN_EVERY}장마다 <b>각성</b>(최대 ${AWAKEN_MAX}단계): 공격력 +15%, 스킬 강화 · 레벨이 오르면 일화가 열려요</p>
       <div class="rates-line">${rates}</div>
       <div class="pity">천장까지 <b>${PITY_LIMIT - progress.pity}</b>회 <span class="bar"><i style="width:${(progress.pity / PITY_LIMIT) * 100}%"></i></span></div>
       <div class="row">${pullBtn('c1', 'pink')}${pullBtn('c10', 'gold')}${pullBtn('c10g', 'blue')}</div>

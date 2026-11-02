@@ -3,6 +3,7 @@ import recipesJson from './data/recipes.json';
 import catalystsJson from './data/catalysts.json';
 import stagesJson from './data/stages.json';
 import ratesJson from './data/rates.json';
+import combatJson from './data/combat.json';
 
 export interface Philosopher {
   /** 표시 이름 (오마주 이름 적용) / realName: 내부 키로 쓰는 실제 이름 */
@@ -62,6 +63,16 @@ export const PHIL = new Map(PHILOSOPHERS.map((p) => [p.id, p]));
 export const CAT_ICON: Record<string, string> = Object.fromEntries(CATALYSTS.map((c) => [c.id, c.name.split(' ')[0]]));
 export const ERA_ICON: Record<string, string> = { 고대: '🏛', 중세: '⛪', 동양: '🏯', 근대: '⚙️', 현대: '📡', 히든: '✨' };
 export const TIER_NAME = ['', '사유', '학파', '전통', '전환', '거장', '근원'];
+
+/** 캐릭터별 공격 프로필 (엑셀 Combat 시트) */
+export interface Combat { id: string; type: '단일' | '광역' | '연쇄' | '제어' | '지원' | '저격'; range: number; speed: number; power: number; target: '선두' | '강한 적' | '약한 적' | '보스'; note: string }
+export const COMBAT = new Map((combatJson as Combat[]).map((c) => [c.id, c]));
+export const TYPE_ICON: Record<string, string> = { 단일: '🎯', 광역: '💥', 연쇄: '⚡', 제어: '🌀', 지원: '✨', 저격: '🏹' };
+/** 철학자의 실제 전투 수치: 등급 기본 피해 × 위력, 사거리·속도는 개인 프로필 */
+export function statsOf(id: string) {
+  const p = PHIL.get(id)!, c = COMBAT.get(id), base = TIER_STATS[p.tier]!;
+  return { dmg: base.dmg * (c?.power ?? 1), range: c?.range ?? base.range, cooldown: c ? 1 / c.speed : base.cooldown, type: c?.type ?? '단일', target: c?.target ?? '선두', note: c?.note ?? '' };
+}
 
 /** 같은 등급 3명 무작위 합성이 가능한 최고 등급 (3성 ×3 → 4성까지) */
 export const MAX_MERGE_TIER = 3;

@@ -1,5 +1,5 @@
 import {
-  PHIL, PHILOSOPHERS, RECIPES, TIER_STATS, COUNTER_MULT, SUMMON_RATES, MAX_MERGE_TIER, UPGRADE,
+  PHIL, PHILOSOPHERS, RECIPES, TIER_STATS, statsOf, COUNTER_MULT, SUMMON_RATES, MAX_MERGE_TIER, UPGRADE,
   type Recipe, type Stage,
 } from './data';
 
@@ -25,7 +25,7 @@ export const CATALYST_IDS = ['C001', 'C002', 'C003', 'C004', 'C005'];
 
 export interface Tower { uid: number; philId: string; cx: number; cy: number; cd: number; level: number; shots?: number; stacks?: number; stunT?: number }
 /** 메타 성장(카드 레벨·장착 도구)을 전투에 넘겨주는 통로 */
-export interface Meta { cardMult(philId: string): number; tool(philId: string): string | undefined }
+export interface Meta { cardMult(philId: string): number; tool(philId: string): string | undefined; awaken?(philId: string): number }
 export type EnemyKind = 'normal' | 'fast' | 'tank' | 'swarm' | 'boss';
 export interface Enemy {
   uid: number; hp: number; maxHp: number; dist: number; speed: number; boss: boolean; reward: number; name: string; path: number; kind: EnemyKind;
@@ -70,13 +70,22 @@ export class Game {
   noticeTime = 0;
 
   diff: Difficulty;
-  get maxWave() { return this.diff.maxWave; }
+  get maxWave() { return this.oneTool ? 999 : this.diff.maxWave; }
 
-  constructor(public stage: Stage, public meta: Meta = { cardMult: () => 1, tool: () => undefined }, diffId = 'normal') {
+  /** 최애 원툴 도전: 최애 1명 + 1성만, 합성·연성 불가, 무한 웨이브 */
+  oneTool?: string;
+
+  constructor(public stage: Stage, public meta: Meta = { cardMult: () => 1, tool: () => undefined }, diffId = 'normal', oneTool?: string) {
     this.diff = DIFF.get(diffId) ?? DIFF.get('normal')!;
+    this.oneTool = oneTool;
     this.lives = this.diff.lives;
     this.layout = STAGE_PATHS[stage.id].layoutFor(1);
     this.road = pathCells(this.layout);
+    if (oneTool) {
+      const free = this.emptyCells().sort((a, b) => Math.hypot(a[0] - 4, a[1] - 4) - Math.hypot(b[0] - 4, b[1] - 4));
+      const [cx, cy] = free[0];
+      this.towers.push({ uid: uidSeq++, philId: oneTool, cx, cy, cd: 0, level: 0 });
+    }
   }
 
   isRoad(cx: number, cy: number) { return this.road.has(`${cx},${cy}`); }
@@ -124,7 +133,7 @@ export class Game {
     if (this.gold < this.summonCost || !this.emptyCells().length) return null;
     this.gold -= this.summonCost;
     this.summonCost += 5;
-    let r = Math.random(), tier = 1;
+    let r = this.oneTool ? 0 : Math.random(), tier = 1;
     for (const s of SUMMON_RATES) { if (r < s.rate) { tier = s.tier; break; } r -= s.rate; }
     return this.place(pick(PHILOSOPHERS.filter((p) => p.tier === tier && !p.hidden)).id);
   }
@@ -139,6 +148,16 @@ export class Game {
     const other = this.towerAt(cx, cy);
     if (other) { other.cx = t.cx; other.cy = t.cy; }
     t.cx = cx; t.cy = cy;
+  }
+
+  /** 각성 단계만큼 스킬 강화: 수치 +20%/단계 (확률은 최대 90%), 연쇄는 2단계마다 +1명 */
+  skillOf(philId: string): Skill | undefined {
+    const base = SKILLS[PHIL.get(philId)!.realName];
+    const aw = this.meta.awaken?.(philId) ?? 0;
+    if (!base || !aw) return base;
+    if (base.kind === 'chain') return { ...base, v: base.v + Math.floor(aw / 2) };
+    if (base.kind === 'third' || base.kind === 'gold') return { ...base, v2: (base.v2 ?? 2) * (1 + 0.2 * aw), v: base.kind === 'gold' ? base.v * (1 + 0.2 * aw) : base.v };
+    return { ...base, v: Math.min(0.9, base.v * (1 + 0.2 * aw)) };
   }
 
   // ---------- 장착 도구 (도감에서 미리 끼워 둔 것) ----------
@@ -170,6 +189,7 @@ export class Game {
   // ---------- 합성 ----------
   /** 같은 등급 아무나 3명 → 다음 등급 무작위 (1~3성) */
   mergeable(): number[] {
+    if (this.oneTool) return [];
     const n = [0, 0, 0, 0, 0, 0, 0];
     for (const t of this.towers) { const p = PHIL.get(t.philId)!; if (!p.hidden) n[p.tier]++; }
     const out: number[] = [];
@@ -199,7 +219,7 @@ export class Game {
     return r.materials.map((m) => { const i = pool.indexOf(m); if (i >= 0) pool.splice(i, 1); return i >= 0; });
   }
 
-  availableRecipes(): Recipe[] { return RECIPES.filter((r) => this.pickMaterials(r) !== null); }
+  availableRecipes(): Recipe[] { return this.oneTool ? [] : RECIPES.filter((r) => this.pickMaterials(r) !== null); }
 
   private pickMaterials(r: Recipe): Tower[] | null {
     const used = new Set<Tower>();
@@ -231,7 +251,7 @@ export class Game {
   randomCatalyst() { return pick(CATALYST_IDS); }
   gainCatalyst(id: string) { this.catalysts[id]++; this.drops.push(id); }
 
-  isBossWave() { return BOSS_WAVES.includes(this.wave); }
+  isBossWave() { return this.oneTool ? this.wave % 10 === 0 : BOSS_WAVES.includes(this.wave); }
 
   /** 웨이브 구성: 2·7·12·17 떼, 3·8·13·18 빠름, 4·9·14·19 단단함 */
   waveKind(): EnemyKind {
@@ -245,7 +265,7 @@ export class Game {
     this.wave++;
     this.refreshLayout();
     this.running = true;
-    if (this.isBossWave()) this.fx.push({ type: 'boss', name: this.wave === 10 ? this.stage.boss10 : this.stage.boss20 });
+    if (this.isBossWave()) this.fx.push({ type: 'boss', name: this.wave % 20 === 10 ? this.stage.boss10 : this.stage.boss20 });
     this.countdown = -1;
     const k = this.waveKind();
     const n = 8 + this.wave * 2;
@@ -265,7 +285,7 @@ export class Game {
       dist: 0, speed: (1.4 + this.wave * 0.04) * K[1] * (this.layout.speedMult ?? 1) * this.diff.speed,
       path: Math.floor(Math.random() * this.layout.paths.length),
       reward: Math.max(1, Math.round((boss ? 150 * (this.wave / 10) : (5 + Math.floor(this.wave / 2)) * K[0] ** 0.5) * Math.sqrt(this.diff.reward))),
-      name: boss ? (this.wave === 10 ? s.boss10 : s.boss20) : this.wave < 10 ? s.enemyEarly : s.enemyLate,
+      name: boss ? (this.wave % 20 === 10 ? s.boss10 : s.boss20) : this.wave < 10 ? s.enemyEarly : s.enemyLate,
       skillT: 4,
     });
   }
@@ -331,7 +351,7 @@ export class Game {
   private auras() {
     const atk = new Map<number, number>(), spd = new Map<number, number>();
     for (const a of this.towers) {
-      const s = SKILLS[PHIL.get(a.philId)!.realName];
+      const s = this.skillOf(a.philId);
       if (!s || (s.kind !== 'auraAtk' && s.kind !== 'auraSpeed') || (a.stunT ?? 0) > 0) continue;
       for (const t of this.towers) if (t !== a && Math.abs(t.cx - a.cx) <= 1 && Math.abs(t.cy - a.cy) <= 1) {
         const m = s.kind === 'auraAtk' ? atk : spd;
@@ -353,7 +373,7 @@ export class Game {
 
     // 맵 전체 둔화 (가장 강한 것 하나)
     let gSlow = 0;
-    for (const t of this.towers) { const s = SKILLS[PHIL.get(t.philId)!.realName]; if (s?.kind === 'globalSlow') gSlow = Math.max(gSlow, s.v); }
+    for (const t of this.towers) { const s = this.skillOf(t.philId); if (s?.kind === 'globalSlow') gSlow = Math.max(gSlow, s.v); }
 
     const escaped: Enemy[] = [];
     for (const e of this.enemies) {
@@ -377,14 +397,16 @@ export class Game {
       t.cd -= dt * (1 + (spd.get(t.uid) ?? 0));
       if (t.cd > 0) continue;
       const p = PHIL.get(t.philId)!;
-      const st = TIER_STATS[p.tier]!;
-      const skill = SKILLS[p.realName];
+      const st = statsOf(t.philId);
+      const skill = this.skillOf(t.philId);
       const tx = t.cx + 0.5, ty = t.cy + 0.5;
       const im = this.itemMult(t);
+      // 사거리 안의 적 중 프로필의 "노리는 대상" 기준으로 고름
+      const score = (e: Enemy) => st.target === '강한 적' ? e.hp : st.target === '약한 적' ? -e.hp / e.maxHp : st.target === '보스' ? (e.boss ? 1e9 : 0) + e.dist : e.dist;
       let best: Enemy | null = null;
       for (const e of this.enemies) {
         const [ex, ey] = this.enemyPos(e);
-        if (Math.hypot(ex - tx, ey - ty) <= st.range + im.range && (!best || e.dist > best.dist)) best = e;
+        if (Math.hypot(ex - tx, ey - ty) <= st.range + im.range && (!best || score(e) > score(best))) best = e;
       }
       if (!best) continue;
       t.cd = st.cooldown;

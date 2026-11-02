@@ -19,6 +19,15 @@ const recipes = rows('Recipes').map((r) => ({
 const catalysts = rows('Catalysts').map((r) => ({
   id: r.catalyst_id, name: r.name, concept: r.concept, effect: r.effect, drop: r.drop_source,
 }));
+const errors = [];
+const combat = rows('Combat').map((r) => ({
+  id: r.phil_id, type: r.attack_type, range: Number(r.range_cells), speed: Number(r.attacks_per_sec),
+  power: Number(r.power_mult), target: r.target, note: r.role_note,
+}));
+for (const c of combat) {
+  if (!['단일', '광역', '연쇄', '제어', '지원', '저격'].includes(c.type)) errors.push(`${c.id}: 공격유형 오류 ${c.type}`);
+  if (!['선두', '강한 적', '약한 적', '보스'].includes(c.target)) errors.push(`${c.id}: 대상 오류 ${c.target}`);
+}
 const rates = rows('Rates').map((r) => ({ tier: Number(r.tier), rate: Number(r.summon_rate) }));
 const stages = rows('Stages').map((r) => ({
   id: r.stage_id, era: r.era, name: r.name, unlockAfter: r.unlock_after || null,
@@ -26,9 +35,8 @@ const stages = rows('Stages').map((r) => ({
   counter: r.counter_phil, story: r.story,
 }));
 
-// 검증
+// 검증 (combat 검증은 위에서 errors에 쌓임)
 const byId = new Map(philosophers.map((p) => [p.id, p]));
-const errors = [];
 for (const r of recipes) {
   const res = byId.get(r.result);
   if (!res) errors.push(`${r.id}: 없는 결과 ${r.result}`);
@@ -46,6 +54,6 @@ if (Math.abs(total - 1) > 0.001) errors.push(`소환 확률 합이 100%가 아�
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
 
 mkdirSync('src/data', { recursive: true });
-for (const [n, d] of Object.entries({ philosophers, recipes, catalysts, stages, rates }))
+for (const [n, d] of Object.entries({ philosophers, recipes, catalysts, stages, rates, combat }))
   writeFileSync(`src/data/${n}.json`, JSON.stringify(d, null, 2));
 console.log(`✓ 철학자 ${philosophers.length} · 조합식 ${recipes.length} · 촉매 ${catalysts.length} · 스테이지 ${stages.length} · 확률 ${rates.map((r) => r.tier + '성 ' + Math.round(r.rate * 100) + '%').join(' ')}`);

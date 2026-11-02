@@ -32,9 +32,14 @@ export interface Progress {
   tutorialDone: boolean;
   /** 최애 철학자 (고민방 주인 · 전장 하트) */
   favorite?: string;
+  /** 보유 스킨 "철학자ID:테마" / 착용 중인 스킨 */
+  skins: string[];
+  skinOn: Record<string, string>;
+  /** 최애 원툴 도전 최고 기록 (철학자별 웨이브) */
+  oneToolBest: Record<string, number>;
 }
 
-const fresh = (): Progress => ({ cleared: [], seen: [], gonoe: 300, idleAt: Date.now(), cards: { T101: 1 }, items: {}, loadout: {}, tapLevel: 0, gems: 100, pity: 0, tickets: 0, purchases: [], firstClears: [], tutorialDone: false });
+const fresh = (): Progress => ({ cleared: [], seen: [], gonoe: 300, idleAt: Date.now(), cards: { T101: 1 }, items: {}, loadout: {}, tapLevel: 0, gems: 100, pity: 0, tickets: 0, purchases: [], firstClears: [], tutorialDone: false, skins: [], skinOn: {}, oneToolBest: {} });
 
 export function hasSave() { try { return !!localStorage.getItem(KEY_OF()); } catch { return false; } }
 
@@ -54,19 +59,32 @@ export function resetProgress() {
   try { localStorage.removeItem(KEY_OF()); } catch { /* 무시 */ }
 }
 
-// ---------- 카드 레벨: 1·2·4·8·16·32… 장 모일 때마다 레벨업 ----------
-export const CARD_MAX_LEVEL = 10;
+// ---------- 카드 레벨 + 한계돌파(각성) ----------
+/** 레벨업에 필요한 누적 카드 수: Lv.1=1장 … Lv.10=52장 */
+export const LEVEL_AT = [1, 2, 4, 7, 11, 16, 22, 30, 40, 52];
+export const CARD_MAX_LEVEL = LEVEL_AT.length;
 export const CARD_ATK_PER_LEVEL = 0.1;
+/** Lv.10 이후 카드 20장마다 각성 1단계 (최대 5) */
+export const AWAKEN_EVERY = 20, AWAKEN_MAX = 5, AWAKEN_ATK = 0.15, AWAKEN_SKILL = 0.2;
 
 export function cardLevel(count: number) {
-  return count > 0 ? Math.min(CARD_MAX_LEVEL, Math.floor(Math.log2(count)) + 1) : 0;
+  let lv = 0;
+  for (const need of LEVEL_AT) if (count >= need) lv++;
+  return lv;
 }
+export function awakenLevel(count: number) {
+  const top = LEVEL_AT[LEVEL_AT.length - 1];
+  return count < top ? 0 : Math.min(AWAKEN_MAX, Math.floor((count - top) / AWAKEN_EVERY));
+}
+/** 다음 성장(레벨 또는 각성)에 필요한 누적 장수, 끝이면 null */
 export function nextLevelAt(count: number) {
   const lv = cardLevel(count);
-  return lv >= CARD_MAX_LEVEL ? null : 2 ** lv;
+  if (lv < CARD_MAX_LEVEL) return LEVEL_AT[lv];
+  const aw = awakenLevel(count);
+  return aw >= AWAKEN_MAX ? null : LEVEL_AT[LEVEL_AT.length - 1] + (aw + 1) * AWAKEN_EVERY;
 }
-/** 카드 레벨에 따른 공격력 배율 (Lv.1 = 1.0, 레벨당 +10%) */
+/** 공격력 배율: 레벨당 +10%, 각성당 +15% */
 export function cardMult(count: number) {
   const lv = cardLevel(count);
-  return lv ? 1 + CARD_ATK_PER_LEVEL * (lv - 1) : 1;
+  return (lv ? 1 + CARD_ATK_PER_LEVEL * (lv - 1) : 1) + AWAKEN_ATK * awakenLevel(count);
 }

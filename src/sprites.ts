@@ -255,3 +255,41 @@ export function itemSprite(id: string): HTMLCanvasElement {
   itemCache.set(id, c);
   return c;
 }
+
+// ---------- 스킨: 기본 도트 위에 테마 색을 입히고 장신구를 얹는다 ----------
+export const SKINS: Record<string, { name: string; icon: string; color: [number, number, number] }> = {
+  sakura: { name: '벚꽃 산책', icon: '🌸', color: [255, 158, 203] },
+  night: { name: '한밤의 사색', icon: '🌙', color: [99, 102, 241] },
+  gold: { name: '황금 아고라', icon: '✨', color: [255, 200, 60] },
+};
+const skinCache = new Map<string, HTMLCanvasElement>();
+export function skinnedSprite(p: Philosopher, skin?: string): HTMLCanvasElement {
+  const base = philosopherSprite(p);
+  if (!skin || !SKINS[skin]) return base;
+  const key = p.id + skin;
+  const hit = skinCache.get(key);
+  if (hit) return hit;
+  const c = document.createElement('canvas');
+  c.width = base.width; c.height = base.height;
+  const ctx = c.getContext('2d')!;
+  ctx.drawImage(base, 0, 0);
+  const img = ctx.getImageData(0, 0, c.width, c.height), d = img.data, [tr, tg, tb] = SKINS[skin].color;
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    const isOutline = r < 70 && g < 55 && b < 45;
+    const isSkin = r > 230 && g > 180 && b > 120 && r - b > 30;
+    const isEye = r < 40 && g < 40 && b < 60;
+    if (isOutline || isSkin || isEye) continue;
+    const k = 0.5;
+    d[i] = r * (1 - k) + tr * k; d[i + 1] = g * (1 - k) + tg * k; d[i + 2] = b * (1 - k) + tb * k;
+  }
+  ctx.putImageData(img, 0, 0);
+  // 장신구 (2배 해상도 좌표)
+  const px = (x: number, y: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x * 2, y * 2, w * 2, h * 2); };
+  if (skin === 'sakura') { for (const x of [8, 11, 14, 17]) { px(x, 2, 2, 2, '#ff9ecb'); px(x + 0.5, 2.5, 1, 1, '#fff1f7'); } }
+  if (skin === 'night') { px(19, 0, 4, 4, '#fde68a'); px(20, 0, 3, 3, '#6366f1'); px(3, 3, 1, 1, '#fff'); px(1, 8, 1, 1, '#fff'); }
+  if (skin === 'gold') { px(8, 1, 10, 2, '#fbbf24'); px(8, 0, 2, 1, '#fbbf24'); px(12, 0, 2, 1, '#fbbf24'); px(16, 0, 2, 1, '#fbbf24'); px(12, 1, 2, 1, '#ef4444'); }
+  skinCache.set(key, c);
+  return c;
+}
