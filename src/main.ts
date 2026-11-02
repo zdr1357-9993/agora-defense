@@ -633,6 +633,7 @@ function switchTab(tab: string) {
   if (tab === 'codex') renderCodex();
   if (tab === 'shop') renderShop();
   refreshWallet();
+  pageTutStart(tab);
 }
 function refreshWallet() {
   const w = document.getElementById('wallet');
@@ -1047,7 +1048,7 @@ $('open-rates').onclick = rateSheet;
 for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.onclick = () => { sfx.click(); switchTab(b.dataset.tab!); };
 for (const id of ['mute', 'mute-b']) { const b = document.getElementById(id); if (b) { b.textContent = isMuted() ? '🔇' : '🔊'; b.onclick = () => { const mu = toggleMute(); for (const x of ['mute', 'mute-b']) { const e = document.getElementById(x); if (e) e.textContent = mu ? '🔇' : '🔊'; } }; } }
 $('b-recipes').onclick = recipeSheet;
-$('tut-again').onclick = () => { progress.battleTutDone = false; saveProgress(progress); toast('🎓 다음 전투에서 튜토리얼이 다시 나와요'); };
+$('tut-again').onclick = () => { progress.battleTutDone = false; progress.tabTut = []; pageTutStart(currentTab); saveProgress(progress); toast('🎓 화면마다, 그리고 다음 전투에서 튜토리얼이 다시 나와요'); };
 $('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); progress = loadProgress(); bootQA(); renderHome(); switchTab('stages'); } };
 function bootQA() { if (QA_MODE && !progress.purchases.includes('qa')) { progress.gonoe += QA_GONOE; progress.gems += QA_GEMS; progress.tickets += 5; progress.purchases.push('qa'); saveProgress(progress); } }
 
@@ -1199,3 +1200,60 @@ function tutTick() {
   if (nx) nx.onclick = () => { tutStep++; if (tutStep >= TUT.length) tutFinish(); else tutTick(); };
 }
 setInterval(tutTick, 300);
+
+// ---------- 🎓 화면별 튜토리얼 (탭을 처음 열 때) ----------
+const PAGE_TUT: Record<string, { sel: string; text: string }[]> = {
+  stages: [
+    { sel: '.diffs', text: '여기서 <b>난이도</b>를 골라요. 같은 스테이지에서 앞 난이도를 깨야 다음 난이도가 열려요.' },
+    { sel: '.stage:not(.locked)', text: '스테이지를 누르면 전투 시작! 🏠 <b>강해지는 철학자</b>는 이 맵에서 공격력이 크게 올라요(+60%). 같은 시대 철학자도 +25%.' },
+    { sel: '#open-recipes', text: '📜 <b>조합표</b>에서 5·6성 만드는 법을, 🎲 확률에서 소환 확률을 볼 수 있어요. 마음에 드는 조합은 💗로 찜해 두면 전투 중에 따라 보여요.' },
+    { sel: '#tabs', text: '아래 탭에서 🤔고민방·🎴뽑기·📖도감·🛍상점으로 가요. 처음 들어가면 거기서도 안내해 드릴게요!' },
+  ],
+  room: [
+    { sel: '#thinker', text: '여기는 <b>고민방</b>. 철학자를 톡톡 두드리면 <b>🤔 고뇌</b>가 나와요.' },
+    { sel: '.room-stat', text: '고뇌는 가만히 둬도 쌓여요(최대 8시간). 스테이지를 깰수록 더 빨리 쌓이고, <b>카드·도구 뽑기</b>에 써요.' },
+    { sel: '#tap-up', text: '고뇌를 써서 <b>고민의 깊이</b>를 올리면 한 번 두드릴 때 나오는 고뇌가 늘어요.' },
+  ],
+  gacha: [
+    { sel: '.card-box', text: '🎴 <b>철학자 카드</b> 뽑기예요. 같은 카드가 모이면 레벨이 올라 전투 공격력이 세지고, 일화도 열려요.' },
+    { sel: '.pity', text: '<b>천장</b>: 카드 뽑기에서 5성 이상이 안 나와도, 이 막대가 다 차면 <b>5성 이상이 확정</b>으로 나와요.' },
+    { sel: '.master-box', text: '✨ <b>거장 초대</b>는 💎지혜석이나 🎫초대장으로 5성 이상을 확정으로 뽑아요.' },
+    { sel: '.tool-box', text: '🧰 <b>도구</b>를 뽑아 도감에서 철학자에게 장착해요. 주인에게 맞는 도구면 <b>찰떡!</b> 공격 +60%.' },
+  ],
+  codex: [
+    { sel: '.codex-grid', text: '만난 철학자가 <b>도감</b>에 모여요. 누르면 상세 화면에서 도구 장착·스킨·💗최애 지정을 할 수 있어요.' },
+    { sel: '#tcg-open', text: '🃏 여기를 누르면 카드처럼 <b>옆으로 넘겨 보고</b>, 탭하면 뒤집어서 이야기를 읽을 수 있어요.' },
+  ],
+  shop: [
+    { sel: '.shop-grid', text: '🛍 <b>상점</b>에서 💎지혜석과 🎫초대장을 살 수 있어요. 지금은 시험판이라 실제 결제 없이 바로 지급돼요.' },
+  ],
+};
+let pageTut: { tab: string; i: number } | null = null, pageShown = '';
+function pageTutStart(tab: string) {
+  if (!PAGE_TUT[tab] || (progress.tabTut ?? []).includes(tab)) return;
+  pageTut = { tab, i: 0 }; pageShown = '';
+}
+function pageTutEnd() {
+  if (pageTut) { progress.tabTut = [...new Set([...(progress.tabTut ?? []), pageTut.tab])]; saveProgress(progress); }
+  pageTut = null; pageShown = ''; tutClear();
+}
+function pageTutTick() {
+  if (!pageTut) return;
+  if (pageTut.tab !== currentTab || $('home').classList.contains('hidden')) { if (pageShown) { tutClear(); pageShown = ''; } if (pageTut.tab !== currentTab) pageTut = null; return; }
+  if (document.querySelector('.overlay')) { if (pageShown) { tutClear(); pageShown = ''; } return; }
+  const steps = PAGE_TUT[pageTut.tab], st = steps[pageTut.i], key = pageTut.tab + pageTut.i;
+  if (pageShown === key) return;
+  const target = document.querySelector(st.sel) as HTMLElement | null;
+  if (!target) { pageTut.i++; if (pageTut.i >= steps.length) pageTutEnd(); return; }
+  pageShown = key; tutClear();
+  target.classList.add('tut-glow');
+  target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  const b = document.createElement('div');
+  const low = target.getBoundingClientRect().top > innerHeight * 0.5;
+  b.className = `tut-bubble ${low ? 'upper' : ''}`;
+  b.innerHTML = `<div class="tut-step">안내 ${pageTut.i + 1}/${steps.length}</div><p>${st.text}</p><div class="tut-btns"><button class="tut-skip">건너뛰기</button><button class="tut-next">${pageTut.i === steps.length - 1 ? '알겠어요!' : '다음 ▶'}</button></div>`;
+  document.body.appendChild(b);
+  (b.querySelector('.tut-skip') as HTMLElement).onclick = pageTutEnd;
+  (b.querySelector('.tut-next') as HTMLElement).onclick = () => { if (!pageTut) return; pageTut.i++; if (pageTut.i >= steps.length) pageTutEnd(); else pageTutTick(); };
+}
+setInterval(pageTutTick, 300);

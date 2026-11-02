@@ -35,7 +35,7 @@ export function lastLogin(): Account | null {
 export function seedVeteran(p: Progress) {
   p.cleared = ['S1', 'S2', 'S3', 'S1:easy', 'S1:normal', 'S1:hard', 'S2:easy', 'S2:normal', 'S3:easy'];
   p.firstClears = [...p.cleared.filter((x) => x.includes(':'))];
-  p.gonoe = 4200; p.gems = 650; p.tickets = 1; p.tapLevel = 6; p.tutorialDone = true;
+  p.gonoe = 4200; p.gems = 650; p.tickets = 1; p.tapLevel = 6; p.tutorialDone = true; p.battleTutDone = true; p.tabTut = ['stages', 'room', 'gacha', 'codex', 'shop'];
   p.cards = {
     T101: 9, T102: 6, T103: 7, T104: 12, T105: 10, T106: 5,
     T201: 5, T202: 6, T203: 4, T204: 3, T205: 4, T206: 2, T207: 3,
