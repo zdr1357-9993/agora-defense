@@ -281,7 +281,12 @@ canvas.addEventListener('pointerdown', (ev) => {
 
 $('summon').onclick = () => { if (game?.summon()) sfx.summon(); updateUI(); };
 $('sell').onclick = () => { if (game && selected) { game.sell(selected); selected = null; updateUI(); } };
-$('start').onclick = () => { game?.startWave(); updateUI(); };
+// 웨이브 시작 / (판이 끝났으면) 나가기 — 버튼 하나, 상태로 판단
+$('start').onclick = () => {
+  if (!game) return;
+  if (game.over) { endBattle(); return; }
+  game.startWave(); updateUI();
+};
 $('speed').onclick = () => { speed = speed === 3 ? 1 : speed + 1; $('speed').textContent = `${speed}x`; };
 $('quit').onclick = () => { if (confirmQuit()) endBattle(); };
 const confirmQuit = () => !game || !!game.over || game.wave === 0 || window.confirm('전투를 포기하고 나갈까요?');
@@ -301,8 +306,8 @@ function updateUI() {
   $<HTMLButtonElement>('summon').disabled = g.gold < g.summonCost || !!g.over;
   $<HTMLButtonElement>('sell').disabled = !selected;
   const start = $<HTMLButtonElement>('start');
-  start.textContent = g.countdown > 0 ? `다음 웨이브 ${Math.ceil(g.countdown)}` : '웨이브 시작';
-  start.disabled = !!g.over || g.running || g.countdown > 0;
+  start.textContent = g.over ? '나가기' : g.countdown > 0 ? `다음 웨이브 ${Math.ceil(g.countdown)}` : '웨이브 시작';
+  start.disabled = !g.over && (g.running || g.countdown > 0);
 
   if (g.over && !resultShown) {
     resultShown = true;
@@ -314,9 +319,6 @@ function updateUI() {
       ? `<h2>🏛 ${s.boss20} 논파!</h2><p>${s.name}을(를) 지켜 냈습니다.</p>${unlocks.length ? `<p>🔓 새 스테이지: <b>${unlocks.join(', ')}</b></p>` : ''}${newOnes.length ? `<p>📖 도감 등록 ${newOnes.length}명</p>` : ''}`
       : g.oneTool ? `<h2>💗 원툴 도전 종료</h2><p><b>${PHIL.get(g.oneTool)!.name}</b>와(과) 함께 <b>${g.wave}웨이브</b>까지 버텼어요!</p><p>최고 기록 ${Math.max(g.wave, progress.oneToolBest[g.oneTool] ?? 0)}웨이브</p>`
       : `<h2>💀 멘탈 붕괴</h2><p>${g.wave}웨이브에서 도그마에 잠식당했습니다.</p>${newOnes.length ? `<p>📖 그래도 도감에 ${newOnes.length}명 등록</p>` : ''}`);
-    start.textContent = '나가기';
-    start.disabled = false;
-    start.onclick = () => { start.onclick = () => { game?.startWave(); updateUI(); }; endBattle(); };
   }
 
   // 정보창
