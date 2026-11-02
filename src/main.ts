@@ -239,6 +239,7 @@ function startBattle(s: Stage, oneTool?: string) {
   introT = 2.8;
   lastSynthKey = lastInfoKey = lastCatKey = '';
   show('battle');
+  tutStep = progress.battleTutDone || oneTool ? -1 : 0; tutShown = -2;
   updateUI();
 }
 
@@ -296,6 +297,7 @@ const confirmQuit = () => !game || !!game.over || game.wave === 0 || window.conf
 
 let lastSynthKey = '', lastInfoKey = '', lastCatKey = '';
 function updateUI() {
+  tutTick();
   if (!game) return;
   const g = game;
   $('gold').textContent = String(g.gold);
@@ -1045,6 +1047,7 @@ $('open-rates').onclick = rateSheet;
 for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.onclick = () => { sfx.click(); switchTab(b.dataset.tab!); };
 for (const id of ['mute', 'mute-b']) { const b = document.getElementById(id); if (b) { b.textContent = isMuted() ? '🔇' : '🔊'; b.onclick = () => { const mu = toggleMute(); for (const x of ['mute', 'mute-b']) { const e = document.getElementById(x); if (e) e.textContent = mu ? '🔇' : '🔊'; } }; } }
 $('b-recipes').onclick = recipeSheet;
+$('tut-again').onclick = () => { progress.battleTutDone = false; saveProgress(progress); toast('🎓 다음 전투에서 튜토리얼이 다시 나와요'); };
 $('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); progress = loadProgress(); bootQA(); renderHome(); switchTab('stages'); } };
 function bootQA() { if (QA_MODE && !progress.purchases.includes('qa')) { progress.gonoe += QA_GONOE; progress.gems += QA_GEMS; progress.tickets += 5; progress.purchases.push('qa'); saveProgress(progress); } }
 
@@ -1164,3 +1167,35 @@ $('cats').addEventListener('click', (e) => {
   const id = CATALYST_IDS[i];
   toast(`${CAT_ICON[id]} 촉매 「${CAT_NAME[id]}」 — 5·6성 조합 재료예요. 웨이브를 깰 때마다 1개, 보스 웨이브는 추가로, 적 처치 시 가끔 떨어져요`);
 });
+
+// ---------- 🎓 전투 튜토리얼 (첫 전투에서 단계별 안내) ----------
+const TUT: { sel: string; text: string; done?: (g: Game) => boolean; pos?: 'top' }[] = [
+  { sel: '#summon', text: '👋 먼저 <b>소환</b>을 눌러 철학자를 불러 보세요. 골드가 들고, 누를수록 조금씩 비싸져요.', done: (g) => g.towers.length >= 1 },
+  { sel: '#summon', text: '좋아요! 철학자는 빈 칸에 자동으로 앉아요. <b>두 번 더</b> 소환해 볼까요?', done: (g) => g.towers.length >= 3 },
+  { sel: '#field', text: '칸에 앉은 철학자를 <b>탭</b>하면 정보·강화·판매가 나와요. 선택한 채로 다른 칸을 탭하면 <b>자리를 옮겨요</b>.', pos: 'top' },
+  { sel: '#synth', text: '같은 등급 3명이 모이면 여기 <b>🎲 합성</b> 버튼이 떠요 → 한 등급 위 철학자가 무작위로! 5성 이상은 📜 조합표대로 모아야 해요.', pos: 'top' },
+  { sel: '#start', text: '준비 끝! <b>웨이브 시작</b>을 누르면 도그마(적)가 몰려와요.', done: (g) => g.running },
+  { sel: '#lives', text: '🧠 이게 <b>멘탈</b>이에요. 도그마가 길 끝에 닿으면 1(보스는 5)씩 깎이고, 못 잡은 적은 <b>다시 돌아와요</b>. 0이 되면 패배!', pos: 'top' },
+  { sel: '#cats', text: '웨이브를 깨면 골드와 <b>촉매</b>(🔥💎🌀⚙️🪞)를 얻어요. 촉매는 5·6성 조합 재료예요. 칩을 누르면 설명이 나와요.', pos: 'top' },
+  { sel: '#b-recipes', text: '📜 은 조합표, 1x 는 배속이에요. 이제 20웨이브까지 버텨 보세요. 화이팅! 🏛', pos: 'top' },
+];
+let tutStep = -1, tutShown = -2;
+function tutClear() { document.querySelector('.tut-bubble')?.remove(); document.querySelectorAll('.tut-glow').forEach((e) => e.classList.remove('tut-glow')); }
+function tutFinish() { tutStep = -1; tutClear(); progress.battleTutDone = true; saveProgress(progress); }
+function tutTick() {
+  if (tutStep < 0 || !game || $('battle').classList.contains('hidden')) { if (tutShown !== -2 && tutStep < 0) { tutClear(); tutShown = -2; } return; }
+  const st = TUT[tutStep];
+  if (st.done?.(game)) { tutStep++; if (tutStep >= TUT.length) { tutFinish(); return; } return tutTick(); }
+  if (tutShown === tutStep) return;
+  tutShown = tutStep; tutClear();
+  document.querySelector(st.sel)?.classList.add('tut-glow');
+  const b = document.createElement('div');
+  b.className = `tut-bubble ${st.pos === 'top' ? 'top' : ''}`;
+  const manual = !st.done;
+  b.innerHTML = `<div class="tut-step">튜토리얼 ${tutStep + 1}/${TUT.length}</div><p>${st.text}</p><div class="tut-btns"><button class="tut-skip">건너뛰기</button>${manual ? `<button class="tut-next">${tutStep === TUT.length - 1 ? '시작!' : '다음 ▶'}</button>` : ''}</div>`;
+  document.body.appendChild(b);
+  (b.querySelector('.tut-skip') as HTMLElement).onclick = tutFinish;
+  const nx = b.querySelector('.tut-next') as HTMLElement | null;
+  if (nx) nx.onclick = () => { tutStep++; if (tutStep >= TUT.length) tutFinish(); else tutTick(); };
+}
+setInterval(tutTick, 300);

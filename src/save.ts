@@ -30,6 +30,7 @@ export interface Progress {
   purchases: string[];
   firstClears: string[];
   tutorialDone: boolean;
+  battleTutDone?: boolean;
   /** 최애 철학자 (고민방 주인 · 전장 하트) */
   favorite?: string;
   /** 보유 스킨 "철학자ID:테마" / 착용 중인 스킨 */

@@ -339,3 +339,15 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 .tcg-tip { opacity: .55; margin-top: 8px; }
 .tcg-nav { display: flex; gap: 16px; align-items: center; color: #fff; font-size: 15px; }
 .tcg-nav button { font-family: inherit; border: 2px solid #3b2a1e; border-radius: 999px; background: #fffdf6; width: 40px; height: 40px; font-size: 14px; cursor: pointer; }
+
+/* ---------- 🎓 튜토리얼 ---------- */
+.tut-glow { position: relative; z-index: 30 !important; box-shadow: 0 0 0 4px #ff9ec7, 0 0 18px 6px rgba(255,158,199,.8) !important; animation: tutPulse 1.2s ease-in-out infinite; border-radius: 12px; }
+@keyframes tutPulse { 50% { box-shadow: 0 0 0 6px #ffd36e, 0 0 26px 10px rgba(255,211,110,.8); } }
+.tut-bubble { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; width: min(92vw, 380px); background: #fffdf6; border: 3px solid #3b2a1e; border-radius: 16px; padding: 10px 14px; z-index: 40; box-shadow: 0 6px 0 rgba(0,0,0,.2); font-size: 14px; animation: tutIn .25s ease-out; }
+.tut-bubble.top { bottom: auto; top: 50%; }
+.tut-bubble p { margin: 4px 0 8px; line-height: 1.5; }
+.tut-step { font-size: 11px; color: #e26aa0; }
+.tut-btns { display: flex; justify-content: flex-end; gap: 8px; }
+.tut-btns button { font-family: inherit; border: 2px solid #3b2a1e; border-radius: 999px; padding: 4px 12px; background: #fff; cursor: pointer; }
+.tut-btns .tut-next { background: #ffd1e3; }
+@keyframes tutIn { from { opacity: 0; transform: translate(-50%, 8px); } }
