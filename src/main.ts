@@ -1,4 +1,5 @@
-import { Game, GRID, trackPos, QA_MODE, CATALYST_IDS, MAX_WAVE, type Tower } from './game';
+import { Game, GRID, QA_MODE, CATALYST_IDS, MAX_WAVE, type Tower } from './game';
+import { STAGE_PATHS } from './paths';
 import {
   PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, MAX_MERGE_TIER, UPGRADE, type Stage,
 } from './data';
@@ -34,7 +35,7 @@ function renderHome() {
     b.disabled = !open;
     const hero = PHIL.get(s.counter)!;
     b.innerHTML = `<img src="${portrait(hero.id)}"><div><b>${ERA_ICON[s.era]} ${s.name}</b>${cleared ? ' <span class="badge">CLEAR</span>' : ''}
-      <small>${open ? `최종 보스: ${s.boss20} · 수호자: ${hero.name}` : `🔒 ${STAGES.find((x) => x.id === s.unlockAfter)!.name} 클리어 시 해금`}</small></div>`;
+      <small>${open ? `${STAGE_PATHS[s.id].caption}<br>최종 보스: ${s.boss20} · 수호자: ${hero.name}` : `🔒 ${STAGES.find((x) => x.id === s.unlockAfter)!.name} 클리어 시 해금`}</small></div>`;
     b.onclick = () => startBattle(s);
     box.appendChild(b);
   }
@@ -129,8 +130,7 @@ canvas.addEventListener('pointerdown', (ev) => {
   const r = canvas.getBoundingClientRect();
   const cx = Math.floor(((ev.clientX - r.left) / r.width) * GRID);
   const cy = Math.floor(((ev.clientY - r.top) / r.height) * GRID);
-  const inner = cx >= 1 && cy >= 1 && cx < GRID - 1 && cy < GRID - 1;
-  if (!inner) { selected = null; return; }
+  if (cx < 0 || cy < 0 || cx >= GRID || cy >= GRID || game.isRoad(cx, cy)) { selected = null; updateUI(); return; }
   const t = game.towerAt(cx, cy);
   if (selected && selected === t) selected = null;
   else if (selected) { game.moveTo(selected, cx, cy); selected = null; }
@@ -239,12 +239,25 @@ function draw() {
   ctx.clearRect(0, 0, w, w);
   ctx.imageSmoothingEnabled = false;
 
-  ctx.lineJoin = 'round';
-  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = cell * 0.9;
-  ctx.strokeRect(cell / 2, cell / 2, w - cell, w - cell);
-  ctx.strokeStyle = 'rgba(245,158,11,.25)'; ctx.lineWidth = 2; ctx.setLineDash([8, 8]);
-  ctx.strokeRect(cell / 2, cell / 2, w - cell, w - cell);
+  // 길: 칸 바닥 + 꺾은선 점선 + 입구/출구
+  for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) if (g.isRoad(x, y)) {
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(x * cell, y * cell, cell, cell);
+  }
+  ctx.strokeStyle = 'rgba(245,158,11,.35)'; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+  for (const path of g.layout.paths) {
+    ctx.beginPath();
+    path.forEach(([px, py], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, (px + 0.5) * cell, (py + 0.5) * cell));
+    ctx.stroke();
+  }
   ctx.setLineDash([]);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `${cell * 0.5}px sans-serif`;
+  const first = g.layout.paths[0];
+  if (!g.layout.loop) {
+    ctx.fillText('🚪', (first[0][0] + 0.5) * cell, (first[0][1] + 0.5) * cell);
+    const end = first[first.length - 1];
+    ctx.fillText(g.stage.id === 'S2' ? '⛪' : '🏁', (end[0] + 0.5) * cell, (end[1] + 0.5) * cell);
+  }
 
   if (selected) {
     const st = TIER_STATS[PHIL.get(selected.philId)!.tier]!;
@@ -256,7 +269,8 @@ function draw() {
   }
 
   const pad = cell * 0.06;
-  for (let y = 1; y < GRID - 1; y++) for (let x = 1; x < GRID - 1; x++) {
+  for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) {
+    if (g.isRoad(x, y)) continue;
     const t = g.towerAt(x, y);
     const isSel = !!t && t === selected;
     ctx.fillStyle = t ? '#182032' : selected ? '#132338' : '#0f1420';
@@ -268,25 +282,25 @@ function draw() {
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     if (!t) {
       ctx.fillStyle = selected ? '#38bdf8' : '#334155';
-      ctx.font = `700 ${cell * 0.16}px "Noto Sans KR", sans-serif`;
-      ctx.fillText(selected ? '이동' : '+', cx, (y + 0.56) * cell);
+      ctx.font = `700 ${cell * 0.22}px "Noto Sans KR", sans-serif`;
+      ctx.fillText(selected ? '이동' : '·', cx, (y + 0.58) * cell);
       continue;
     }
     const p = PHIL.get(t.philId)!;
     ctx.fillStyle = TIER_AURA[p.tier];
     ctx.fillRect(x * cell + cell * 0.18, y * cell + pad + 2, cell * 0.64, 3);
     const bob = Math.sin((tick + x * 9 + y * 5) * 0.1) * 2;
-    const sz = cell * 0.62;
+    const sz = cell * 0.66;
     if (p.tier >= 6) {
       ctx.save(); ctx.globalAlpha = 0.35 + 0.2 * Math.sin(tick * 0.08);
       ctx.fillStyle = `hsl(${(tick * 2) % 360},90%,60%)`;
       ctx.beginPath(); ctx.arc(cx, y * cell + cell * 0.38, cell * 0.36, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     ctx.drawImage(philosopherSprite(p), cx - sz / 2, y * cell + cell * 0.07 + bob, sz, sz);
-    ctx.fillStyle = '#f8fafc'; ctx.font = `700 ${cell * 0.15}px "Noto Sans KR", sans-serif`;
-    ctx.fillText(shortName(p.name), cx, y * cell + cell * 0.8);
-    ctx.fillStyle = '#fbbf24'; ctx.font = `${cell * 0.12}px sans-serif`;
-    ctx.fillText(p.tier >= 5 ? `★${p.tier}` : '★'.repeat(p.tier), cx, y * cell + cell * 0.93);
+    ctx.fillStyle = '#f8fafc'; ctx.font = `700 ${Math.max(8, cell * 0.2)}px "Noto Sans KR", sans-serif`;
+    ctx.fillText(shortName(p.name).slice(0, 4), cx, y * cell + cell * 0.86);
+    ctx.fillStyle = '#fbbf24'; ctx.font = `800 ${Math.max(8, cell * 0.18)}px sans-serif`;
+    ctx.fillText(`${p.tier}★`, x * cell + cell * 0.2, y * cell + cell * 0.2);
     if (t.level) {
       ctx.fillStyle = '#22d3ee'; ctx.font = `800 ${cell * 0.14}px sans-serif`;
       ctx.fillText(`+${t.level}`, x * cell + cell * 0.8, y * cell + cell * 0.3);
@@ -294,8 +308,8 @@ function draw() {
   }
 
   for (const e of g.enemies) {
-    const [ex, ey] = trackPos(e.dist);
-    const x = ex * cell, y = ey * cell, sz = cell * (e.boss ? 0.95 : 0.62);
+    const [ex, ey] = g.enemyPos(e);
+    const x = ex * cell, y = ey * cell, sz = cell * (e.boss ? 1.1 : 0.75);
     const walk = Math.abs(Math.sin(tick * 0.2 + e.uid)) * 3;
     ctx.fillStyle = 'rgba(0,0,0,.45)';
     ctx.beginPath(); ctx.ellipse(x, y + sz * 0.42, sz * 0.32, sz * 0.13, 0, 0, Math.PI * 2); ctx.fill();
@@ -320,12 +334,23 @@ function draw() {
     ctx.fillStyle = '#1c1917'; ctx.fillText(text, x, y);
   }
 
+  if (g.noticeTime > 0) {
+    ctx.save(); ctx.globalAlpha = Math.min(1, g.noticeTime);
+    ctx.fillStyle = 'rgba(7,9,14,.85)'; ctx.fillRect(0, w / 2 - cell * 0.45, w, cell * 0.9);
+    ctx.fillStyle = '#fde68a'; ctx.font = `800 ${Math.max(12, cell * 0.32)}px "Noto Sans KR", sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(g.notice, w / 2, w / 2);
+    ctx.restore();
+  }
+
   if (g.wave === 0 && !g.running && g.countdown < 0) {
+    ctx.fillStyle = 'rgba(7,9,14,.75)'; ctx.fillRect(0, w / 2 - cell * 0.9, w, cell * 1.8);
     ctx.fillStyle = 'rgba(254,243,199,.85)'; ctx.font = `800 ${cell * 0.22}px "Nanum Myeongjo", serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(g.stage.name, w / 2, w / 2 - cell * 0.18);
-    ctx.font = `700 ${cell * 0.14}px "Noto Sans KR", sans-serif`;
-    ctx.fillText(`최종 보스: ${g.stage.boss20} (${MAX_WAVE}웨이브)`, w / 2, w / 2 + cell * 0.18);
+    ctx.font = `800 ${cell * 0.4}px "Nanum Myeongjo", serif`;
+    ctx.fillText(g.stage.name, w / 2, w / 2 - cell * 0.35);
+    ctx.font = `700 ${cell * 0.22}px "Noto Sans KR", sans-serif`;
+    ctx.fillText(STAGE_PATHS[g.stage.id].caption, w / 2, w / 2 + cell * 0.1);
+    ctx.fillText(`최종 보스: ${g.stage.boss20} (${MAX_WAVE}웨이브)`, w / 2, w / 2 + cell * 0.45);
   }
 }
 

@@ -3,8 +3,10 @@ import {
   type Recipe, type Stage,
 } from './data';
 
-// 7x7 격자: 바깥 테두리 24칸은 적의 트랙, 안쪽 5x5는 타워 배치 칸
-export const GRID = 7;
+import { N, STAGE_PATHS, pathCells, pathLength, pointAt, type Layout } from './paths';
+
+// 9x9 격자: 스테이지마다 길 모양이 다르고, 길이 아닌 칸에 타워를 배치
+export const GRID = N;
 export const MAX_WAVE = 20;
 export const BOSS_WAVES = [10, 20];
 
@@ -14,18 +16,8 @@ const START_GOLD = QA_MODE ? 10000 : 200;
 export const CATALYST_IDS = ['C001', 'C002', 'C003', 'C004', 'C005'];
 
 export interface Tower { uid: number; philId: string; cx: number; cy: number; cd: number; level: number }
-export interface Enemy { uid: number; hp: number; maxHp: number; dist: number; speed: number; boss: boolean; reward: number; name: string }
+export interface Enemy { uid: number; hp: number; maxHp: number; dist: number; speed: number; boss: boolean; reward: number; name: string; path: number }
 export interface Bullet { x: number; y: number; target: number; dmg: number; text: string; color: string }
-
-const TRACK_LEN = (GRID - 1) * 4;
-export function trackPos(dist: number): [number, number] {
-  const d = ((dist % TRACK_LEN) + TRACK_LEN) % TRACK_LEN;
-  const s = GRID - 1;
-  if (d < s) return [d + 0.5, 0.5];
-  if (d < 2 * s) return [s + 0.5, d - s + 0.5];
-  if (d < 3 * s) return [s - (d - 2 * s) + 0.5, s + 0.5];
-  return [0.5, s - (d - 3 * s) + 0.5];
-}
 
 let uidSeq = 1;
 const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
@@ -47,14 +39,44 @@ export class Game {
   running = false;
   over: 'win' | 'lose' | null = null;
 
-  constructor(public stage: Stage) {}
+  layout: Layout;
+  road: Set<string>;
+  notice = '';
+  noticeTime = 0;
 
+  constructor(public stage: Stage) {
+    this.layout = STAGE_PATHS[stage.id].layoutFor(1);
+    this.road = pathCells(this.layout);
+  }
+
+  isRoad(cx: number, cy: number) { return this.road.has(`${cx},${cy}`); }
   towerAt(cx: number, cy: number) { return this.towers.find((t) => t.cx === cx && t.cy === cy); }
 
   emptyCells() {
     const cells: [number, number][] = [];
-    for (let y = 1; y < GRID - 1; y++) for (let x = 1; x < GRID - 1; x++) if (!this.towerAt(x, y)) cells.push([x, y]);
+    for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) if (!this.isRoad(x, y) && !this.towerAt(x, y)) cells.push([x, y]);
     return cells;
+  }
+
+  enemyPos(e: Enemy): [number, number] {
+    const path = this.layout.paths[e.path % this.layout.paths.length];
+    const L = pathLength(path);
+    return pointAt(path, this.layout.loop ? e.dist % L : Math.min(e.dist, L));
+  }
+
+  /** 웨이브 시작 시 길 모양 갱신. 새 길 위에 있던 타워는 빈 칸으로 밀려남 */
+  private refreshLayout() {
+    const sp = STAGE_PATHS[this.stage.id];
+    const next = sp.layoutFor(this.wave);
+    const msg = sp.notice?.(this.wave);
+    if (msg) { this.notice = msg; this.noticeTime = 3; }
+    if (next === this.layout) return;
+    this.layout = next;
+    this.road = pathCells(next);
+    for (const t of this.towers) if (this.isRoad(t.cx, t.cy)) {
+      const free = this.emptyCells().filter(([x, y]) => !this.towers.some((o) => o.cx === x && o.cy === y));
+      if (free.length) { const [x, y] = pick(free); t.cx = x; t.cy = y; }
+    }
   }
 
   private place(philId: string) {
@@ -83,6 +105,7 @@ export class Game {
   }
 
   moveTo(t: Tower, cx: number, cy: number) {
+    if (this.isRoad(cx, cy)) return;
     const other = this.towerAt(cx, cy);
     if (other) { other.cx = t.cx; other.cy = t.cy; }
     t.cx = cx; t.cy = cy;
@@ -170,6 +193,7 @@ export class Game {
   startWave() {
     if (this.running || this.over || this.wave >= MAX_WAVE) return;
     this.wave++;
+    this.refreshLayout();
     this.running = true;
     this.countdown = -1;
     this.toSpawn = this.isBossWave() ? 1 : 8 + this.wave * 2;
@@ -183,7 +207,8 @@ export class Game {
     this.enemies.push({
       uid: uidSeq++, boss,
       hp: boss ? base * 30 : base, maxHp: boss ? base * 30 : base,
-      dist: 0, speed: boss ? 0.9 : 1.4 + this.wave * 0.05,
+      dist: 0, speed: (boss ? 0.9 : 1.4 + this.wave * 0.05) * (this.layout.speedMult ?? 1),
+      path: Math.floor(Math.random() * this.layout.paths.length),
       reward: boss ? 150 * (this.wave / 10) : 5 + Math.floor(this.wave / 2),
       name: boss ? (this.wave === 10 ? s.boss10 : s.boss20) : this.wave < 10 ? s.enemyEarly : s.enemyLate,
     });
@@ -198,11 +223,17 @@ export class Game {
       if (this.spawnTimer <= 0) { this.spawn(); this.toSpawn--; this.spawnTimer = 0.7; }
     }
 
+    if (this.noticeTime > 0) this.noticeTime -= dt;
+    const escaped: Enemy[] = [];
     for (const e of this.enemies) {
-      const before = Math.floor(e.dist / TRACK_LEN);
+      const L = pathLength(this.layout.paths[e.path % this.layout.paths.length]);
+      const before = Math.floor(e.dist / L);
       e.dist += e.speed * dt;
-      if (Math.floor(e.dist / TRACK_LEN) > before) this.lives -= e.boss ? 5 : 1;
+      if (this.layout.loop) { if (Math.floor(e.dist / L) > before) this.lives -= e.boss ? 5 : 1; }
+      else if (e.dist >= L) { this.lives -= e.boss ? 5 : 1; escaped.push(e); }
     }
+    // 출구에 닿은 적은 다시 입구에서 출발 (보스는 계속 압박)
+    for (const e of escaped) e.dist = 0;
     if (this.lives <= 0) { this.lives = 0; this.over = 'lose'; return; }
 
     for (const t of this.towers) {
@@ -213,7 +244,7 @@ export class Game {
       const tx = t.cx + 0.5, ty = t.cy + 0.5;
       let best: Enemy | null = null;
       for (const e of this.enemies) {
-        const [ex, ey] = trackPos(e.dist);
+        const [ex, ey] = this.enemyPos(e);
         if (Math.hypot(ex - tx, ey - ty) <= st.range && (!best || e.dist > best.dist)) best = e;
       }
       if (!best) continue;
@@ -226,7 +257,7 @@ export class Game {
     for (const b of this.bullets) {
       const e = this.enemies.find((x) => x.uid === b.target);
       if (!e) { b.dmg = 0; continue; }
-      const [ex, ey] = trackPos(e.dist);
+      const [ex, ey] = this.enemyPos(e);
       const dx = ex - b.x, dy = ey - b.y, d = Math.hypot(dx, dy), step = 7 * dt;
       if (d <= step) { e.hp -= b.dmg; b.dmg = 0; } else { b.x += (dx / d) * step; b.y += (dy / d) * step; }
     }
