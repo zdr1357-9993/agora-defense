@@ -19,7 +19,8 @@ export const HP_GROWTH = 1.3;
 export let QA_MODE = typeof location === 'undefined' ? false : new URLSearchParams(location.search).get('qa') === '1';
 /** 마스터 계정 로그인 시 QA(전부 해금) 권한 */
 export function setQA(on: boolean) { QA_MODE = on; }
-const START_GOLD = QA_MODE ? 10000 : 200;
+/** 전투 시작 골드: 마스터(QA) 10000, 일반 200 */
+const startGold = () => (QA_MODE ? 10000 : 200);
 export const CATALYST_IDS = ['C001', 'C002', 'C003', 'C004', 'C005'];
 
 export interface Tower { uid: number; philId: string; cx: number; cy: number; cd: number; level: number; shots?: number; stacks?: number; stunT?: number }
@@ -46,7 +47,7 @@ let uidSeq = 1;
 const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 
 export class Game {
-  gold = START_GOLD;
+  gold = startGold();
   lives = 20;
   wave = 0;
   summonCost = 50;
