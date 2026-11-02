@@ -5,30 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>철학사 랜덤 디펜스</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Nanum+Myeongjo:wght@800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700;900&family=Nanum+Myeongjo:wght@800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
   <div id="app">
-    <!-- 홈: 스테이지 지도 -->
+    <!-- 허브: 스테이지 · 고민방 · 뽑기 · 도감 -->
     <section id="home" class="screen">
-      <h1 class="title"><span class="gold">AGORA</span> 철학사 랜덤 디펜스</h1>
-      <p class="slogan">사유하라, 조합하라, 도그마를 논파하라!</p>
-      <div id="stages"></div>
-      <div class="row">
-        <button id="open-codex">📖 도감</button>
-        <button id="open-recipes">📜 조합표</button>
-        <button id="open-rates">🎲 확률</button>
-      </div>
-      <div class="row">
+      <header class="hub-top">
+        <h1 class="title"><span class="gold">AGORA</span> 철학사 랜덤 디펜스</h1>
+        <span id="wallet" class="wallet">🤔 0</span>
+      </header>
+      <div id="tab-stages" class="tab">
+        <p class="slogan">사유하라, 조합하라, 도그마를 논파하라!</p>
+        <div id="stages"></div>
+        <div class="row">
+          <button id="open-recipes" class="chunky mint">📜 조합표</button>
+          <button id="open-rates" class="chunky blue">🎲 확률</button>
+        </div>
         <button id="reset" class="ghost">진행 초기화</button>
       </div>
-    </section>
-
-    <!-- 도감 -->
-    <section id="codex" class="screen hidden">
-      <div class="row between"><h2>📖 도감 <small id="codex-count"></small></h2><button id="codex-back" class="ghost">닫기</button></div>
-      <div id="codex-list"></div>
+      <div id="tab-room" class="tab hidden"></div>
+      <div id="tab-gacha" class="tab hidden"></div>
+      <div id="tab-codex" class="tab hidden">
+        <h2>📖 도감 <small id="codex-count"></small></h2>
+        <div id="codex-list"></div>
+      </div>
+      <nav id="tabs">
+        <button data-tab="stages">🏛<span>스테이지</span></button>
+        <button data-tab="room">🤔<span>고민방</span></button>
+        <button data-tab="gacha">🎴<span>뽑기</span></button>
+        <button data-tab="codex">📖<span>도감</span></button>
+      </nav>
     </section>
 
     <!-- 전투 -->

@@ -3,7 +3,7 @@ import {
   type Recipe, type Stage,
 } from './data';
 
-import { ITEMS, ITEM_BONUS, ITEM_DROP, isOwner } from './items';
+import { ITEM_BONUS, isOwner } from './items';
 import { N, STAGE_PATHS, pathCells, pathLength, pointAt, type Layout } from './paths';
 
 // 9x9 격자: 스테이지마다 길 모양이 다르고, 길이 아닌 칸에 타워를 배치
@@ -16,7 +16,9 @@ export const QA_MODE = new URLSearchParams(location.search).get('qa') !== '0';
 const START_GOLD = QA_MODE ? 10000 : 200;
 export const CATALYST_IDS = ['C001', 'C002', 'C003', 'C004', 'C005'];
 
-export interface Tower { uid: number; philId: string; cx: number; cy: number; cd: number; level: number; item?: string }
+export interface Tower { uid: number; philId: string; cx: number; cy: number; cd: number; level: number }
+/** 메타 성장(카드 레벨·장착 도구)을 전투에 넘겨주는 통로 */
+export interface Meta { cardMult(philId: string): number; tool(philId: string): string | undefined }
 export interface Enemy { uid: number; hp: number; maxHp: number; dist: number; speed: number; boss: boolean; reward: number; name: string; path: number }
 export interface Bullet { x: number; y: number; target: number; dmg: number; text: string; color: string }
 
@@ -33,8 +35,6 @@ export class Game {
   bullets: Bullet[] = [];
   catalysts: Record<string, number> = Object.fromEntries(CATALYST_IDS.map((id) => [id, 0]));
   drops: string[] = [];
-  bag: string[] = [];
-  itemDrops: string[] = [];
   discovered = new Set<string>();
   toSpawn = 0;
   spawnTimer = 0;
@@ -47,7 +47,7 @@ export class Game {
   notice = '';
   noticeTime = 0;
 
-  constructor(public stage: Stage) {
+  constructor(public stage: Stage, public meta: Meta = { cardMult: () => 1, tool: () => undefined }) {
     this.layout = STAGE_PATHS[stage.id].layoutFor(1);
     this.road = pathCells(this.layout);
   }
@@ -103,7 +103,6 @@ export class Game {
   }
 
   sell(t: Tower) {
-    this.returnItems([t]);
     this.gold += 25 * 2 ** (PHIL.get(t.philId)!.tier - 1);
     this.towers = this.towers.filter((x) => x !== t);
   }
@@ -115,22 +114,13 @@ export class Game {
     t.cx = cx; t.cy = cy;
   }
 
-  // ---------- 아이템 ----------
-  private dropItem() { const id = pick(ITEMS).id; this.bag.push(id); this.itemDrops.push(id); }
-  private returnItems(ts: Tower[]) { for (const t of ts) if (t.item) { this.bag.push(t.item); t.item = undefined; } }
-
-  /** 가방의 아이템을 장착. 이미 끼고 있던 건 가방으로 */
-  equip(t: Tower, itemId: string) {
-    const i = this.bag.indexOf(itemId);
-    if (i < 0) return;
-    this.bag.splice(i, 1);
-    if (t.item) this.bag.push(t.item);
-    t.item = itemId;
-  }
+  // ---------- 장착 도구 (도감에서 미리 끼워 둔 것) ----------
+  toolOf(t: Tower) { return this.meta.tool(t.philId); }
 
   itemMult(t: Tower) {
-    if (!t.item) return { dmg: 1, range: 0 };
-    return isOwner(t.item, PHIL.get(t.philId)!.name)
+    const tool = this.toolOf(t);
+    if (!tool) return { dmg: 1, range: 0 };
+    return isOwner(tool, PHIL.get(t.philId)!.name)
       ? { dmg: 1 + ITEM_BONUS.ownerDmg, range: ITEM_BONUS.ownerRange }
       : { dmg: 1 + ITEM_BONUS.dmg, range: 0 };
   }
@@ -168,7 +158,6 @@ export class Game {
     const used = group.slice(0, 3);
     if (used.length < 3) return null;
     const keep = used[0];
-    this.returnItems(used);
     this.towers = this.towers.filter((t) => !used.includes(t) || t === keep);
     keep.philId = pick(PHILOSOPHERS.filter((x) => x.tier === tier + 1 && !x.hidden)).id;
     keep.cd = 0;
@@ -201,7 +190,6 @@ export class Game {
     if (!mats || !this.hasCatalyst(r)) return null;
     if (r.catalyst) this.catalysts[r.catalyst]--;
     const keep = mats[0];
-    this.returnItems(mats);
     this.towers = this.towers.filter((t) => !mats.includes(t) || t === keep);
     keep.philId = r.result;
     keep.cd = 0;
@@ -276,7 +264,7 @@ export class Game {
       }
       if (!best) continue;
       t.cd = st.cooldown;
-      let dmg = st.dmg * (1 + UPGRADE.perLevel * t.level) * im.dmg;
+      let dmg = st.dmg * (1 + UPGRADE.perLevel * t.level) * im.dmg * this.meta.cardMult(t.philId);
       if (best.boss && t.philId === this.stage.counter) dmg *= COUNTER_MULT;
       this.bullets.push({ x: tx, y: ty, target: best.uid, dmg, text: p.quote, color: p.tier >= 6 ? 'rainbow' : p.tier >= 4 ? 'gold' : '' });
     }
@@ -293,7 +281,6 @@ export class Game {
     for (const e of this.enemies) if (e.hp <= 0) {
       this.gold += e.reward;
       if (!e.boss && Math.random() < 0.03) this.gainCatalyst(this.randomCatalyst());
-      if (Math.random() < (e.boss ? ITEM_DROP.boss : ITEM_DROP.normal)) this.dropItem();
     }
     this.enemies = this.enemies.filter((e) => e.hp > 0);
 

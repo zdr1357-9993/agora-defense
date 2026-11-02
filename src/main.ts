@@ -5,7 +5,9 @@ import {
   PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, MAX_MERGE_TIER, UPGRADE, type Stage,
 } from './data';
 import { philosopherSprite, monsterSprite, itemSprite, TIER_AURA } from './sprites';
-import { loadProgress, saveProgress, resetProgress } from './save';
+import { loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL } from './save';
+import { settleIdle, tapGain, tapUpgradeCost, battleReward, pull, CARD_COST, CARD_COST_10, TOOL_COST, TOOL_COST_10, CARD_RATES, QA_GONOE, IDLE_PER_SEC } from './meta';
+import { ITEMS } from './items';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const spriteUrl = new Map<string, string>();
@@ -18,7 +20,7 @@ const portrait = (id: string) => {
 let progress = loadProgress();
 
 // =============== 화면 전환 ===============
-function show(id: 'home' | 'codex' | 'battle') {
+function show(id: 'home' | 'battle') {
   for (const s of document.querySelectorAll<HTMLElement>('.screen')) s.classList.toggle('hidden', s.id !== id);
   if (id === 'battle') requestAnimationFrame(resize);
 }
@@ -58,9 +60,11 @@ function renderCodex() {
     grid.className = 'codex-grid';
     for (const p of list) {
       const known = seen.has(p.id) || (QA_MODE && !p.hidden);
+      const n = progress.cards[p.id] ?? 0, lv = cardLevel(n);
+      const tool = progress.loadout[p.id];
       const d = document.createElement('div');
-      d.className = `card t${p.tier} ${known ? '' : 'unknown'}`;
-      d.innerHTML = `<img src="${portrait(p.id)}"><b>${known ? p.name : p.hidden ? '???' : '미발견'}</b><small>${ERA_ICON[p.era] ?? ''}</small>`;
+      d.className = `card t${p.tier} ${known ? '' : 'unknown'} ${n ? 'owned' : ''}`;
+      d.innerHTML = `${lv ? `<span class="lv">Lv.${lv}</span>` : ''}${tool ? `<img class="tool-badge" src="${itemUrl(tool)}">` : ''}<img src="${portrait(p.id)}"><b>${known ? p.name : p.hidden ? '???' : '미발견'}</b><small>${n ? `🎴${n}` : ERA_ICON[p.era] ?? ''}</small>`;
       if (known) d.onclick = () => showCard(p.id);
       grid.appendChild(d);
     }
@@ -87,7 +91,25 @@ function cardHtml(id: string) {
     <div class="pc-foot">AGORA · ${TIER_NAME[p.tier]}</div>
   </div>`;
 }
-function showCard(id: string) { alertBox(cardHtml(id)); }
+function showCard(id: string) {
+  const p = PHIL.get(id)!;
+  const n = progress.cards[id] ?? 0, lv = cardLevel(n), next = nextLevelAt(n);
+  const ownedTools = ITEMS.filter((it) => progress.items[it.id]).sort((a, b) => Number(isOwner(b.id, p.name)) - Number(isOwner(a.id, p.name)));
+  const cur = progress.loadout[id];
+  const growth = `<div class="pc-growth"><b>🎴 카드 Lv.${lv}</b> <span>${n}장${next ? ` · 다음 레벨까지 ${next - n}장` : ' · MAX'}</span>
+    <div class="bar"><i style="width:${next ? Math.min(100, (n / next) * 100) : 100}%"></i></div>
+    <small>전투 공격력 ×${cardMult(n).toFixed(1)}</small></div>
+    <div class="pc-tools"><b>🧰 장착 도구</b>${ownedTools.length ? ownedTools.map((it) => `<button data-equip="${it.id}" class="${cur === it.id ? 'on' : ''} ${isOwner(it.id, p.name) ? 'own' : ''}"><img src="${itemUrl(it.id)}">${it.name}${isOwner(it.id, p.name) ? ' ★' : ''}</button>`).join('') + (cur ? '<button data-equip="">해제</button>' : '') : '<small>도구 상자에서 도구를 뽑아 오세요</small>'}</div>
+    ${n ? '<button class="chunky blue room-set">🤔 고민방 주인으로 삼기</button>' : ''}`;
+  alertBox(cardHtml(id).replace('<div class="pc-foot">', growth + '<div class="pc-foot">'));
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-equip]')) b.onclick = (e) => {
+    e.stopPropagation();
+    if (b.dataset.equip) progress.loadout[id] = b.dataset.equip; else delete progress.loadout[id];
+    saveProgress(progress); document.querySelector('.overlay')?.remove(); renderCodex(); showCard(id);
+  };
+  const rs = document.querySelector<HTMLButtonElement>('.room-set');
+  if (rs) rs.onclick = (e) => { e.stopPropagation(); roomThinker = id; document.querySelector('.overlay')?.remove(); switchTab('room'); };
+}
 
 function toast(text: string) {
   const t = document.createElement('div');
@@ -100,8 +122,8 @@ function toast(text: string) {
 function alertBox(html: string) {
   const o = document.createElement('div');
   o.className = 'overlay';
-  o.innerHTML = `<div class="pop">${html}<button class="primary">확인</button></div>`;
-  o.onclick = (e) => { if (e.target === o || (e.target as HTMLElement).tagName === 'BUTTON') o.remove(); };
+  o.innerHTML = `<div class="pop">${html}<button class="primary chunky gold close">확인</button></div>`;
+  o.onclick = (e) => { const el = e.target as HTMLElement; if (el === o || el.classList.contains('close')) o.remove(); };
   document.body.appendChild(o);
 }
 
@@ -127,7 +149,10 @@ function resize() {
 window.addEventListener('resize', resize);
 
 function startBattle(s: Stage) {
-  game = new Game(s);
+  game = new Game(s, {
+    cardMult: (id) => cardMult(progress.cards[id] ?? 0),
+    tool: (id) => { const t = progress.loadout[id]; return t && progress.items[t] ? t : undefined; },
+  });
   selected = null;
   resultShown = false;
   lastSynthKey = lastInfoKey = lastCatKey = '';
@@ -138,12 +163,14 @@ function startBattle(s: Stage) {
 function endBattle() {
   if (game) {
     progress.seen = [...new Set([...progress.seen, ...game.discovered])];
+    progress.gonoe += battleReward(game.wave, game.over === 'win');
     if (game.over === 'win' && !progress.cleared.includes(game.stage.id)) progress.cleared.push(game.stage.id);
     saveProgress(progress);
   }
   game = null;
   renderHome();
   show('home');
+  switchTab('stages');
 }
 
 canvas.addEventListener('pointerdown', (ev) => {
@@ -195,7 +222,7 @@ function updateUI() {
 
   // 정보창
   const info = $('info');
-  const infoKey = `${selected?.uid}|${selected?.philId}|${selected?.level}|${selected?.item}|${g.bag.join()}|${g.towers.length > 0}|${selected && g.upgradeCost(selected) !== null ? g.gold >= g.upgradeCost(selected)! : ''}`;
+  const infoKey = `${selected?.uid}|${selected?.philId}|${selected?.level}|${g.towers.length > 0}|${selected && g.upgradeCost(selected) !== null ? g.gold >= g.upgradeCost(selected)! : ''}`;
   if (infoKey !== lastInfoKey) {
     lastInfoKey = infoKey;
     info.className = '';
@@ -205,10 +232,8 @@ function updateUI() {
       const lv = selected.level ? ` <span class="tag lv">Lv.${selected.level}</span>` : '';
       info.className = `t${p.tier}`;
       info.innerHTML = `<img src="${portrait(p.id)}"><div><b>${'★'.repeat(p.tier)} ${p.name}</b>${lv} · ${p.school}<br>“${p.quote}”<br><small>${p.lore}</small>${p.id === g.stage.counter ? '<br><small class="counter">⚔ 이 스테이지 보스에게 피해 3배</small>' : ''}
-        ${equipHtml(g, selected)}
+        ${toolLine(g, selected)}
         ${cost !== null ? `<br><button id="upgrade" class="up">⬆ 강화 Lv.${selected.level + 1} (${cost}G) · 공격력 +${Math.round(UPGRADE.perLevel * 100)}%</button>` : ''}</div>`;
-      for (const b of info.querySelectorAll<HTMLButtonElement>('button[data-item]'))
-        b.onclick = () => { if (selected) { g.equip(selected, b.dataset.item!); lastInfoKey = ''; updateUI(); } };
       const up = document.getElementById('upgrade');
       if (up) { (up as HTMLButtonElement).disabled = g.gold < cost!; up.onclick = () => { if (selected && g.upgrade(selected)) { lastInfoKey = ''; updateUI(); } }; }
     } else info.innerHTML = g.towers.length
@@ -217,16 +242,12 @@ function updateUI() {
   }
 
   // 촉매
-  if (g.itemDrops.length) {
-    const got = g.itemDrops.splice(0).map((id) => ITEM.get(id)!.name);
-    toast(`🎁 소품 획득: ${got.join(', ')}`);
-  }
-  const catKey = JSON.stringify(g.catalysts) + g.bag.length;
+  const catKey = JSON.stringify(g.catalysts);
   if (catKey !== lastCatKey) {
     const fresh = new Set(g.drops.splice(0));
     lastCatKey = catKey;
     $('cats').innerHTML = (QA_MODE ? '<span class="qa">QA</span>' : '') + `<span class="stage-name">${ERA_ICON[g.stage.era]} ${g.stage.name}</span>` + CATALYST_IDS.map((id) =>
-      `<span class="c ${g.catalysts[id] ? 'on' : ''} ${fresh.has(id) ? 'flash' : ''}">${CAT_ICON[id]}${g.catalysts[id]}</span>`).join('') + `<span class="c ${g.bag.length ? 'on' : ''}">🎒${g.bag.length}</span>`;
+      `<span class="c ${g.catalysts[id] ? 'on' : ''} ${fresh.has(id) ? 'flash' : ''}">${CAT_ICON[id]}${g.catalysts[id]}</span>`).join('');
   }
 
   // 합성 / 특수 연성
@@ -343,10 +364,11 @@ function draw() {
     ctx.strokeStyle = '#1c1917'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = `900 ${br * 1.3}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(String(p.tier), bx, by + 0.5);
-    if (t.item) {
+    const tool = g.toolOf(t);
+    if (tool) {
       const isz = cell * 0.38, ix = (t.cx + 0.62) * cell, iy = (t.cy + 0.42) * cell;
-      if (isOwner(t.item, p.name)) { ctx.fillStyle = 'rgba(253,224,71,.55)'; ctx.beginPath(); ctx.arc(ix + isz / 2, iy + isz / 2, isz * 0.62, 0, Math.PI * 2); ctx.fill(); }
-      ctx.drawImage(itemSprite(t.item), ix, iy, isz, isz);
+      if (isOwner(tool, p.name)) { ctx.fillStyle = 'rgba(253,224,71,.55)'; ctx.beginPath(); ctx.arc(ix + isz / 2, iy + isz / 2, isz * 0.62, 0, Math.PI * 2); ctx.fill(); }
+      ctx.drawImage(itemSprite(tool), ix, iy, isz, isz);
     }
     if (t.level) {
       ctx.fillStyle = '#22d3ee'; ctx.font = `900 ${cell * 0.2}px sans-serif`;
@@ -375,23 +397,23 @@ function draw() {
   for (const b of g.bullets) {
     const text = b.text.length > 9 ? b.text.slice(0, 8) + '…' : b.text;
     const tw = ctx.measureText(text).width + 10, x = b.x * cell, y = b.y * cell;
-    ctx.fillStyle = b.color === 'rainbow' ? `hsl(${(tick * 3) % 360},90%,72%)` : b.color === 'gold' ? '#fbbf24' : '#fef3c7';
-    ctx.beginPath(); ctx.roundRect(x - tw / 2, y - 9, tw, 18, 8); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(x - 3, y + 8); ctx.lineTo(x + 3, y + 8); ctx.lineTo(x - 5, y + 13); ctx.fill();
-    ctx.fillStyle = '#1c1917'; ctx.fillText(text, x, y);
+    ctx.fillStyle = b.color === 'rainbow' ? `hsl(${(tick * 3) % 360},90%,80%)` : b.color === 'gold' ? '#ffd36b' : '#ffffff';
+    ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(x - tw / 2, y - 9, tw, 18, 9); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#3b2a1e'; ctx.fillText(text, x, y);
   }
 
   if (g.noticeTime > 0) {
     ctx.save(); ctx.globalAlpha = Math.min(1, g.noticeTime);
-    ctx.fillStyle = 'rgba(7,9,14,.85)'; ctx.fillRect(0, w / 2 - cell * 0.45, w, cell * 0.9);
-    ctx.fillStyle = '#fde68a'; ctx.font = `800 ${Math.max(12, cell * 0.32)}px "Noto Sans KR", sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(0, w / 2 - cell * 0.45, w, cell * 0.9);
+    ctx.fillStyle = '#3b2a1e'; ctx.font = `800 ${Math.max(12, cell * 0.32)}px "Noto Sans KR", sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(g.notice, w / 2, w / 2);
     ctx.restore();
   }
 
   if (g.wave === 0 && !g.running && g.countdown < 0) {
-    ctx.fillStyle = 'rgba(7,9,14,.75)'; ctx.fillRect(0, w / 2 - cell * 0.9, w, cell * 1.8);
-    ctx.fillStyle = 'rgba(254,243,199,.85)'; ctx.font = `800 ${cell * 0.22}px "Nanum Myeongjo", serif`;
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(0, w / 2 - cell * 0.9, w, cell * 1.8);
+    ctx.fillStyle = '#3b2a1e'; ctx.font = `800 ${cell * 0.22}px "Nanum Myeongjo", serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = `800 ${cell * 0.4}px "Nanum Myeongjo", serif`;
     ctx.fillText(g.stage.name, w / 2, w / 2 - cell * 0.35);
@@ -403,11 +425,11 @@ function draw() {
 
 // 스테이지별 필드 테마
 const THEME: Record<string, { ground: string; speck: string; speck2: string; road: string; roadEdge: string; roadLine: string; decor: string[] }> = {
-  고대: { ground: '#e7dcc4', speck: '#d6c8a8', speck2: '#f5ecd8', road: '#c8b48a', roadEdge: '#a8916a', roadLine: 'rgba(255,255,255,.5)', decor: ['column', 'olive', 'amphora'] },
-  중세: { ground: '#6b6560', speck: '#57534e', speck2: '#7c766f', road: '#a8a29e', roadEdge: '#44403c', roadLine: 'rgba(253,224,71,.45)', decor: ['candle', 'stone', 'banner'] },
-  동양: { ground: '#9cc77a', speck: '#86b564', speck2: '#b4d896', road: '#d9c39a', roadEdge: '#a68a5b', roadLine: 'rgba(255,255,255,.45)', decor: ['bamboo', 'pine', 'lantern'] },
-  근대: { ground: '#9aa5b1', speck: '#87929e', speck2: '#adb7c2', road: '#6b7280', roadEdge: '#374151', roadLine: 'rgba(250,204,21,.6)', decor: ['gear', 'lamp', 'crate'] },
-  현대: { ground: '#2e1065', speck: '#3b0f84', speck2: '#4c1d95', road: '#1e1b4b', roadEdge: '#a855f7', roadLine: 'rgba(244,114,182,.7)', decor: ['letter', 'crystal', 'screen'] },
+  고대: { ground: '#f6ead2', speck: '#ecdcbc', speck2: '#fff6e4', road: '#fffaf0', roadEdge: '#c9a877', roadLine: 'rgba(255,255,255,.5)', decor: ['column', 'olive', 'amphora'] },
+  중세: { ground: '#d9cdea', speck: '#cbbde0', speck2: '#e6dcf3', road: '#f3eadb', roadEdge: '#8b7aa8', roadLine: 'rgba(139,122,168,.6)', decor: ['candle', 'stone', 'banner'] },
+  동양: { ground: '#cdeeb5', speck: '#bde4a1', speck2: '#ddf5c9', road: '#fff7e2', roadEdge: '#9cbf7a', roadLine: 'rgba(255,255,255,.45)', decor: ['bamboo', 'pine', 'lantern'] },
+  근대: { ground: '#d4dde8', speck: '#c5d0dd', speck2: '#e2e9f1', road: '#fdf6e9', roadEdge: '#7b8ea6', roadLine: 'rgba(123,142,166,.7)', decor: ['gear', 'lamp', 'crate'] },
+  현대: { ground: '#e9d8ff', speck: '#dcc6ff', speck2: '#f3e9ff', road: '#fff0fa', roadEdge: '#b388ff', roadLine: 'rgba(236,72,153,.6)', decor: ['letter', 'crystal', 'screen'] },
 };
 const hash = (n: number) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 function drawDecor(kind: string, x: number, y: number, c: number) {
@@ -439,17 +461,113 @@ function shortName(name: string) {
 }
 
 // ---------- 장착 ----------
-function equipHtml(g: Game, t: Tower) {
+function toolLine(g: Game, t: Tower) {
   const p = PHIL.get(t.philId)!;
-  const cur = t.item ? ITEM.get(t.item)! : null;
-  const curHtml = cur ? `<br><small class="equip">🎒 장착: <img src="${itemUrl(cur.id)}">${cur.name}${isOwner(cur.id, p.name) ? ' <b class="match">찰떡! 공격 +60% · 사거리 +</b>' : ' (공격 +20%)'}</small>` : '';
-  if (!g.bag.length) return curHtml;
-  const uniq = [...new Set(g.bag)].sort((a, b) => Number(isOwner(b, p.name)) - Number(isOwner(a, p.name)));
-  return curHtml + `<div class="bag">${uniq.map((id) => {
-    const it = ITEM.get(id)!; const own = isOwner(id, p.name);
-    const n = g.bag.filter((x) => x === id).length;
-    return `<button data-item="${id}" class="${own ? 'own' : ''}" title="${it.desc}"><img src="${itemUrl(id)}">${it.name}${n > 1 ? '×' + n : ''}${own ? ' ★' : ''}</button>`;
-  }).join('')}</div>`;
+  const lv = cardLevel(progress.cards[p.id] ?? 0);
+  const tool = g.toolOf(t);
+  const parts: string[] = [];
+  if (lv) parts.push(`🎴 카드 Lv.${lv} (공격 ×${cardMult(progress.cards[p.id] ?? 0).toFixed(1)})`);
+  if (tool) { const it = ITEM.get(tool)!; parts.push(`<img src="${itemUrl(tool)}">${it.name}${isOwner(tool, p.name) ? ' <b class="match">찰떡!</b>' : ''}`); }
+  return parts.length ? `<br><small class="equip">${parts.join(' · ')}</small>` : '';
+}
+
+// =============== 허브 탭 ===============
+let currentTab = 'stages';
+function switchTab(tab: string) {
+  currentTab = tab;
+  for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.classList.toggle('on', b.dataset.tab === tab);
+  for (const s of document.querySelectorAll<HTMLElement>('.tab')) s.classList.toggle('hidden', s.id !== `tab-${tab}`);
+  if (tab === 'room') renderRoom();
+  if (tab === 'gacha') renderGacha();
+  if (tab === 'codex') renderCodex();
+  refreshWallet();
+}
+function refreshWallet() {
+  const w = document.getElementById('wallet');
+  if (w) w.textContent = `🤔 ${Math.floor(progress.gonoe).toLocaleString()}`;
+  const r = document.getElementById('room-gonoe');
+  if (r) r.textContent = Math.floor(progress.gonoe).toLocaleString();
+}
+
+// ---------- 고민방 ----------
+let roomThinker = 'T104';
+function renderRoom() {
+  const idle = settleIdle(progress);
+  saveProgress(progress);
+  const owned = PHILOSOPHERS.filter((p) => progress.cards[p.id]);
+  if (!progress.cards[roomThinker] && owned.length) roomThinker = owned.sort((a, b) => b.tier - a.tier)[0].id;
+  const p = PHIL.get(roomThinker)!;
+  const cost = tapUpgradeCost(progress);
+  $('tab-room').innerHTML = `
+    <div class="room">
+      <div class="room-sky"><div class="room-bubble">“${p.quote}”</div>
+        <button id="thinker" class="thinker"><img src="${portrait(p.id)}"></button>
+        <div class="room-floor"></div></div>
+      <div class="room-stat"><span>고뇌</span><b id="room-gonoe">${Math.floor(progress.gonoe).toLocaleString()}</b></div>
+      <p class="hint">${p.name}을(를) 톡톡 두드려 고뇌를 짜내세요. 가만히 둬도 초당 ${(IDLE_PER_SEC * (1 + progress.cleared.length * 0.5)).toFixed(1)}씩 쌓여요 (스테이지 클리어마다 증가, 최대 8시간).${idle ? `<br><b>자리를 비운 사이 고뇌 +${idle.toLocaleString()}</b>` : ''}</p>
+      <div class="row"><button id="tap-up" class="chunky blue">💭 고민의 깊이 Lv.${progress.tapLevel + 1} → ${progress.tapLevel + 2}<small>탭당 +${tapGain(progress)} → +${tapGain(progress) + 1} · ${cost.toLocaleString()} 고뇌</small></button></div>
+      <p class="hint">고민방 주인은 도감에서 바꿀 수 있어요.</p>
+    </div>`;
+  $('thinker').onclick = (ev) => {
+    progress.gonoe += tapGain(progress);
+    saveProgress(progress);
+    refreshWallet();
+    const f = document.createElement('span');
+    f.className = 'float'; f.textContent = `+${tapGain(progress)}`;
+    f.style.left = `${(ev as MouseEvent).offsetX + 20}px`;
+    $('thinker').appendChild(f); setTimeout(() => f.remove(), 900);
+    $('thinker').classList.remove('squish'); void $('thinker').offsetWidth; $('thinker').classList.add('squish');
+  };
+  const up = $<HTMLButtonElement>('tap-up');
+  up.disabled = progress.gonoe < cost;
+  up.onclick = () => { if (progress.gonoe >= cost) { progress.gonoe -= cost; progress.tapLevel++; saveProgress(progress); renderRoom(); } };
+}
+
+// ---------- 뽑기 ----------
+function renderGacha() {
+  const rates = CARD_RATES.map((r) => `<span class="tier-chip t${r.tier}">${r.tier}★ ${(r.rate * 100).toFixed(1)}%</span>`).join(' ');
+  $('tab-gacha').innerHTML = `
+    <div class="gacha-box card-box">
+      <h2>🎴 철학자 카드</h2>
+      <p class="hint">같은 철학자 카드가 1·2·4·8·16…장 모일 때마다 레벨업! 레벨당 전투 공격력 +${CARD_ATK_PER_LEVEL * 100}% (최대 Lv.${CARD_MAX_LEVEL})</p>
+      <div class="rates-line">${rates}</div>
+      <div class="row"><button class="chunky pink" data-pull="card1">1회 <small>${CARD_COST} 고뇌</small></button><button class="chunky gold" data-pull="card10">10회 <small>${CARD_COST_10} 고뇌</small></button></div>
+    </div>
+    <div class="gacha-box tool-box">
+      <h2>🧰 도구 상자</h2>
+      <p class="hint">뽑은 도구는 도감에서 철학자에게 장착해요. 아무에게나 공격 +20%, <b>주인에게 끼우면 찰떡!</b> 공격 +60%·사거리 증가</p>
+      <div class="row"><button class="chunky mint" data-pull="tool1">1회 <small>${TOOL_COST} 고뇌</small></button><button class="chunky gold" data-pull="tool10">10회 <small>${TOOL_COST_10} 고뇌</small></button></div>
+    </div>`;
+  for (const b of $('tab-gacha').querySelectorAll<HTMLButtonElement>('[data-pull]')) {
+    const kind = b.dataset.pull!.startsWith('card') ? 'card' : 'tool';
+    const times = b.dataset.pull!.endsWith('10') ? 10 : 1;
+    const cost = kind === 'card' ? (times === 1 ? CARD_COST : CARD_COST_10) : (times === 1 ? TOOL_COST : TOOL_COST_10);
+    b.disabled = progress.gonoe < cost;
+    b.onclick = () => {
+      const before = { ...progress.cards };
+      const got = pull(progress, kind, times as 1 | 10);
+      if (!got) return;
+      saveProgress(progress); refreshWallet(); renderGacha();
+      revealPulls(kind, got, before);
+    };
+  }
+}
+
+function revealPulls(kind: 'card' | 'tool', got: string[], before: Record<string, number>) {
+  const counted: Record<string, number> = { ...before };
+  const cells = got.map((id, i) => {
+    if (kind === 'tool') {
+      const it = ITEMS.find((x) => x.id === id)!;
+      return `<div class="reveal tool" style="animation-delay:${i * 0.08}s"><img src="${itemUrl(id)}"><b>${it.name}</b><small>${it.owners.map((o) => o.split(' ').pop()).join('·')}의 찰떡</small></div>`;
+    }
+    const p = PHIL.get(id)!;
+    const prev = cardLevel(counted[id] ?? 0);
+    counted[id] = (counted[id] ?? 0) + 1;
+    const now = cardLevel(counted[id]);
+    const tag = prev === 0 ? '<i class="new">NEW</i>' : now > prev ? `<i class="lvup">Lv.${now}!</i>` : '';
+    return `<div class="reveal t${p.tier} ${p.tier >= 5 ? 'shine' : ''}" style="animation-delay:${i * 0.08}s">${tag}<img src="${portrait(id)}"><b>${p.name}</b><small>${'★'.repeat(p.tier)}</small></div>`;
+  }).join('');
+  alertBox(`<h2>${kind === 'card' ? '🎴 카드 공개!' : '🧰 도구 획득!'}</h2><div class="reveal-grid ${got.length === 1 ? 'single' : ''}">${cells}</div>`);
 }
 
 // ---------- 조합표 · 확률표 ----------
@@ -503,10 +621,13 @@ function loop(now: number) {
 // ---------- 시작 ----------
 $('open-recipes').onclick = recipeSheet;
 $('open-rates').onclick = rateSheet;
+for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.onclick = () => switchTab(b.dataset.tab!);
 $('b-recipes').onclick = recipeSheet;
-$('open-codex').onclick = () => { renderCodex(); show('codex'); };
-$('codex-back').onclick = () => show('home');
-$('reset').onclick = () => { if (window.confirm('클리어 기록과 도감을 모두 지울까요?')) { resetProgress(); progress = loadProgress(); renderHome(); } };
+$('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); progress = loadProgress(); bootQA(); renderHome(); switchTab('stages'); } };
+function bootQA() { if (QA_MODE && progress.gonoe < 1000 && !progress.cards.qa) { progress.gonoe += QA_GONOE; progress.cards.qa = 1; saveProgress(progress); } }
+bootQA();
 renderHome();
 show('home');
+switchTab('stages');
+setInterval(() => { if (!game) { settleIdle(progress); saveProgress(progress); refreshWallet(); } }, 1000);
 requestAnimationFrame(loop);
