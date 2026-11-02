@@ -1,13 +1,15 @@
 import { Game, GRID, QA_MODE, CATALYST_IDS, MAX_WAVE, type Tower } from './game';
 import { STAGE_PATHS } from './paths';
+import { ITEM, isOwner, ITEM_BONUS } from './items';
 import {
   PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, MAX_MERGE_TIER, UPGRADE, type Stage,
 } from './data';
-import { philosopherSprite, monsterSprite, TIER_AURA } from './sprites';
+import { philosopherSprite, monsterSprite, itemSprite, TIER_AURA } from './sprites';
 import { loadProgress, saveProgress, resetProgress } from './save';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const spriteUrl = new Map<string, string>();
+const itemUrl = (id: string) => itemSprite(id).toDataURL();
 const portrait = (id: string) => {
   if (!spriteUrl.has(id)) spriteUrl.set(id, philosopherSprite(PHIL.get(id)!).toDataURL());
   return spriteUrl.get(id)!;
@@ -86,6 +88,14 @@ function cardHtml(id: string) {
   </div>`;
 }
 function showCard(id: string) { alertBox(cardHtml(id)); }
+
+function toast(text: string) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = text;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
 
 function alertBox(html: string) {
   const o = document.createElement('div');
@@ -185,7 +195,7 @@ function updateUI() {
 
   // 정보창
   const info = $('info');
-  const infoKey = `${selected?.uid}|${selected?.philId}|${selected?.level}|${g.towers.length > 0}|${selected && g.upgradeCost(selected) !== null ? g.gold >= g.upgradeCost(selected)! : ''}`;
+  const infoKey = `${selected?.uid}|${selected?.philId}|${selected?.level}|${selected?.item}|${g.bag.join()}|${g.towers.length > 0}|${selected && g.upgradeCost(selected) !== null ? g.gold >= g.upgradeCost(selected)! : ''}`;
   if (infoKey !== lastInfoKey) {
     lastInfoKey = infoKey;
     info.className = '';
@@ -195,7 +205,10 @@ function updateUI() {
       const lv = selected.level ? ` <span class="tag lv">Lv.${selected.level}</span>` : '';
       info.className = `t${p.tier}`;
       info.innerHTML = `<img src="${portrait(p.id)}"><div><b>${'★'.repeat(p.tier)} ${p.name}</b>${lv} · ${p.school}<br>“${p.quote}”<br><small>${p.lore}</small>${p.id === g.stage.counter ? '<br><small class="counter">⚔ 이 스테이지 보스에게 피해 3배</small>' : ''}
+        ${equipHtml(g, selected)}
         ${cost !== null ? `<br><button id="upgrade" class="up">⬆ 강화 Lv.${selected.level + 1} (${cost}G) · 공격력 +${Math.round(UPGRADE.perLevel * 100)}%</button>` : ''}</div>`;
+      for (const b of info.querySelectorAll<HTMLButtonElement>('button[data-item]'))
+        b.onclick = () => { if (selected) { g.equip(selected, b.dataset.item!); lastInfoKey = ''; updateUI(); } };
       const up = document.getElementById('upgrade');
       if (up) { (up as HTMLButtonElement).disabled = g.gold < cost!; up.onclick = () => { if (selected && g.upgrade(selected)) { lastInfoKey = ''; updateUI(); } }; }
     } else info.innerHTML = g.towers.length
@@ -204,12 +217,16 @@ function updateUI() {
   }
 
   // 촉매
-  const catKey = JSON.stringify(g.catalysts);
+  if (g.itemDrops.length) {
+    const got = g.itemDrops.splice(0).map((id) => ITEM.get(id)!.name);
+    toast(`🎁 소품 획득: ${got.join(', ')}`);
+  }
+  const catKey = JSON.stringify(g.catalysts) + g.bag.length;
   if (catKey !== lastCatKey) {
     const fresh = new Set(g.drops.splice(0));
     lastCatKey = catKey;
     $('cats').innerHTML = (QA_MODE ? '<span class="qa">QA</span>' : '') + `<span class="stage-name">${ERA_ICON[g.stage.era]} ${g.stage.name}</span>` + CATALYST_IDS.map((id) =>
-      `<span class="c ${g.catalysts[id] ? 'on' : ''} ${fresh.has(id) ? 'flash' : ''}">${CAT_ICON[id]}${g.catalysts[id]}</span>`).join('');
+      `<span class="c ${g.catalysts[id] ? 'on' : ''} ${fresh.has(id) ? 'flash' : ''}">${CAT_ICON[id]}${g.catalysts[id]}</span>`).join('') + `<span class="c ${g.bag.length ? 'on' : ''}">🎒${g.bag.length}</span>`;
   }
 
   // 합성 / 특수 연성
@@ -326,6 +343,11 @@ function draw() {
     ctx.strokeStyle = '#1c1917'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = `900 ${br * 1.3}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(String(p.tier), bx, by + 0.5);
+    if (t.item) {
+      const isz = cell * 0.38, ix = (t.cx + 0.62) * cell, iy = (t.cy + 0.42) * cell;
+      if (isOwner(t.item, p.name)) { ctx.fillStyle = 'rgba(253,224,71,.55)'; ctx.beginPath(); ctx.arc(ix + isz / 2, iy + isz / 2, isz * 0.62, 0, Math.PI * 2); ctx.fill(); }
+      ctx.drawImage(itemSprite(t.item), ix, iy, isz, isz);
+    }
     if (t.level) {
       ctx.fillStyle = '#22d3ee'; ctx.font = `900 ${cell * 0.2}px sans-serif`;
       ctx.fillText(`+${t.level}`, (t.cx + 0.85) * cell, (t.cy + 0.15) * cell);
@@ -414,6 +436,20 @@ const SHORT: Record<string, string> = { '엘레아의 제논': '제논', '오컴
 function shortName(name: string) {
   const s = SHORT[name] ?? name.split(' ').pop()!;
   return s.length > 5 ? s.slice(0, 5) : s;
+}
+
+// ---------- 장착 ----------
+function equipHtml(g: Game, t: Tower) {
+  const p = PHIL.get(t.philId)!;
+  const cur = t.item ? ITEM.get(t.item)! : null;
+  const curHtml = cur ? `<br><small class="equip">🎒 장착: <img src="${itemUrl(cur.id)}">${cur.name}${isOwner(cur.id, p.name) ? ' <b class="match">찰떡! 공격 +60% · 사거리 +</b>' : ' (공격 +20%)'}</small>` : '';
+  if (!g.bag.length) return curHtml;
+  const uniq = [...new Set(g.bag)].sort((a, b) => Number(isOwner(b, p.name)) - Number(isOwner(a, p.name)));
+  return curHtml + `<div class="bag">${uniq.map((id) => {
+    const it = ITEM.get(id)!; const own = isOwner(id, p.name);
+    const n = g.bag.filter((x) => x === id).length;
+    return `<button data-item="${id}" class="${own ? 'own' : ''}" title="${it.desc}"><img src="${itemUrl(id)}">${it.name}${n > 1 ? '×' + n : ''}${own ? ' ★' : ''}</button>`;
+  }).join('')}</div>`;
 }
 
 // ---------- 조합표 · 확률표 ----------

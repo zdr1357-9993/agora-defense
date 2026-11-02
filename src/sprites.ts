@@ -70,7 +70,7 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
     px(8, 5, 8, 8, skin);
     px(9, 8, 2, 2, '#0f172a'); px(13, 8, 2, 2, '#0f172a');
     px(9, 8, 1, 1, '#ffffff'); px(13, 8, 1, 1, '#ffffff');
-    if (is('바뤼흐 스피노자', '임마누엘 칸트', '에드문트 후설', '고틀로프 프레게', '장 폴 사르트르', '엠마누엘 레비나스', '미셸 푸코')) {
+    if (is('바뤼흐 스피노자', '임마누엘 칸트', '에드문트 후설', '고틀로프 프레게', '장 폴 사르트르', '엠마누엘 레비나스', '에마뉘엘 레비나스', '지그문트 프로이트', '테오도어 아도르노', '니시다 기타로', '미셸 푸코')) {
       px(8, 7, 4, 3, '#38bdf8'); px(12, 7, 4, 3, '#38bdf8');
       px(9, 8, 2, 1, '#0f172a'); px(13, 8, 2, 1, '#0f172a');
     }
@@ -136,6 +136,20 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
     else if (is('바울')) { px(19, 7, 1, 8, '#cbd5e1'); px(18, 14, 3, 1, '#ca8a04'); px(2, 12, 3, 5, '#fef3c7'); }
     else if (is('이븐 시나')) { px(18, 11, 4, 5, '#38bdf8'); px(19, 10, 2, 1, '#e0f2fe'); }
     else if (is('블레즈 파스칼')) { px(18, 12, 5, 4, '#a16207'); px(19, 13, 1, 1, '#fde047'); px(21, 13, 1, 1, '#fde047'); }
+    else if (is('지그문트 프로이트')) { px(15, 11, 5, 1, '#92400e'); px(20, 11, 1, 1, '#f97316'); px(20, 8, 2, 2, '#e5e7eb'); }
+    else if (is('자크 라캉')) { px(18, 8, 4, 6, '#f0abfc'); px(19, 9, 2, 4, '#e0f2fe'); px(19, 14, 2, 3, '#a16207'); }
+    else if (is('한나 아렌트')) { px(15, 11, 5, 1, '#f5f5f4'); px(20, 11, 1, 1, '#f97316'); px(20, 8, 2, 2, '#e5e7eb'); }
+    else if (is('질 들뢰즈')) { px(18, 9, 1, 8, '#16a34a'); px(20, 7, 1, 10, '#16a34a'); px(22, 10, 1, 7, '#16a34a'); }
+    else if (is('에마뉘엘 레비나스')) { px(18, 9, 5, 6, '#fef3c7'); px(19, 11, 1, 1, '#1c1917'); px(21, 11, 1, 1, '#1c1917'); px(20, 13, 1, 1, '#9f1239'); }
+    else if (is('테오도어 아도르노')) { px(19, 7, 1, 8, '#1c1917'); px(17, 14, 3, 2, '#1c1917'); px(20, 7, 3, 1, '#1c1917'); }
+    else if (is('니시다 기타로')) { px(17, 9, 6, 1, '#1c1917'); px(17, 9, 1, 6, '#1c1917'); px(22, 9, 1, 5, '#1c1917'); px(17, 15, 5, 1, '#1c1917'); }
+    else if (is('루트비히 비트겐슈타인')) { px(18, 8, 4, 8, '#bae6fd'); px(19, 7, 2, 1, '#78350f'); px(19, 11, 2, 2, '#1c1917'); }
+    else if (is('마르틴 하이데거')) { px(19, 8, 2, 10, '#92400e'); px(20, 7, 3, 4, '#94a3b8'); }
+    else if (is('게오르크 헤겔')) { px(18, 9, 5, 6, '#a16207'); px(19, 10, 1, 1, '#fde047'); px(21, 10, 1, 1, '#fde047'); }
+    else if (is('아르투어 쇼펜하우어')) { px(17, 13, 6, 4, '#f5f5f4'); px(21, 11, 3, 3, '#f5f5f4'); px(22, 12, 1, 1, '#1c1917'); }
+    else if (is('쇠렌 키르케고르')) { px(19, 6, 1, 12, '#1c1917'); px(16, 6, 7, 2, '#1c1917'); }
+    else if (is('고틀로프 프레게')) { px(18, 10, 5, 6, '#fef3c7'); px(19, 12, 3, 1, '#1d4ed8'); px(20, 11, 1, 3, '#1d4ed8'); }
+    else if (is('버트런드 러셀')) { px(15, 11, 4, 1, '#78350f'); px(18, 10, 2, 2, '#451a03'); px(19, 7, 2, 2, '#cbd5e1'); }
     else if (is('노자')) { px(19, 8, 2, 10, '#78350f'); px(18, 7, 4, 2, '#a16207'); }
     else if (is('장자')) { px(18, 7, 2, 3, '#f472b6'); px(21, 7, 2, 3, '#f472b6'); px(20, 8, 1, 2, '#1e293b'); }
     else if (is('원효')) { px(18, 11, 5, 4, '#f5f5f4'); px(19, 12, 1, 1, '#0f172a'); px(21, 12, 1, 1, '#0f172a'); }
@@ -176,4 +190,34 @@ export function monsterSprite(era: string, kind: 'early' | 'late' | 'boss'): HTM
   });
   monsterCache.set(key, s);
   return s;
+}
+
+// ---------- 장착 아이템 아이콘 (12x12) ----------
+const itemCache = new Map<string, HTMLCanvasElement>();
+export function itemSprite(id: string): HTMLCanvasElement {
+  const hit = itemCache.get(id);
+  if (hit) return hit;
+  const c = document.createElement('canvas');
+  c.width = c.height = 12;
+  const ctx = c.getContext('2d')!;
+  const px = (x: number, y: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); };
+  switch (id) {
+    case 'cup': px(3, 2, 6, 5, '#a3a3a3'); px(4, 3, 4, 2, '#4d7c0f'); px(5, 7, 2, 3, '#a3a3a3'); px(3, 10, 6, 1, '#a3a3a3'); break;
+    case 'watch': px(3, 3, 6, 6, '#fbbf24'); px(4, 4, 4, 4, '#fff'); px(6, 5, 1, 2, '#1c1917'); px(5, 1, 2, 2, '#fbbf24'); break;
+    case 'hammer': px(5, 4, 2, 8, '#92400e'); px(2, 1, 8, 3, '#94a3b8'); break;
+    case 'razor': px(5, 1, 2, 6, '#e2e8f0'); px(5, 7, 2, 4, '#78350f'); break;
+    case 'flybottle': px(3, 3, 6, 8, '#bae6fd'); px(4, 1, 4, 2, '#78350f'); px(5, 6, 2, 2, '#1c1917'); break;
+    case 'cigar': px(1, 5, 9, 2, '#92400e'); px(10, 5, 1, 2, '#f97316'); px(9, 2, 2, 2, '#e5e7eb'); break;
+    case 'pipe': px(1, 4, 6, 1, '#78350f'); px(7, 3, 3, 4, '#451a03'); px(8, 1, 2, 1, '#e5e7eb'); break;
+    case 'mirror': px(3, 1, 6, 7, '#f0abfc'); px(4, 2, 4, 5, '#e0f2fe'); px(5, 8, 2, 3, '#a16207'); break;
+    case 'owl': px(2, 2, 8, 9, '#a16207'); px(3, 4, 2, 2, '#fde047'); px(7, 4, 2, 2, '#fde047'); px(5, 7, 2, 1, '#f97316'); break;
+    case 'lotus': px(1, 7, 10, 3, '#f9a8d4'); px(3, 4, 6, 3, '#fbcfe8'); px(5, 2, 2, 2, '#fdf2f8'); break;
+    case 'skull': px(2, 2, 8, 7, '#f5f5f4'); px(3, 4, 2, 2, '#1c1917'); px(7, 4, 2, 2, '#1c1917'); px(4, 9, 4, 2, '#f5f5f4'); break;
+    case 'book': px(2, 2, 8, 9, '#b45309'); px(3, 3, 6, 7, '#fef3c7'); px(5, 3, 1, 7, '#b45309'); break;
+    case 'crane': px(5, 1, 1, 10, '#78350f'); px(2, 1, 8, 1, '#78350f'); px(3, 2, 1, 4, '#94a3b8'); px(8, 2, 1, 4, '#94a3b8'); break;
+    case 'axe': px(5, 2, 2, 9, '#92400e'); px(6, 1, 4, 4, '#94a3b8'); break;
+    case 'lantern': px(3, 2, 6, 8, '#fde047'); px(4, 3, 4, 6, '#fef9c3'); px(4, 1, 4, 1, '#1c1917'); px(4, 10, 4, 1, '#1c1917'); break;
+  }
+  itemCache.set(id, c);
+  return c;
 }
