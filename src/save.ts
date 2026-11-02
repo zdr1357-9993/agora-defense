@@ -37,6 +37,8 @@ export interface Progress {
   skinOn: Record<string, string>;
   /** 최애 원툴 도전 최고 기록 (철학자별 웨이브) */
   oneToolBest: Record<string, number>;
+  /** 💗 저장한 목표 조합 (조합식 ID) */
+  likedRecipes?: string[];
 }
 
 const fresh = (): Progress => ({ cleared: [], seen: [], gonoe: 300, idleAt: Date.now(), cards: { T101: 1 }, items: {}, loadout: {}, tapLevel: 0, gems: 100, pity: 0, tickets: 0, purchases: [], firstClears: [], tutorialDone: false, skins: [], skinOn: {}, oneToolBest: {} });

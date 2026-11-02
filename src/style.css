@@ -279,3 +279,20 @@ button.small { font-size: 12px; padding: 2px 10px; }
 .pc-skins button { font-size: 12px; padding: 3px 8px; border-width: 2px; box-shadow: 0 3px 0 var(--line); border-radius: 10px; } .pc-skins button.on { background: var(--pink); }
 .onetool { display: flex; gap: 10px; align-items: center; text-align: left; background: linear-gradient(135deg, #ffe1ec, #fff3d6); padding: 8px 12px; }
 .onetool img { width: 52px; height: 52px; image-rendering: pixelated; flex: none; } .onetool b { font-size: 17px; font-weight: 400; } .onetool small { display: block; font-family: 'Noto Sans KR'; font-size: 11.5px; }
+
+/* 모바일: 두 번 탭 확대·길게 눌러 선택 방지 */
+html, body, button, canvas, .screen { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#field { touch-action: none; }
+input { -webkit-user-select: text; user-select: text; font-size: 16px; }
+/* 목표 조합 */
+.goal { width: 100%; font-size: 12px; background: #fff0f6; border: 2px solid #f9a8d4; border-radius: 10px; padding: 3px 8px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.goal b { font-family: 'Jua'; font-weight: 400; color: #be185d; } .goal span { color: #b8a999; } .goal span.have { color: #059669; font-weight: 700; } .goal i { margin-left: auto; font-style: normal; font-family: 'Jua'; }
+.rrow { position: relative; } .rrow.liked { background: #fff0f6; }
+.like { position: absolute; top: 6px; right: 6px; padding: 0 6px; font-size: 16px; border-width: 2px; box-shadow: 0 2px 0 var(--line); border-radius: 10px; background: #fff; }
+
+/* 좁은 화면 HUD */
+#hud { gap: 2px; padding: 4px 6px; flex-wrap: nowrap; }
+#hud > button { padding: 2px 7px; font-size: 13px; flex: none; }
+#hud #quit { border: 2px solid #c4b5a5; }
+#hud .diff-chip { padding: 0 4px; font-size: 14px; }
+@media (max-width: 400px) { #hud { font-size: 14px; } .wave-pill { width: 60px; } .wave-track { width: 50px; } #mute-b { display: none; } }

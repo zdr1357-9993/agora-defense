@@ -228,6 +228,8 @@ function startBattle(s: Stage, oneTool?: string) {
     awaken: (id) => awakenLevel(progress.cards[id] ?? 0),
     tool: (id) => { const t = progress.loadout[id]; return t && progress.items[t] ? t : undefined; },
   }, oneTool ? 'normal' : diffId, oneTool);
+  // 마스터 계정은 전장에 들어갈 때 무조건 골드 10000
+  if (me?.role === 'master') game.gold = 10000;
   selected = null;
   resultShown = false;
   introT = 2.8;
@@ -292,7 +294,8 @@ function updateUI() {
   $('wave').textContent = String(g.wave);
   $('wave-max').textContent = String(g.maxWave);
   $<HTMLElement>('wave-bar').style.width = `${(g.wave / g.maxWave) * 100}%`;
-  $('diff-chip').textContent = `${g.diff.icon} ${g.diff.name}`;
+  $('diff-chip').textContent = g.diff.icon;
+  $('diff-chip').title = g.diff.name;
   $('cost').textContent = String(g.summonCost);
   $<HTMLButtonElement>('summon').disabled = g.gold < g.summonCost || !!g.over;
   $<HTMLButtonElement>('sell').disabled = !selected;
@@ -350,11 +353,20 @@ function updateUI() {
   const recipes = g.over ? [] : g.availableRecipes()
     .sort((a, b) => Number(g.hasCatalyst(b)) - Number(g.hasCatalyst(a)) || PHIL.get(b.result)!.tier - PHIL.get(a.result)!.tier)
     .slice(0, 3);
-  const key = merges.join() + '|' + recipes.map((r) => r.id + g.hasCatalyst(r)).join();
+  const goals = RECIPES.filter((r) => (progress.likedRecipes ?? []).includes(r.id));
+  const key = merges.join() + '|' + recipes.map((r) => r.id + g.hasCatalyst(r)).join() + '|' + goals.map((r) => g.ownedMaterials(r).join('')).join();
   if (key !== lastSynthKey) {
     lastSynthKey = key;
     const box = $('synth');
     box.innerHTML = '';
+    for (const r of goals) {
+      const res = PHIL.get(r.result)!, own = g.ownedMaterials(r);
+      const known = QA_MODE || progress.seen.includes(res.id);
+      const el = document.createElement('div');
+      el.className = 'goal';
+      el.innerHTML = `💗 <b>${known ? res.name : '???'}</b> ${r.materials.map((m, i) => `<span class="${own[i] ? 'have' : ''}">${own[i] ? '✔' : '·'}${shortName(PHIL.get(m)!.name)}</span>`).join('')}${r.catalyst ? `<span class="${g.catalysts[r.catalyst] ? 'have' : ''}">${CAT_ICON[r.catalyst]}</span>` : ''} <i>${own.filter(Boolean).length}/${own.length}</i>`;
+      box.appendChild(el);
+    }
     for (const tier of merges.slice(0, 2)) {
       const b = document.createElement('button');
       b.className = 'merge';
@@ -781,8 +793,9 @@ function renderShop() {
 // ---------- 조합표 · 확률표 ----------
 function recipeSheet() {
   const g = game;
+  const liked = new Set(progress.likedRecipes ?? []);
   const rows = RECIPES.filter((r) => !PHIL.get(r.result)!.hidden || progress.seen.includes(r.result))
-    .sort((a, b) => PHIL.get(a.result)!.tier - PHIL.get(b.result)!.tier);
+    .sort((a, b) => Number(liked.has(b.id)) - Number(liked.has(a.id)) || PHIL.get(a.result)!.tier - PHIL.get(b.result)!.tier);
   const html = rows.map((r) => {
     const res = PHIL.get(r.result)!;
     const owned = g ? g.ownedMaterials(r) : r.materials.map(() => false);
@@ -793,10 +806,21 @@ function recipeSheet() {
     const cat = r.catalyst ? `<b class="plus">+</b><span class="mat cat ${g && g.catalysts[r.catalyst] ? 'have' : ''}">${CAT_ICON[r.catalyst]}</span>` : '';
     const ready = g && owned.every(Boolean) && g.hasCatalyst(r);
     const known = QA_MODE || progress.seen.includes(res.id);
-    return `<div class="rrow ${ready ? 'ready' : ''}"><div class="res t${res.tier} ${known ? '' : 'unknown'}"><img src="${portrait(res.id)}"><b>${known ? res.name : '??? (처음 연성하면 공개)'}</b><i>${'★'.repeat(res.tier)}</i></div>
+    return `<div class="rrow ${ready ? 'ready' : ''} ${liked.has(r.id) ? 'liked' : ''}"><button class="like" data-like="${r.id}">${liked.has(r.id) ? '💗' : '🤍'}</button><div class="res t${res.tier} ${known ? '' : 'unknown'}"><img src="${portrait(res.id)}"><b>${known ? res.name : '??? (처음 연성하면 공개)'}</b><i>${'★'.repeat(res.tier)}</i></div>
       <div class="mats">${mats}${cat}</div><small>${r.logic}</small></div>`;
   }).join('');
-  alertBox(`<h2>📜 조합표</h2><p class="hint">초록 테두리 = 지금 전장에 있는 재료</p><div class="rlist">${html}</div>`);
+  alertBox(`<h2>📜 조합표</h2><p class="hint">초록 테두리 = 지금 전장에 있는 재료 · 🤍를 누르면 목표 조합으로 저장돼 전투 중 계속 보여요</p><div class="rlist">${html}</div>`);
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-like]')) b.onclick = (e) => {
+    e.stopPropagation();
+    const id = b.dataset.like!;
+    const list = new Set(progress.likedRecipes ?? []);
+    if (list.has(id)) list.delete(id); else list.add(id);
+    progress.likedRecipes = [...list];
+    saveProgress(progress);
+    document.querySelector('.overlay')?.remove();
+    lastSynthKey = '';
+    recipeSheet();
+  };
 }
 
 function rateSheet() {
@@ -990,6 +1014,21 @@ function loop(now: number) {
   }
   requestAnimationFrame(loop);
 }
+
+// ---------- 모바일: 두 번 탭 확대 / 핀치 확대 막기 (iOS 사파리는 viewport 설정을 무시함) ----------
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  const el = e.target as HTMLElement;
+  if (now - lastTouchEnd < 350 && !el.closest('input')) {
+    e.preventDefault(); // 확대 막기
+    const b = el.closest('button') as HTMLButtonElement | null;
+    if (b && !b.disabled) b.click(); // 대신 연타는 그대로 눌리게
+  }
+  lastTouchEnd = now;
+}, { passive: false });
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('dblclick', (e) => e.preventDefault());
 
 // ---------- 시작 ----------
 $('open-recipes').onclick = recipeSheet;
