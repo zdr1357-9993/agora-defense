@@ -36,3 +36,5 @@ button:disabled { opacity: .4; }
 #synth button { font-size: 12.5px; padding: 7px 10px; text-align: left; }
 #field { flex: none; }
 #dock { flex: none; }
+#synth button.merge { background: #0369a1; animation: pulse2 1s infinite alternate; }
+@keyframes pulse2 { to { background: #38bdf8; color: #07090e; } }

@@ -31,6 +31,10 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
     if (p.era === '중세') { robe = '#78350f'; trim = '#fbbf24'; }
     else if (p.era === '근대') { robe = ['#1e3a8a', '#7f1d1d', '#14532d', '#312e81', '#4c1d95'][n % 5]; trim = '#fde047'; }
     else if (p.era === '현대') { robe = ['#18181b', '#334155', '#3f3f46', '#1e1b4b'][n % 4]; trim = '#e2e8f0'; }
+    const east = ['유학', '도가', '불교'].includes(p.school);
+    if (p.school === '유학') { robe = n % 2 ? '#1e3a5f' : '#e7e5e4'; trim = '#0f172a'; }
+    if (p.school === '도가') { robe = '#d6d3d1'; trim = '#57534e'; }
+    if (p.school === '불교') { robe = '#ea580c'; trim = '#9a3412'; }
     if (is('카를 마르크스')) { robe = '#991b1b'; trim = '#ef4444'; }
     if (is('프리드리히 니체')) { robe = '#1e1b4b'; trim = '#f43f5e'; }
     if (is('임마누엘 칸트')) { robe = '#1d4ed8'; trim = '#fbbf24'; }
@@ -41,7 +45,8 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
       px(9, 13, 1, 8, '#78350f'); px(14, 13, 1, 8, '#78350f');
     } else {
       px(7, 13, 10, 8, robe);
-      if (p.era === '고대') { px(7, 13, 4, 8, trim); px(9, 14, 6, 1, '#cbd5e1'); }
+      if (east) { px(11, 13, 2, 8, trim); px(7, 19, 10, 1, trim); px(6, 15, 2, 5, robe); px(16, 15, 2, 5, robe); }
+      else if (p.era === '고대') { px(7, 13, 4, 8, trim); px(9, 14, 6, 1, '#cbd5e1'); }
       else if (p.era === '중세') { px(11, 13, 2, 8, trim); px(9, 15, 6, 2, trim); }
       else { px(11, 13, 2, 7, '#ffffff'); px(11, 14, 2, 5, trim); px(6, 14, 2, 5, robe); px(16, 14, 2, 5, robe); }
     }
@@ -56,7 +61,23 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
     }
 
     // 머리와 수염
-    if (is('소크라테스', '미셸 푸코')) {
+    if (p.school === '불교') {
+      // 삭발 + 염주
+      px(8, 5, 8, 1, skin);
+      for (let i = 0; i < 5; i++) px(8 + i * 2, 13, 1, 1, '#78350f');
+    } else if (is('퇴계 이황', '율곡 이이', '다산 정약용')) {
+      // 갓 + 수염
+      px(4, 5, 16, 1, '#0f172a'); px(8, 1, 8, 4, '#1e293b'); px(8, 4, 8, 1, '#0f172a');
+      px(9, 11, 6, 3, '#1e293b'); px(11, 14, 2, 1, '#1e293b');
+    } else if (p.school === '유학') {
+      // 상투 + 유건 + 긴 수염
+      px(7, 4, 10, 2, '#0f172a'); px(10, 1, 4, 3, '#0f172a');
+      px(9, 11, 6, 2, '#0f172a'); px(10, 13, 4, 3, '#0f172a');
+    } else if (p.school === '도가') {
+      // 흰 머리 + 긴 흰 수염
+      px(7, 4, 10, 2, '#f1f5f9'); px(10, 2, 4, 2, '#f1f5f9');
+      px(8, 11, 8, 3, '#f8fafc'); px(9, 14, 6, 3, '#f1f5f9');
+    } else if (is('소크라테스', '미셸 푸코')) {
       px(7, 6, 1, 3, '#cbd5e1'); px(16, 6, 1, 3, '#cbd5e1');
       if (is('소크라테스')) { px(8, 11, 8, 4, '#e2e8f0'); px(9, 15, 6, 1, '#cbd5e1'); }
     } else if (is('프리드리히 니체')) {
@@ -87,6 +108,11 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
     else if (is('임마누엘 칸트')) { px(18, 11, 4, 4, '#fbbf24'); px(19, 12, 2, 2, '#ffffff'); }
     else if (is('프리드리히 니체', '카를 마르크스')) { px(19, 9, 2, 9, '#92400e'); px(17, 7, 6, 3, '#94a3b8'); }
     else if (is('장 폴 사르트르')) { px(15, 11, 4, 1, '#78350f'); px(18, 10, 2, 2, '#451a03'); px(19, 7, 2, 2, '#cbd5e1'); }
+    else if (is('노자')) { px(19, 8, 2, 10, '#78350f'); px(18, 7, 4, 2, '#a16207'); }
+    else if (is('장자')) { px(18, 7, 2, 3, '#f472b6'); px(21, 7, 2, 3, '#f472b6'); px(20, 8, 1, 2, '#1e293b'); }
+    else if (is('원효')) { px(18, 11, 5, 4, '#f5f5f4'); px(19, 12, 1, 1, '#0f172a'); px(21, 12, 1, 1, '#0f172a'); }
+    else if (is('다산 정약용')) { px(19, 6, 1, 11, '#78350f'); px(17, 6, 5, 1, '#78350f'); px(18, 7, 1, 3, '#94a3b8'); px(21, 7, 1, 3, '#94a3b8'); }
+    else if (p.school === '유학' || p.school === '불교') { px(18, 10, 3, 7, '#fef3c7'); px(18, 10, 3, 1, '#a16207'); px(18, 16, 3, 1, '#a16207'); }
     else if (is('자크 데리다')) { px(2, 6, 3, 3, '#a855f7'); px(19, 8, 3, 3, '#22d3ee'); }
     else { px(18, 12, 4, 5, '#fef3c7'); px(18, 12, 4, 1, '#d97706'); px(18, 16, 4, 1, '#d97706'); }
   });

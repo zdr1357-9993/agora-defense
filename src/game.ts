@@ -96,6 +96,25 @@ export class Game {
     return [...used];
   }
 
+  /** 같은 철학자 3명 → 한 등급 위 무작위 (5성 제외) */
+  mergeable(): string[] {
+    const count = new Map<string, number>();
+    for (const t of this.towers) count.set(t.philId, (count.get(t.philId) ?? 0) + 1);
+    return [...count].filter(([id, n]) => n >= 3 && PHIL.get(id)!.tier < 5).map(([id]) => id);
+  }
+
+  mergeThree(philId: string) {
+    const same = this.towers.filter((t) => t.philId === philId).slice(0, 3);
+    if (same.length < 3) return null;
+    const tier = PHIL.get(philId)!.tier;
+    const pool = PHILOSOPHERS.filter((p) => p.tier === tier + 1);
+    const keep = same[0];
+    this.towers = this.towers.filter((t) => !same.includes(t) || t === keep);
+    keep.philId = pool[Math.floor(Math.random() * pool.length)].id;
+    keep.cd = 0;
+    return keep;
+  }
+
   hasCatalyst(r: Recipe) { return !r.catalyst || this.catalysts[r.catalyst] > 0; }
 
   synthesize(r: Recipe) {

@@ -89,17 +89,26 @@ function updateUI() {
   const recipes = game.over ? [] : game.availableRecipes()
     .sort((a, b) => Number(game.hasCatalyst(b)) - Number(game.hasCatalyst(a)) || PHIL.get(b.result)!.tier - PHIL.get(a.result)!.tier)
     .slice(0, 3);
-  const key = recipes.map((r) => r.id + game.hasCatalyst(r)).join();
+  const merges = game.over ? [] : game.mergeable();
+  const key = merges.join() + '|' + recipes.map((r) => r.id + game.hasCatalyst(r)).join();
   if (key !== lastSynthKey) {
     lastSynthKey = key;
     const box = $('synth');
     box.innerHTML = '';
+    for (const id of merges.slice(0, 2)) {
+      const p = PHIL.get(id)!;
+      const b = document.createElement('button');
+      b.className = 'merge';
+      b.textContent = `🎲 ${p.name} ×3 → 무작위 ${p.tier + 1}성`;
+      b.onclick = () => { selected = game.mergeThree(id); updateUI(); };
+      box.appendChild(b);
+    }
     for (const r of recipes) {
       const b = document.createElement('button');
       const res = PHIL.get(r.result)!;
       const cat = r.catalyst ? ` + ${CAT_ICON[r.catalyst]}` : '';
       const ok = game.hasCatalyst(r);
-      b.textContent = `⚗ ${ok ? '즉시 연성!' : '촉매 부족'} ${r.materials.map((m) => PHIL.get(m)!.name).join('+')}${cat} → ${res.name}`;
+      b.textContent = `⚗ ${ok ? '특수 연성!' : '촉매 부족'} ${r.materials.map((m) => PHIL.get(m)!.name).join('+')}${cat} → ${res.name}`;
       if (!ok) { b.disabled = true; b.classList.add('locked'); }
       b.onclick = () => { const t = game.synthesize(r); selected = t; updateUI(); };
       box.appendChild(b);
