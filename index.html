@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>철학사 랜덤 디펜스</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="hud">
+      <span>💰 <b id="gold">0</b></span>
+      <span>🧠 <b id="lives">0</b></span>
+      <span>🌊 <b id="wave">0</b>/10</span>
+      <button id="speed">1x</button>
+    </header>
+    <canvas id="field"></canvas>
+    <section id="context"><div id="info">철학자를 소환하세요.</div><div id="synth"></div></section>
+    <nav id="dock">
+      <button id="summon">소환 <small>(<span id="cost">50</span>G)</small></button>
+      <button id="sell">판매</button>
+      <button id="start">웨이브 시작</button>
+    </nav>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
