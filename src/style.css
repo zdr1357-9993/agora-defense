@@ -72,3 +72,25 @@ small { color: #94a3b8; }
 #dock { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: none; }
 #dock button:first-child { background: linear-gradient(135deg, #f59e0b, #d97706); color: #07090e; }
 #dock button:first-child:disabled { background: #26324d; color: #e2e8f0; }
+.card.t6 { border-color: #e879f9; } .t6 { border-left: 4px solid #e879f9; }
+
+.tier-chip { border-radius: 6px; padding: 0 6px; font-size: 11px; color: #07090e; font-weight: 900; }
+.tier-chip.t1 { background: #94a3b8; } .tier-chip.t2 { background: #38bdf8; } .tier-chip.t3 { background: #a855f7; color: #fff; }
+.tier-chip.t4 { background: #f59e0b; } .tier-chip.t5 { background: #ef4444; color: #fff; } .tier-chip.t6 { background: linear-gradient(90deg,#f472b6,#fbbf24,#34d399,#38bdf8,#a78bfa); }
+.tier-chip[class] { border-left: 0; }
+.card.t6 { border-image: linear-gradient(90deg,#f472b6,#fbbf24,#34d399,#38bdf8,#a78bfa) 1; border-top-width: 3px; border-top-style: solid; }
+.t6 { border-left: 4px solid #e879f9; }
+.tag.lv { background: #0e7490; }
+button.up { margin-top: 6px; padding: 6px 10px; font-size: 12.5px; background: linear-gradient(135deg,#0891b2,#0e7490); }
+.pop { max-height: 88vh; overflow-y: auto; }
+.rlist { display: flex; flex-direction: column; gap: 8px; }
+.rrow { background: #0b1019; border: 1px solid #1e293b; border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.rrow.ready { border-color: #22c55e; box-shadow: 0 0 0 1px #22c55e inset; }
+.rrow .res { display: flex; align-items: center; gap: 6px; border-left-width: 4px; padding-left: 6px; }
+.rrow .res img { width: 32px; height: 32px; image-rendering: pixelated; } .rrow .res i { color: #fbbf24; font-style: normal; font-size: 11px; }
+.mats { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.mat { display: inline-flex; align-items: center; gap: 3px; background: #182032; border: 1px solid #334155; border-left-width: 3px; border-radius: 6px; padding: 2px 6px 2px 2px; font-size: 12px; }
+.mat img { width: 20px; height: 20px; image-rendering: pixelated; } .mat i { color: #64748b; font-style: normal; font-size: 10px; }
+.mat.have { border-color: #22c55e; background: #052e1b; } .mat.cat { padding: 2px 6px; }
+.plus { color: #64748b; }
+table.rates { width: 100%; border-collapse: collapse; font-size: 13px; } .rates th, .rates td { padding: 5px 4px; border-bottom: 1px solid #1e293b; text-align: left; } .rates th { color: #fbbf24; }

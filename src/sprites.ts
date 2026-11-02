@@ -2,7 +2,7 @@
 // 시대별 복장 + 인물별 시그니처(소크라테스 대머리, 니체 콧수염, 디오게네스 통 등)
 import type { Philosopher } from './data';
 
-export const TIER_AURA = ['', '#64748b', '#38bdf8', '#a855f7', '#f59e0b', '#ef4444'];
+export const TIER_AURA = ['', '#64748b', '#38bdf8', '#a855f7', '#f59e0b', '#ef4444', '#e879f9'];
 
 type Px = (x: number, y: number, w: number, h: number, c: string) => void;
 
@@ -24,7 +24,8 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
 
   const sprite = makeSprite((px) => {
     px(5, 21, 14, 2, TIER_AURA[p.tier]);
-    if (p.tier >= 4) px(3, 20, 18, 1, p.tier === 5 ? '#f43f5e' : '#fbbf24');
+    if (p.tier >= 4) px(3, 20, 18, 1, p.tier === 6 ? '#22d3ee' : p.tier === 5 ? '#f43f5e' : '#fbbf24');
+    if (p.tier === 6) { px(2, 19, 20, 1, '#fde047'); px(1, 4, 1, 2, '#e879f9'); px(22, 6, 1, 2, '#22d3ee'); px(2, 1, 1, 1, '#fde047'); }
 
     const skin = ['#fde68a', '#fed7aa', '#fbcfe8', '#fef08a'][n % 4];
     let robe = '#f1f5f9', trim = '#38bdf8';

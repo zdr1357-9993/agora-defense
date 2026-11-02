@@ -1,5 +1,5 @@
 import {
-  PHIL, PHILOSOPHERS, RECIPES, TIER_STATS, EXPEDITION_MULT, COUNTER_MULT,
+  PHIL, PHILOSOPHERS, RECIPES, TIER_STATS, COUNTER_MULT, SUMMON_RATES, MAX_MERGE_TIER, UPGRADE,
   type Recipe, type Stage,
 } from './data';
 
@@ -13,7 +13,7 @@ export const QA_MODE = new URLSearchParams(location.search).get('qa') !== '0';
 const START_GOLD = QA_MODE ? 10000 : 200;
 export const CATALYST_IDS = ['C001', 'C002', 'C003', 'C004', 'C005'];
 
-export interface Tower { uid: number; philId: string; cx: number; cy: number; cd: number }
+export interface Tower { uid: number; philId: string; cx: number; cy: number; cd: number; level: number }
 export interface Enemy { uid: number; hp: number; maxHp: number; dist: number; speed: number; boss: boolean; reward: number; name: string }
 export interface Bullet { x: number; y: number; target: number; dmg: number; text: string; color: string }
 
@@ -47,7 +47,7 @@ export class Game {
   running = false;
   over: 'win' | 'lose' | null = null;
 
-  constructor(public stage: Stage, public deck: string[]) {}
+  constructor(public stage: Stage) {}
 
   towerAt(cx: number, cy: number) { return this.towers.find((t) => t.cx === cx && t.cy === cy); }
 
@@ -61,18 +61,20 @@ export class Game {
     const cells = this.emptyCells();
     if (!cells.length) return null;
     const [cx, cy] = pick(cells);
-    const t = { uid: uidSeq++, philId, cx, cy, cd: 0 };
+    const t = { uid: uidSeq++, philId, cx, cy, cd: 0, level: 0 };
     this.towers.push(t);
     this.discovered.add(philId);
     return t;
   }
 
-  /** 덱에 넣은 시대들의 1성 중 무작위 소환 */
+  /** 등급 확률표(SUMMON_RATES)대로 등급을 뽑고, 그 등급에서 무작위 1명 */
   summon() {
     if (this.gold < this.summonCost || !this.emptyCells().length) return null;
     this.gold -= this.summonCost;
     this.summonCost += 5;
-    return this.place(pick(PHILOSOPHERS.filter((p) => p.tier === 1 && this.deck.includes(p.era))).id);
+    let r = Math.random(), tier = 1;
+    for (const s of SUMMON_RATES) { if (r < s.rate) { tier = s.tier; break; } r -= s.rate; }
+    return this.place(pick(PHILOSOPHERS.filter((p) => p.tier === tier && !p.hidden)).id);
   }
 
   sell(t: Tower) {
@@ -86,44 +88,50 @@ export class Game {
     t.cx = cx; t.cy = cy;
   }
 
-  // ---------- 원정과 대화 ----------
-  isForeign(t: Tower) {
-    const era = PHIL.get(t.philId)!.era;
-    return era !== this.stage.era && era !== '히든';
+  // ---------- 강화 (5성 이상) ----------
+  upgradeCost(t: Tower) {
+    const p = PHIL.get(t.philId)!;
+    if (p.tier < 5 || t.level >= UPGRADE.maxLevel) return null;
+    return UPGRADE.baseCost[p.tier] * (t.level + 1);
   }
 
-  /** 원정 온 철학자가 현지(스테이지 시대) 철학자와 이웃해 있으면 "대화" 중 */
-  inDialogue(t: Tower) {
-    return this.towers.some((o) => o !== t && Math.abs(o.cx - t.cx) <= 1 && Math.abs(o.cy - t.cy) <= 1
-      && PHIL.get(o.philId)!.era === this.stage.era);
-  }
-
-  powerMult(t: Tower) {
-    return this.isForeign(t) && !this.inDialogue(t) ? EXPEDITION_MULT : 1;
+  upgrade(t: Tower) {
+    const cost = this.upgradeCost(t);
+    if (cost === null || this.gold < cost) return false;
+    this.gold -= cost;
+    t.level++;
+    return true;
   }
 
   // ---------- 합성 ----------
-  /** 같은 철학자 3명 → 같은 시대 한 등급 위 무작위 */
-  mergeable(): string[] {
-    const count = new Map<string, number>();
-    for (const t of this.towers) count.set(t.philId, (count.get(t.philId) ?? 0) + 1);
-    return [...count].filter(([id, n]) => {
-      const p = PHIL.get(id)!;
-      return n >= 3 && p.tier < 5 && !p.hidden;
-    }).map(([id]) => id);
+  /** 같은 등급 아무나 3명 → 다음 등급 무작위 (1~3성) */
+  mergeable(): number[] {
+    const n = [0, 0, 0, 0, 0, 0, 0];
+    for (const t of this.towers) { const p = PHIL.get(t.philId)!; if (!p.hidden) n[p.tier]++; }
+    const out: number[] = [];
+    for (let tier = MAX_MERGE_TIER; tier >= 1; tier--) if (n[tier] >= 3) out.push(tier);
+    return out;
   }
 
-  mergeThree(philId: string) {
-    const same = this.towers.filter((t) => t.philId === philId).slice(0, 3);
-    if (same.length < 3) return null;
-    const p = PHIL.get(philId)!;
-    const pool = PHILOSOPHERS.filter((x) => x.era === p.era && x.tier === p.tier + 1 && !x.hidden);
-    const keep = same[0];
-    this.towers = this.towers.filter((t) => !same.includes(t) || t === keep);
-    keep.philId = pick(pool).id;
+  /** 조합식 재료로 쓰이는 사람은 아껴 두고, 같은 사람이 겹친 것부터 합친다 */
+  mergeThree(tier: number) {
+    const group = this.towers.filter((t) => { const p = PHIL.get(t.philId)!; return p.tier === tier && !p.hidden; });
+    const dup = (t: Tower) => group.filter((x) => x.philId === t.philId).length;
+    group.sort((a, b) => dup(b) - dup(a));
+    const used = group.slice(0, 3);
+    if (used.length < 3) return null;
+    const keep = used[0];
+    this.towers = this.towers.filter((t) => !used.includes(t) || t === keep);
+    keep.philId = pick(PHILOSOPHERS.filter((x) => x.tier === tier + 1 && !x.hidden)).id;
     keep.cd = 0;
     this.discovered.add(keep.philId);
     return keep;
+  }
+
+  /** 조합표용: 이 조합에서 지금 가진 재료 */
+  ownedMaterials(r: Recipe) {
+    const pool = this.towers.map((t) => t.philId);
+    return r.materials.map((m) => { const i = pool.indexOf(m); if (i >= 0) pool.splice(i, 1); return i >= 0; });
   }
 
   availableRecipes(): Recipe[] { return RECIPES.filter((r) => this.pickMaterials(r) !== null); }
@@ -148,6 +156,7 @@ export class Game {
     this.towers = this.towers.filter((t) => !mats.includes(t) || t === keep);
     keep.philId = r.result;
     keep.cd = 0;
+    keep.level = 0;
     this.discovered.add(r.result);
     return keep;
   }
@@ -209,9 +218,9 @@ export class Game {
       }
       if (!best) continue;
       t.cd = st.cooldown;
-      let dmg = st.dmg * this.powerMult(t);
+      let dmg = st.dmg * (1 + UPGRADE.perLevel * t.level);
       if (best.boss && t.philId === this.stage.counter) dmg *= COUNTER_MULT;
-      this.bullets.push({ x: tx, y: ty, target: best.uid, dmg, text: p.quote, color: p.tier >= 4 ? 'gold' : this.powerMult(t) < 1 ? 'dim' : '' });
+      this.bullets.push({ x: tx, y: ty, target: best.uid, dmg, text: p.quote, color: p.tier >= 6 ? 'rainbow' : p.tier >= 4 ? 'gold' : '' });
     }
 
     for (const b of this.bullets) {

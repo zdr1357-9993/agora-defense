@@ -19,6 +19,7 @@ const recipes = rows('Recipes').map((r) => ({
 const catalysts = rows('Catalysts').map((r) => ({
   id: r.catalyst_id, name: r.name, concept: r.concept, effect: r.effect, drop: r.drop_source,
 }));
+const rates = rows('Rates').map((r) => ({ tier: Number(r.tier), rate: Number(r.summon_rate) }));
 const stages = rows('Stages').map((r) => ({
   id: r.stage_id, era: r.era, name: r.name, unlockAfter: r.unlock_after || null,
   enemyEarly: r.enemy_early, enemyLate: r.enemy_late, boss10: r.boss_10, boss20: r.boss_20,
@@ -38,12 +39,13 @@ for (const r of recipes) {
   }
 }
 for (const s of stages) if (!byId.get(s.counter)) errors.push(`${s.id}: 없는 카운터 ${s.counter}`);
-for (const era of new Set(philosophers.filter((p) => !p.hidden).map((p) => p.era)))
-  for (let t = 1; t <= 5; t++)
-    if (!philosophers.some((p) => p.era === era && p.tier === t && !p.hidden)) errors.push(`${era}: ${t}성이 없음 (합성 사다리 끊김)`);
+for (let t = 1; t <= 4; t++)
+  if (!philosophers.some((p) => p.tier === t && !p.hidden)) errors.push(`${t}성이 비어 있음 (합성 사다리 끊김)`);
+const total = rates.reduce((a, r) => a + r.rate, 0);
+if (Math.abs(total - 1) > 0.001) errors.push(`소환 확률 합이 100%가 아님: ${(total * 100).toFixed(1)}%`);
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
 
 mkdirSync('src/data', { recursive: true });
-for (const [n, d] of Object.entries({ philosophers, recipes, catalysts, stages }))
+for (const [n, d] of Object.entries({ philosophers, recipes, catalysts, stages, rates }))
   writeFileSync(`src/data/${n}.json`, JSON.stringify(d, null, 2));
-console.log(`✓ 철학자 ${philosophers.length} · 조합식 ${recipes.length} · 촉매 ${catalysts.length} · 스테이지 ${stages.length}`);
+console.log(`✓ 철학자 ${philosophers.length} · 조합식 ${recipes.length} · 촉매 ${catalysts.length} · 스테이지 ${stages.length} · 확률 ${rates.map((r) => r.tier + '성 ' + Math.round(r.rate * 100) + '%').join(' ')}`);
