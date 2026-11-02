@@ -1,5 +1,9 @@
 // 진행 상황 저장 (브라우저 localStorage, 실패해도 게임은 계속)
-const KEY = 'agora_progress_v3';
+const BASE_KEY = 'agora_progress_v3';
+let account = 'guest';
+/** 로그인한 계정별로 저장 칸을 나눈다 */
+export function setAccount(id: string) { account = id; }
+const KEY_OF = () => `${BASE_KEY}:${account}`;
 
 export interface Progress {
   cleared: string[];
@@ -30,20 +34,22 @@ export interface Progress {
 
 const fresh = (): Progress => ({ cleared: [], seen: [], gonoe: 300, idleAt: Date.now(), cards: { T101: 1 }, items: {}, loadout: {}, tapLevel: 0, gems: 100, pity: 0, tickets: 0, purchases: [], firstClears: [], tutorialDone: false });
 
+export function hasSave() { try { return !!localStorage.getItem(KEY_OF()); } catch { return false; } }
+
 export function loadProgress(): Progress {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY_OF());
     if (raw) return { ...fresh(), ...JSON.parse(raw) };
   } catch { /* 저장소 사용 불가 */ }
   return fresh();
 }
 
 export function saveProgress(p: Progress) {
-  try { localStorage.setItem(KEY, JSON.stringify(p)); } catch { /* 무시 */ }
+  try { localStorage.setItem(KEY_OF(), JSON.stringify(p)); } catch { /* 무시 */ }
 }
 
 export function resetProgress() {
-  try { localStorage.removeItem(KEY); } catch { /* 무시 */ }
+  try { localStorage.removeItem(KEY_OF()); } catch { /* 무시 */ }
 }
 
 // ---------- 카드 레벨: 1·2·4·8·16·32… 장 모일 때마다 레벨업 ----------

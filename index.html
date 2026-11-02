@@ -16,6 +16,10 @@
         <h1 class="title"><span class="gold">AGORA</span> 철학사 랜덤 디펜스</h1>
         <span class="top-right"><button id="mute" class="icon-btn">🔊</button><span id="wallet" class="wallet">🤔 0</span></span>
       </header>
+      <div class="acct-bar"><span id="who"></span><button id="logout" class="ghost small">로그아웃</button></div>
+      <div id="admin-bar" class="admin-bar hidden">👑 마스터
+        <button id="admin-gems">재화 지급</button><button id="admin-unlock">전부 클리어</button><button id="admin-cards">카드·도구 지급</button>
+      </div>
       <div id="tab-stages" class="tab">
         <p class="slogan">사유하라, 조합하라, 도그마를 논파하라!</p>
         <div id="stages"></div>
@@ -63,6 +67,19 @@
         <button id="start">웨이브 시작</button>
       </nav>
     </section>
+  </div>
+  <div id="login" class="login hidden">
+    <form id="login-form" class="login-card" autocomplete="on">
+      <div id="login-card">
+        <div class="login-art">🏛</div>
+        <h1 class="title"><span class="gold">AGORA</span></h1>
+        <p class="slogan">철학사 랜덤 디펜스</p>
+        <input id="login-id" placeholder="아이디" autocomplete="username" autocapitalize="off" />
+        <input id="login-pw" type="password" placeholder="비밀번호" inputmode="numeric" autocomplete="current-password" />
+        <p id="login-err" class="err"></p>
+        <button type="submit" class="chunky gold">입장하기</button>
+      </div>
+    </form>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>

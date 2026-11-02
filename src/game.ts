@@ -16,7 +16,9 @@ export const BOSS_WAVES = [10, 20];
 export const HP_GROWTH = 1.3;
 
 // QA 모드: 주소 뒤에 ?qa=1 (전 스테이지 해금·재화 지급). 기본은 처음 시작하는 상태
-export const QA_MODE = typeof location === 'undefined' ? false : new URLSearchParams(location.search).get('qa') === '1';
+export let QA_MODE = typeof location === 'undefined' ? false : new URLSearchParams(location.search).get('qa') === '1';
+/** 마스터 계정 로그인 시 QA(전부 해금) 권한 */
+export function setQA(on: boolean) { QA_MODE = on; }
 const START_GOLD = QA_MODE ? 10000 : 200;
 export const CATALYST_IDS = ['C001', 'C002', 'C003', 'C004', 'C005'];
 

@@ -250,3 +250,18 @@ button.up { margin-top: 6px; padding: 5px 10px; font-size: 13px; background: var
 .hub-top .title .gold { font-size: 20px; }
 .wallet { font-size: 13px; padding: 3px 10px; }
 @media (max-width: 400px) { .hub-top .title { font-size: 0; } .hub-top .title .gold { font-size: 20px; } }
+
+/* 로그인 */
+.login { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 20px;
+  background: radial-gradient(circle at 50% 30%, #fff8ec, #ffe1ec 60%, #dff1ff); }
+.login-card { width: 100%; max-width: 340px; }
+#login-card { background: #fff; border: 3px solid var(--line); border-radius: 28px; padding: 24px 20px; box-shadow: 0 6px 0 var(--line); display: flex; flex-direction: column; gap: 10px; text-align: center; }
+.login-art { font-size: 64px; animation: bob 1.6s infinite ease-in-out; }
+#login-card .title { font-size: 30px; }
+#login-card input { font-family: 'Jua'; font-size: 18px; padding: 10px 14px; border: 3px solid var(--line); border-radius: 14px; background: #fffaf0; color: var(--ink); outline: none; }
+#login-card input:focus { background: #fff3d6; }
+.err { color: #dc2626; font-size: 13px; min-height: 18px; }
+.acct-bar { display: flex; justify-content: space-between; align-items: center; font-family: 'Jua'; font-size: 13px; color: var(--ink-soft); margin: -4px 2px; }
+button.small { font-size: 12px; padding: 2px 10px; }
+.admin-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: #fff3d6; border: 2px dashed #e3a72f; border-radius: 14px; padding: 6px 8px; font-family: 'Jua'; font-size: 13px; }
+.admin-bar button { font-size: 12px; padding: 3px 8px; border-width: 2px; box-shadow: 0 2px 0 var(--line); border-radius: 10px; }

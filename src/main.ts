@@ -1,4 +1,5 @@
-import { Game, GRID, QA_MODE, CATALYST_IDS, type Tower, type FxEvent } from './game';
+import { Game, GRID, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
+import { login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
 import { STAGE_PATHS } from './paths';
 import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
 import { ITEM, isOwner, ITEM_BONUS } from './items';
@@ -8,7 +9,7 @@ import {
 import { philosopherSprite, monsterSprite, itemSprite, TIER_AURA } from './sprites';
 import { SKILLS } from './skills';
 import { sfx, isMuted, toggleMute } from './sfx';
-import { loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL } from './save';
+import { setAccount, hasSave, loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL } from './save';
 import { settleIdle, tapGain, tapUpgradeCost, battleReward, pull, canAfford, PULLS, SHOP, buy, CUR_ICON, PITY_LIMIT, FIRST_CLEAR_GEMS, CARD_RATES, QA_GONOE, QA_GEMS, IDLE_PER_SEC, type PullOption } from './meta';
 import { ITEMS } from './items';
 
@@ -21,6 +22,7 @@ const portrait = (id: string) => {
 };
 
 let progress = loadProgress();
+let me: Account | null = null;
 
 const clearedStages = () => STAGES.filter((s) => progress.cleared.includes(s.id)).length;
 
@@ -948,8 +950,9 @@ for (const id of ['mute', 'mute-b']) { const b = document.getElementById(id); if
 $('b-recipes').onclick = recipeSheet;
 $('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); progress = loadProgress(); bootQA(); renderHome(); switchTab('stages'); } };
 function bootQA() { if (QA_MODE && !progress.purchases.includes('qa')) { progress.gonoe += QA_GONOE; progress.gems += QA_GEMS; progress.tickets += 5; progress.purchases.push('qa'); saveProgress(progress); } }
-bootQA();
-if (!progress.tutorialDone) {
+
+function welcome() {
+  if (progress.tutorialDone) return;
   progress.tutorialDone = true; saveProgress(progress);
   setTimeout(() => alertBox(`<h2>🏛 아고라에 오신 걸 환영해요!</h2>
     <p>도그마들이 아고라로 몰려오고 있어요.<br>철학자를 소환하고, 합치고, 조합해서 막아 주세요.</p>
@@ -961,8 +964,50 @@ if (!progress.tutorialDone) {
     </div>
     <p>첫 선물로 🤔 300 · 💎 100 · 탈레스 카드를 드려요.<br>먼저 <b>아테네의 광장 · 쉬움</b>부터!</p>`), 300);
 }
-renderHome();
-show('home');
-switchTab('stages');
-setInterval(() => { if (!game) { settleIdle(progress, clearedStages()); saveProgress(progress); refreshWallet(); } }, 1000);
+
+/** 로그인 후 계정 진입 */
+function enter(acc: Account) {
+  me = acc;
+  rememberLogin(acc.id);
+  setAccount(acc.id);
+  setQA(acc.role === 'master' || new URLSearchParams(location.search).get('qa') === '1');
+  const isNew = !hasSave();
+  progress = loadProgress();
+  if (isNew && acc.role === 'veteran') { seedVeteran(progress); saveProgress(progress); }
+  bootQA();
+  spriteUrl.clear();
+  $('who').textContent = `👤 ${acc.id}${acc.role === 'master' ? ' 👑' : ''}`;
+  $('admin-bar').classList.toggle('hidden', acc.role !== 'master');
+  $('login').classList.add('hidden');
+  welcome();
+  renderHome();
+  show('home');
+  switchTab('stages');
+}
+
+function showLogin() {
+  me = null;
+  show('home');
+  $('login').classList.remove('hidden');
+  const id = $<HTMLInputElement>('login-id'), pw = $<HTMLInputElement>('login-pw');
+  pw.value = ''; $('login-err').textContent = '';
+  setTimeout(() => (id.value ? pw : id).focus(), 50);
+}
+
+$<HTMLFormElement>('login-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const acc = await login($<HTMLInputElement>('login-id').value, $<HTMLInputElement>('login-pw').value);
+  if (!acc) { $('login-err').textContent = '아이디 또는 비밀번호가 맞지 않아요'; shakeEl($('login-card')); return; }
+  sfx.reveal(5);
+  enter(acc);
+};
+$('logout').onclick = () => { if (window.confirm('로그아웃할까요?')) { rememberLogin(null); showLogin(); } };
+$('admin-gems').onclick = () => { progress.gems += 10000; progress.gonoe += 100000; progress.tickets += 10; saveProgress(progress); refreshWallet(); toast('👑 재화 지급 완료'); };
+$('admin-unlock').onclick = () => { for (const s of STAGES) for (const d of DIFFICULTIES) { const k = clearKey(s.id, d.id); if (!progress.cleared.includes(k)) progress.cleared.push(k); } for (const s of STAGES) if (!progress.cleared.includes(s.id)) progress.cleared.push(s.id); saveProgress(progress); renderHome(); toast('👑 전 스테이지·난이도 클리어 처리'); };
+$('admin-cards').onclick = () => { for (const p of PHILOSOPHERS) { progress.cards[p.id] = (progress.cards[p.id] ?? 0) + 16; if (!progress.seen.includes(p.id)) progress.seen.push(p.id); } for (const it of ITEMS) progress.items[it.id] = (progress.items[it.id] ?? 0) + 1; saveProgress(progress); toast('👑 모든 카드 +16장 · 도구 전부 지급'); };
+
+const remembered = lastLogin();
+if (remembered) { $<HTMLInputElement>('login-id').value = remembered.id; }
+showLogin();
+setInterval(() => { if (!game && me) { settleIdle(progress, clearedStages()); saveProgress(progress); refreshWallet(); } }, 1000);
 requestAnimationFrame(loop);
