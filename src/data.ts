@@ -14,7 +14,9 @@ export interface Stage {
   enemyEarly: string; enemyLate: string; boss10: string; boss20: string; counter: string; story: string;
 }
 
-export const PHILOSOPHERS = philosophersJson as Philosopher[];
+import { SKILLS, describe } from './skills';
+// 스킬 설명은 실제로 작동하는 효과(skills.ts)에서 자동 생성
+export const PHILOSOPHERS = (philosophersJson as Philosopher[]).map((p) => ({ ...p, skillDesc: describe(SKILLS[p.name]) || p.skillDesc }));
 export const RECIPES = recipesJson as Recipe[];
 export const STAGES = stagesJson as Stage[];
 export const CATALYSTS = catalystsJson as { id: string; name: string }[];

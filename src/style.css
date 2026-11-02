@@ -183,3 +183,4 @@ button.up { margin-top: 6px; padding: 5px 10px; font-size: 13px; background: var
 #dock button small { font-size: 11px; }
 #context { background: linear-gradient(180deg, #fff, #fffaf0); }
 #hud { font-size: 15px; } #hud > span { white-space: nowrap; } #hud .diff-chip { font-size: 12px; }
+.skill-line { color: #7c3aed !important; font-weight: 700; }
