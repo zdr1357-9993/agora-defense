@@ -1,6 +1,7 @@
 import { Game, GRID, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
 import { login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
 import { STAGE_PATHS } from './paths';
+import { STAGE_STARS, ERA_BONUS, STAR_BONUS } from './affinity';
 import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
 import { ITEM, isOwner, ITEM_BONUS } from './items';
 import {
@@ -84,7 +85,7 @@ function renderHome() {
       continue;
     }
     b.innerHTML = `<img src="${portrait(hero.id)}"><div><b>${ERA_ICON[s.era]} ${s.name}</b>${cleared ? ' <span class="badge">CLEAR</span>' : ''}
-      <small><span class="marks">${marks}</span> ${open ? `${STAGE_PATHS[s.id].caption}<br>최종 보스: ${s.boss20} · 수호자: ${hero.name}` : !isUnlocked(s) ? `🔒 ${STAGES.find((x) => x.id === s.unlockAfter)?.name} 클리어 시 해금` : `🔒 이 스테이지의 ${DIFFICULTIES[DIFFICULTIES.findIndex((d) => d.id === diffId) - 1]?.name} 클리어 시 해금`}</small></div>`;
+      <small><span class="marks">${marks}</span> ${open ? `${STAGE_PATHS[s.id].caption}<br>최종 보스: ${s.boss20} · 수호자: ${hero.name}<br><span class="stars-line">🏠 강해지는 철학자: ${(STAGE_STARS[s.id] ?? []).map((n) => shortName(PHILOSOPHERS.find((p) => p.realName === n)?.name ?? n)).join('·')} (+${STAR_BONUS * 100}%) · ${s.era} 철학자 +${ERA_BONUS * 100}%</span>` : !isUnlocked(s) ? `🔒 ${STAGES.find((x) => x.id === s.unlockAfter)?.name} 클리어 시 해금` : `🔒 이 스테이지의 ${DIFFICULTIES[DIFFICULTIES.findIndex((d) => d.id === diffId) - 1]?.name} 클리어 시 해금`}</small></div>`;
     b.onclick = () => startBattle(s);
     box.appendChild(b);
   }
@@ -329,7 +330,7 @@ function updateUI() {
       const cost = g.upgradeCost(selected);
       const lv = selected.level ? ` <span class="tag lv">Lv.${selected.level}</span>` : '';
       info.className = `t${p.tier}`;
-      info.innerHTML = `<img src="${portrait(p.id)}"><div><b>${'★'.repeat(p.tier)} ${p.name}</b>${lv} · ${p.school}<br>“${p.quote}”<br><small class="type-line">${TYPE_ICON[statsOf(p.id).type]} ${statsOf(p.id).type} · ${statsOf(p.id).target} 우선 · 사거리 ${statsOf(p.id).range}칸</small><br><small class="skill-line">✦ ${p.skill}: ${p.skillDesc}</small>${p.id === g.stage.counter ? '<br><small class="counter">⚔ 이 스테이지 보스에게 피해 3배</small>' : ''}
+      info.innerHTML = `<img src="${portrait(p.id)}"><div><b>${'★'.repeat(p.tier)} ${p.name}</b>${lv} · ${p.school}<br>“${p.quote}”<br><small class="type-line">${TYPE_ICON[statsOf(p.id).type]} ${statsOf(p.id).type} · ${statsOf(p.id).target} 우선 · 사거리 ${statsOf(p.id).range}칸</small><br><small class="skill-line">✦ ${p.skill}: ${p.skillDesc}</small>${p.id === g.stage.counter ? '<br><small class="counter">⚔ 이 스테이지 보스에게 피해 3배</small>' : ''}${g.home(selected).kind === 'star' ? `<br><small class="home">🏠 ${g.stage.name}의 핵심 인물! 공격력 +${STAR_BONUS * 100}%</small>` : g.home(selected).kind === 'era' ? `<br><small class="home">🏠 ${g.stage.era} 철학자 · 공격력 +${ERA_BONUS * 100}%</small>` : ''}
         ${toolLine(g, selected)}
         ${cost !== null ? `<br><button id="upgrade" class="up">⬆ 강화 Lv.${selected.level + 1} (${cost}G) · 공격력 +${Math.round(UPGRADE.perLevel * 100)}%</button>` : ''}</div>`;
       const up = document.getElementById('upgrade');
@@ -461,6 +462,8 @@ function draw() {
     const cx = (t.cx + 0.5) * cell, foot = (t.cy + 0.9) * cell;
     const isSel = t === selected;
     if (isSel) { ctx.fillStyle = 'rgba(251,191,36,.55)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
+    const hk = g.home(t).kind;
+    if (hk) { ctx.fillStyle = hk === 'star' ? 'rgba(255,211,107,.75)' : 'rgba(167,236,210,.6)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.15, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.32, cell * 0.11, 0, 0, Math.PI * 2); ctx.fill();
     if (p.tier >= 6) {
       ctx.save(); ctx.globalAlpha = 0.35 + 0.2 * Math.sin(tick * 0.08);
@@ -496,6 +499,7 @@ function draw() {
       if (isOwner(tool, p.realName)) { ctx.fillStyle = 'rgba(253,224,71,.55)'; ctx.beginPath(); ctx.arc(ix + isz / 2, iy + isz / 2, isz * 0.62, 0, Math.PI * 2); ctx.fill(); }
       ctx.drawImage(itemSprite(tool), ix, iy, isz, isz);
     }
+    if (hk === 'star') { ctx.font = `${cell * 0.22}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('🏠', (t.cx + 0.86) * cell, (t.cy + 0.78) * cell); }
     if (t.level) {
       ctx.fillStyle = '#22d3ee'; ctx.font = `900 ${cell * 0.2}px sans-serif`;
       ctx.fillText(`+${t.level}`, (t.cx + 0.85) * cell, (t.cy + 0.15) * cell);

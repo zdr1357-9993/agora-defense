@@ -6,6 +6,7 @@ import {
 import { ITEM_BONUS, isOwner } from './items';
 import { DIFF, type Difficulty } from './difficulty';
 import { SKILLS, type Skill } from './skills';
+import { homeBonus } from './affinity';
 import { N, STAGE_PATHS, pathCells, pathLength, pointAt, type Layout } from './paths';
 
 // 9x9 격자: 스테이지마다 길 모양이 다르고, 길이 아닌 칸에 타워를 배치
@@ -159,6 +160,9 @@ export class Game {
     if (base.kind === 'third' || base.kind === 'gold') return { ...base, v2: (base.v2 ?? 2) * (1 + 0.2 * aw), v: base.kind === 'gold' ? base.v * (1 + 0.2 * aw) : base.v };
     return { ...base, v: Math.min(0.9, base.v * (1 + 0.2 * aw)) };
   }
+
+  /** 고향 보너스 (스테이지 시대·핵심 인물) */
+  home(t: Tower) { const p = PHIL.get(t.philId)!; return homeBonus(this.stage.id, this.stage.era, p.realName, p.era); }
 
   // ---------- 장착 도구 (도감에서 미리 끼워 둔 것) ----------
   toolOf(t: Tower) { return this.meta.tool(t.philId); }
@@ -412,7 +416,7 @@ export class Game {
       t.cd = st.cooldown;
       t.shots = (t.shots ?? 0) + 1;
       this.fx.push({ type: 'shot', uid: t.uid });
-      let dmg = st.dmg * (1 + UPGRADE.perLevel * t.level) * im.dmg * this.meta.cardMult(t.philId) * (1 + (atk.get(t.uid) ?? 0));
+      let dmg = st.dmg * (1 + UPGRADE.perLevel * t.level) * im.dmg * this.meta.cardMult(t.philId) * (1 + (atk.get(t.uid) ?? 0)) * this.home(t).mult;
       if (best.boss && t.philId === this.stage.counter) dmg *= COUNTER_MULT;
       if (skill) {
         if (skill.kind === 'crit' && Math.random() < skill.v) { dmg *= 2; this.fx.push({ type: 'skill', kind: 'crit', x: tx, y: ty }); }

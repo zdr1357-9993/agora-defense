@@ -296,3 +296,4 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 #hud #quit { border: 2px solid #c4b5a5; }
 #hud .diff-chip { padding: 0 4px; font-size: 14px; }
 @media (max-width: 400px) { #hud { font-size: 14px; } .wave-pill { width: 60px; } .wave-track { width: 50px; } #mute-b { display: none; } }
+.stars-line { color: #b45309; font-weight: 700; } .home { color: #b45309 !important; font-weight: 700; }
