@@ -9,6 +9,7 @@ export const ACCOUNTS: Account[] = [
   { id: 'admin', hash: '299e4a47fc692a97', role: 'master', label: '마스터 · 전부 해금, 재화 무제한' },
   { id: 'hyebin', hash: 'a7074eb5877857f3', role: 'veteran', label: '기존 플레이어' },
   { id: 'zdr1357', hash: 'b84c58249bdfe6bc', role: 'fresh', label: '1레벨부터 시작' },
+  { id: 'sun', hash: '914c64c5ae02eba3', role: 'fresh', label: '1레벨부터 시작' },
 ];
 
 async function sha(text: string) {
