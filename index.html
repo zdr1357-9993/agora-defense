@@ -10,21 +10,53 @@
 </head>
 <body>
   <div id="app">
-    <h1 class="title"><span class="gold">AGORA</span> 철학사 랜덤 디펜스</h1>
-    <header id="hud">
-      <span>💰 <b id="gold">0</b>G</span>
-      <span>🧠 멘탈 <b id="lives">0</b></span>
-      <span>🌊 <b id="wave">0</b>/30</span>
-      <button id="speed">1x</button>
-    </header>
-    <div id="cats"></div>
-    <canvas id="field"></canvas>
-    <section id="context"><div id="info">철학자를 소환하세요.</div><div id="synth"></div></section>
-    <nav id="dock">
-      <button id="summon">소환 <small>(<span id="cost">50</span>G)</small></button>
-      <button id="sell">판매</button>
-      <button id="start">웨이브 시작</button>
-    </nav>
+    <!-- 홈: 스테이지 지도 -->
+    <section id="home" class="screen">
+      <h1 class="title"><span class="gold">AGORA</span> 철학사 랜덤 디펜스</h1>
+      <p class="slogan">사유하라, 조합하라, 도그마를 논파하라!</p>
+      <div id="stages"></div>
+      <div class="row">
+        <button id="open-codex">📖 도감</button>
+        <button id="reset" class="ghost">진행 초기화</button>
+      </div>
+    </section>
+
+    <!-- 덱 선택 -->
+    <section id="deck" class="screen hidden">
+      <h2 id="deck-title"></h2>
+      <p id="deck-story" class="story"></p>
+      <p class="hint">함께 데려갈 시대를 고르세요 (최대 3개). 스테이지 시대는 자동 포함됩니다.<br>다른 시대 철학자는 <b>원정</b> 중이라 힘이 약하지만, 현지 철학자 옆에 서면 <b>💬 대화</b>로 힘을 되찾아요.</p>
+      <div id="eras"></div>
+      <div class="row">
+        <button id="deck-back" class="ghost">← 돌아가기</button>
+        <button id="deck-go" class="primary">출전!</button>
+      </div>
+    </section>
+
+    <!-- 도감 -->
+    <section id="codex" class="screen hidden">
+      <div class="row between"><h2>📖 도감 <small id="codex-count"></small></h2><button id="codex-back" class="ghost">닫기</button></div>
+      <div id="codex-list"></div>
+    </section>
+
+    <!-- 전투 -->
+    <section id="battle" class="screen hidden">
+      <header id="hud">
+        <button id="quit" class="ghost">✕</button>
+        <span>💰 <b id="gold">0</b></span>
+        <span>🧠 <b id="lives">0</b></span>
+        <span>🌊 <b id="wave">0</b>/20</span>
+        <button id="speed">1x</button>
+      </header>
+      <div id="cats"></div>
+      <canvas id="field"></canvas>
+      <section id="context"><div id="info"></div><div id="synth"></div></section>
+      <nav id="dock">
+        <button id="summon">소환 <small>(<span id="cost">50</span>G)</small></button>
+        <button id="sell">판매</button>
+        <button id="start">웨이브 시작</button>
+      </nav>
+    </section>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>

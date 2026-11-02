@@ -6,44 +6,44 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 const wb = XLSX.readFile('data/agora_master.xlsx');
 const rows = (name) => XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: null });
 
-const philosophers = rows('Philosophers_50').map((r) => ({
-  id: r.phil_id,
-  name: r.name_kr,
-  tier: Number(r.tier),
-  era: r.era,
-  school: r.school_synergy,
-  quote: r.atk_quote,
-  skill: r.skill_name,
-  skillDesc: r.skill_desc,
-  lore: r.lore_humor,
+const philosophers = rows('Philosophers').map((r) => ({
+  id: r.phil_id, name: r.name_kr, tier: Number(r.tier), era: r.era, school: r.school,
+  quote: r.atk_quote, skill: r.skill_name, skillDesc: r.skill_desc, lore: r.lore_humor,
+  hidden: r.hidden === 'Y',
 }));
-
-const recipes = rows('Recipes_40').map((r) => ({
-  id: r.recipe_id,
-  result: r.result_phil_id,
+const recipes = rows('Recipes').map((r) => ({
+  id: r.recipe_id, result: r.result_phil_id,
   materials: [r.mat_1_id, r.mat_2_id, r.mat_3_id].filter(Boolean),
-  catalyst: r.catalyst_id === 'NONE' ? null : r.catalyst_id,
-  logic: r.synthesis_logic,
+  catalyst: r.catalyst_id === 'NONE' ? null : r.catalyst_id, logic: r.synthesis_logic,
 }));
-
-const catalysts = rows('Catalysts_5').map((r) => ({
+const catalysts = rows('Catalysts').map((r) => ({
   id: r.catalyst_id, name: r.name, concept: r.concept, effect: r.effect, drop: r.drop_source,
 }));
+const stages = rows('Stages').map((r) => ({
+  id: r.stage_id, era: r.era, name: r.name, unlockAfter: r.unlock_after || null,
+  enemyEarly: r.enemy_early, enemyLate: r.enemy_late, boss10: r.boss_10, boss20: r.boss_20,
+  counter: r.counter_phil, story: r.story,
+}));
 
-// 간단 검증: 존재하지 않는 ID 참조 차단
-const ids = new Set(philosophers.map((p) => p.id));
-const catIds = new Set(catalysts.map((c) => c.id));
+// 검증
+const byId = new Map(philosophers.map((p) => [p.id, p]));
 const errors = [];
 for (const r of recipes) {
-  for (const id of [r.result, ...r.materials]) if (!ids.has(id)) errors.push(`${r.id}: 없는 철학자 ${id}`);
-  if (r.catalyst && !catIds.has(r.catalyst)) errors.push(`${r.id}: 없는 촉매 ${r.catalyst}`);
-  const tier = (id) => philosophers.find((p) => p.id === id)?.tier ?? 0;
-  for (const m of r.materials) if (tier(m) >= tier(r.result)) errors.push(`${r.id}: 재료 ${m}의 등급이 결과보다 낮지 않음`);
+  const res = byId.get(r.result);
+  if (!res) errors.push(`${r.id}: 없는 결과 ${r.result}`);
+  for (const m of r.materials) {
+    const p = byId.get(m);
+    if (!p) errors.push(`${r.id}: 없는 재료 ${m}`);
+    else if (res && p.tier > res.tier) errors.push(`${r.id}: 재료 ${p.name}(${p.tier}성)가 결과 ${res.name}(${res.tier}성)보다 높음`);
+  }
 }
+for (const s of stages) if (!byId.get(s.counter)) errors.push(`${s.id}: 없는 카운터 ${s.counter}`);
+for (const era of new Set(philosophers.filter((p) => !p.hidden).map((p) => p.era)))
+  for (let t = 1; t <= 5; t++)
+    if (!philosophers.some((p) => p.era === era && p.tier === t && !p.hidden)) errors.push(`${era}: ${t}성이 없음 (합성 사다리 끊김)`);
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
 
 mkdirSync('src/data', { recursive: true });
-writeFileSync('src/data/philosophers.json', JSON.stringify(philosophers, null, 2));
-writeFileSync('src/data/recipes.json', JSON.stringify(recipes, null, 2));
-writeFileSync('src/data/catalysts.json', JSON.stringify(catalysts, null, 2));
-console.log(`✓ 철학자 ${philosophers.length} · 조합식 ${recipes.length} · 촉매 ${catalysts.length}`);
+for (const [n, d] of Object.entries({ philosophers, recipes, catalysts, stages }))
+  writeFileSync(`src/data/${n}.json`, JSON.stringify(d, null, 2));
+console.log(`✓ 철학자 ${philosophers.length} · 조합식 ${recipes.length} · 촉매 ${catalysts.length} · 스테이지 ${stages.length}`);

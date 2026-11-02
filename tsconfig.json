@@ -5,7 +5,7 @@
     "moduleResolution": "bundler",
     "strict": true,
     "resolveJsonModule": true,
-    "lib": ["ES2020", "DOM"],
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "noEmit": true
   },
