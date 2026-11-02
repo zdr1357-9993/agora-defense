@@ -46,9 +46,9 @@ export const STAGE_PATHS: Record<string, StagePaths> = {
     notice: (w) => (w === 10 ? '🏭 산업혁명! 적의 속도가 빨라진다' : null),
   },
   S5: {
-    caption: '5웨이브마다 벽이 바뀌는 미궁',
-    layoutFor: (w) => MAZES[Math.floor(Math.max(0, w - 1) / 5) % MAZES.length],
-    notice: (w) => (w > 1 && (w - 1) % 5 === 0 ? '🌀 언어게임이 바뀌었다! 미궁의 벽이 움직인다' : null),
+    caption: '10웨이브부터 5웨이브마다 벽이 바뀌는 미궁',
+    layoutFor: (w) => (w < 10 ? MAZES[0] : MAZES[(1 + Math.floor((w - 10) / 5)) % MAZES.length]),
+    notice: (w) => (w >= 10 && (w - 10) % 5 === 0 ? '🌀 언어게임이 바뀌었다! 미궁의 벽이 움직인다' : null),
   },
 };
 

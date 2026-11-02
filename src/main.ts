@@ -66,15 +66,26 @@ function renderCodex() {
   }
 }
 
-function showCard(id: string) {
+const CARD_BG: Record<string, string> = {
+  고대: 'linear-gradient(180deg,#bfe3ff,#f5ecd8)', 중세: 'linear-gradient(180deg,#c7b8e8,#e7e5e4)', 동양: 'linear-gradient(180deg,#d9f99d,#fef3c7)',
+  근대: 'linear-gradient(180deg,#cbd5e1,#f1f5f9)', 현대: 'linear-gradient(180deg,#f5d0fe,#e0e7ff)', 히든: 'linear-gradient(180deg,#fef9c3,#fff)',
+};
+function cardHtml(id: string) {
   const p = PHIL.get(id)!;
   const recipes = RECIPES.filter((r) => r.result === id);
-  alertBox(`<div class="t${p.tier}" id="cardpop"><img src="${portrait(id)}"><div>
-    <b>${'★'.repeat(p.tier)} ${p.name}</b> · ${ERA_ICON[p.era] ?? ''} ${p.school}<br>“${p.quote}”<br>
-    <small><b>${p.skill}</b> ${p.skillDesc}</small><br><small>${p.lore}</small>
-    ${recipes.map((r) => `<br><small class="recipe">⚗ ${r.materials.map((m) => PHIL.get(m)!.name).join(' + ')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''}<br>${r.logic}</small>`).join('')}
-  </div></div>`);
+  const st = TIER_STATS[p.tier]!;
+  return `<div class="pcard tc${p.tier}">
+    <div class="pc-head"><span class="pc-tier">${'★'.repeat(p.tier)}</span><b>${p.name}</b><span class="pc-era">${ERA_ICON[p.era] ?? ''} ${p.school}</span></div>
+    <div class="pc-art" style="background:${CARD_BG[p.era] ?? CARD_BG['고대']}"><img src="${portrait(id)}"></div>
+    <div class="pc-quote">“${p.quote}”</div>
+    <div class="pc-skill"><b>✦ ${p.skill}</b><span>${p.skillDesc}</span></div>
+    <div class="pc-stats"><span>⚔ ${st.dmg}</span><span>◎ ${st.range}</span><span>⏱ ${st.cooldown}s</span></div>
+    <div class="pc-lore">${p.lore}</div>
+    ${recipes.map((r) => `<div class="pc-recipe">⚗ ${r.materials.map((m) => PHIL.get(m)!.name).join(' + ')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''}<small>${r.logic}</small></div>`).join('')}
+    <div class="pc-foot">AGORA · ${TIER_NAME[p.tier]}</div>
+  </div>`;
 }
+function showCard(id: string) { alertBox(cardHtml(id)); }
 
 function alertBox(html: string) {
   const o = document.createElement('div');
@@ -239,19 +250,41 @@ function draw() {
   ctx.clearRect(0, 0, w, w);
   ctx.imageSmoothingEnabled = false;
 
-  // 길: 칸 바닥 + 꺾은선 점선 + 입구/출구
-  for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) if (g.isRoad(x, y)) {
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(x * cell, y * cell, cell, cell);
+  // ---- 바닥: 스테이지별 질감 (칸 테두리 없이 하나의 필드처럼) ----
+  const th = THEME[g.stage.era] ?? THEME['고대'];
+  ctx.fillStyle = th.ground; ctx.fillRect(0, 0, w, w);
+  for (let i = 0; i < 140; i++) {
+    const rx = hash(i * 7.1) * w, ry = hash(i * 3.3 + 1) * w, r = 1 + hash(i) * 2.5;
+    ctx.fillStyle = i % 3 ? th.speck : th.speck2;
+    ctx.beginPath(); ctx.arc(rx, ry, r, 0, Math.PI * 2); ctx.fill();
   }
-  ctx.strokeStyle = 'rgba(245,158,11,.35)'; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+  // 장식 (길·타워 없는 칸에 고정 배치)
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) {
+    if (g.isRoad(x, y) || g.towerAt(x, y)) continue;
+    const r = hash(x * 13 + y * 31 + g.stage.id.length);
+    if (r < 0.28) drawDecor(th.decor[Math.floor(r * 100) % th.decor.length], (x + 0.5) * cell, (y + 0.55) * cell, cell);
+  }
+
+  // ---- 길: 굽이치는 두꺼운 길 + 테두리 ----
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  for (const [color, width] of [[th.roadEdge, 0.86], [th.road, 0.7]] as const) {
+    ctx.strokeStyle = color; ctx.lineWidth = cell * width;
+    for (const path of g.layout.paths) {
+      ctx.beginPath();
+      path.forEach(([px, py], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, (px + 0.5) * cell, (py + 0.5) * cell));
+      if (g.layout.loop) ctx.closePath();
+      ctx.stroke();
+    }
+  }
+  ctx.strokeStyle = th.roadLine; ctx.lineWidth = 2; ctx.setLineDash([4, 8]);
   for (const path of g.layout.paths) {
     ctx.beginPath();
     path.forEach(([px, py], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, (px + 0.5) * cell, (py + 0.5) * cell));
     ctx.stroke();
   }
   ctx.setLineDash([]);
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `${cell * 0.5}px sans-serif`;
+  ctx.font = `${cell * 0.55}px sans-serif`;
   const first = g.layout.paths[0];
   if (!g.layout.loop) {
     ctx.fillText('🚪', (first[0][0] + 0.5) * cell, (first[0][1] + 0.5) * cell);
@@ -259,57 +292,49 @@ function draw() {
     ctx.fillText(g.stage.id === 'S2' ? '⛪' : '🏁', (end[0] + 0.5) * cell, (end[1] + 0.5) * cell);
   }
 
+  // 선택 시: 사거리 + 옮길 수 있는 자리 표시
   if (selected) {
     const st = TIER_STATS[PHIL.get(selected.philId)!.tier]!;
     ctx.save(); ctx.beginPath();
     ctx.arc((selected.cx + 0.5) * cell, (selected.cy + 0.5) * cell, st.range * cell, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(251,191,36,.07)'; ctx.fill();
-    ctx.strokeStyle = 'rgba(251,191,36,.45)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); ctx.stroke();
+    ctx.fillStyle = 'rgba(251,191,36,.10)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(251,191,36,.6)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); ctx.stroke();
     ctx.restore();
+    ctx.fillStyle = 'rgba(56,189,248,.28)';
+    for (const [x, y] of g.emptyCells()) { ctx.beginPath(); ctx.arc((x + 0.5) * cell, (y + 0.62) * cell, cell * 0.16, 0, Math.PI * 2); ctx.fill(); }
   }
 
-  const pad = cell * 0.06;
-  for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) {
-    if (g.isRoad(x, y)) continue;
-    const t = g.towerAt(x, y);
-    const isSel = !!t && t === selected;
-    ctx.fillStyle = t ? '#182032' : selected ? '#132338' : '#0f1420';
-    ctx.strokeStyle = isSel ? '#fbbf24' : selected ? 'rgba(56,189,248,.5)' : t ? '#475569' : '#1e293b';
-    ctx.lineWidth = isSel ? 3 : 1.5;
-    ctx.beginPath(); ctx.roundRect(x * cell + pad, y * cell + pad, cell - pad * 2, cell - pad * 2, cell * 0.14);
-    ctx.fill(); ctx.stroke();
-    const cx = (x + 0.5) * cell;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    if (!t) {
-      ctx.fillStyle = selected ? '#38bdf8' : '#334155';
-      ctx.font = `700 ${cell * 0.22}px "Noto Sans KR", sans-serif`;
-      ctx.fillText(selected ? '이동' : '·', cx, (y + 0.58) * cell);
-      continue;
-    }
+  // ---- 철학자: 그림자 + 큰 도트 + 등급 배지 ----
+  const towers = [...g.towers].sort((a, b) => a.cy - b.cy);
+  for (const t of towers) {
     const p = PHIL.get(t.philId)!;
-    ctx.fillStyle = TIER_AURA[p.tier];
-    ctx.fillRect(x * cell + cell * 0.18, y * cell + pad + 2, cell * 0.64, 3);
-    const bob = Math.sin((tick + x * 9 + y * 5) * 0.1) * 2;
-    const sz = cell * 0.66;
+    const cx = (t.cx + 0.5) * cell, foot = (t.cy + 0.9) * cell;
+    const isSel = t === selected;
+    if (isSel) { ctx.fillStyle = 'rgba(251,191,36,.55)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.32, cell * 0.11, 0, 0, Math.PI * 2); ctx.fill();
     if (p.tier >= 6) {
       ctx.save(); ctx.globalAlpha = 0.35 + 0.2 * Math.sin(tick * 0.08);
       ctx.fillStyle = `hsl(${(tick * 2) % 360},90%,60%)`;
-      ctx.beginPath(); ctx.arc(cx, y * cell + cell * 0.38, cell * 0.36, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      ctx.beginPath(); ctx.arc(cx, foot - cell * 0.45, cell * 0.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
-    ctx.drawImage(philosopherSprite(p), cx - sz / 2, y * cell + cell * 0.07 + bob, sz, sz);
-    ctx.fillStyle = '#f8fafc'; ctx.font = `700 ${Math.max(8, cell * 0.2)}px "Noto Sans KR", sans-serif`;
-    ctx.fillText(shortName(p.name).slice(0, 4), cx, y * cell + cell * 0.86);
-    ctx.fillStyle = '#fbbf24'; ctx.font = `800 ${Math.max(8, cell * 0.18)}px sans-serif`;
-    ctx.fillText(`${p.tier}★`, x * cell + cell * 0.2, y * cell + cell * 0.2);
+    const bob = Math.sin((tick + t.cx * 9 + t.cy * 5) * 0.1) * cell * 0.03;
+    const sz = cell * (p.tier >= 5 ? 1.12 : 1.0);
+    ctx.drawImage(philosopherSprite(p), cx - sz / 2, foot - sz * 0.97 + bob, sz, sz);
+    // 등급 배지
+    const bx = (t.cx + 0.14) * cell, by = (t.cy + 0.14) * cell, br = cell * 0.15;
+    ctx.fillStyle = TIER_AURA[p.tier]; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#1c1917'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = `900 ${br * 1.3}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(p.tier), bx, by + 0.5);
     if (t.level) {
-      ctx.fillStyle = '#22d3ee'; ctx.font = `800 ${cell * 0.14}px sans-serif`;
-      ctx.fillText(`+${t.level}`, x * cell + cell * 0.8, y * cell + cell * 0.3);
+      ctx.fillStyle = '#22d3ee'; ctx.font = `900 ${cell * 0.2}px sans-serif`;
+      ctx.fillText(`+${t.level}`, (t.cx + 0.85) * cell, (t.cy + 0.15) * cell);
     }
   }
 
   for (const e of g.enemies) {
     const [ex, ey] = g.enemyPos(e);
-    const x = ex * cell, y = ey * cell, sz = cell * (e.boss ? 1.1 : 0.75);
+    const x = ex * cell, y = ey * cell, sz = cell * (e.boss ? 1.25 : 0.85);
     const walk = Math.abs(Math.sin(tick * 0.2 + e.uid)) * 3;
     ctx.fillStyle = 'rgba(0,0,0,.45)';
     ctx.beginPath(); ctx.ellipse(x, y + sz * 0.42, sz * 0.32, sz * 0.13, 0, 0, Math.PI * 2); ctx.fill();
@@ -351,6 +376,37 @@ function draw() {
     ctx.font = `700 ${cell * 0.22}px "Noto Sans KR", sans-serif`;
     ctx.fillText(STAGE_PATHS[g.stage.id].caption, w / 2, w / 2 + cell * 0.1);
     ctx.fillText(`최종 보스: ${g.stage.boss20} (${MAX_WAVE}웨이브)`, w / 2, w / 2 + cell * 0.45);
+  }
+}
+
+// 스테이지별 필드 테마
+const THEME: Record<string, { ground: string; speck: string; speck2: string; road: string; roadEdge: string; roadLine: string; decor: string[] }> = {
+  고대: { ground: '#e7dcc4', speck: '#d6c8a8', speck2: '#f5ecd8', road: '#c8b48a', roadEdge: '#a8916a', roadLine: 'rgba(255,255,255,.5)', decor: ['column', 'olive', 'amphora'] },
+  중세: { ground: '#6b6560', speck: '#57534e', speck2: '#7c766f', road: '#a8a29e', roadEdge: '#44403c', roadLine: 'rgba(253,224,71,.45)', decor: ['candle', 'stone', 'banner'] },
+  동양: { ground: '#9cc77a', speck: '#86b564', speck2: '#b4d896', road: '#d9c39a', roadEdge: '#a68a5b', roadLine: 'rgba(255,255,255,.45)', decor: ['bamboo', 'pine', 'lantern'] },
+  근대: { ground: '#9aa5b1', speck: '#87929e', speck2: '#adb7c2', road: '#6b7280', roadEdge: '#374151', roadLine: 'rgba(250,204,21,.6)', decor: ['gear', 'lamp', 'crate'] },
+  현대: { ground: '#2e1065', speck: '#3b0f84', speck2: '#4c1d95', road: '#1e1b4b', roadEdge: '#a855f7', roadLine: 'rgba(244,114,182,.7)', decor: ['letter', 'crystal', 'screen'] },
+};
+const hash = (n: number) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+function drawDecor(kind: string, x: number, y: number, c: number) {
+  const r = (dx: number, dy: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x + dx * c, y + dy * c, w * c, h * c); };
+  const o = (dx: number, dy: number, rad: number, col: string) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + dx * c, y + dy * c, rad * c, 0, Math.PI * 2); ctx.fill(); };
+  switch (kind) {
+    case 'column': r(-0.12, -0.3, 0.24, 0.55, '#f5f5f4'); r(-0.18, -0.34, 0.36, 0.07, '#d6d3d1'); r(-0.18, 0.22, 0.36, 0.07, '#d6d3d1'); break;
+    case 'olive': o(0, -0.1, 0.22, '#65a30d'); r(-0.03, 0.05, 0.06, 0.2, '#78350f'); o(0.08, -0.15, 0.04, '#1c1917'); break;
+    case 'amphora': o(0, 0.02, 0.15, '#c2410c'); r(-0.05, -0.2, 0.1, 0.12, '#c2410c'); r(-0.15, -0.03, 0.3, 0.03, '#1c1917'); break;
+    case 'candle': r(-0.05, -0.12, 0.1, 0.3, '#fef3c7'); o(0, -0.18, 0.06, '#f59e0b'); break;
+    case 'stone': o(0, 0.05, 0.18, '#57534e'); o(-0.05, 0, 0.08, '#78716c'); break;
+    case 'banner': r(-0.02, -0.35, 0.04, 0.6, '#44403c'); r(0.02, -0.33, 0.22, 0.28, '#b91c1c'); break;
+    case 'bamboo': r(-0.12, -0.35, 0.07, 0.6, '#15803d'); r(0.05, -0.25, 0.07, 0.5, '#16a34a'); break;
+    case 'pine': o(0, -0.12, 0.2, '#166534'); o(0, -0.25, 0.13, '#15803d'); r(-0.03, 0.05, 0.06, 0.15, '#78350f'); break;
+    case 'lantern': r(-0.1, -0.15, 0.2, 0.25, '#dc2626'); r(-0.06, -0.2, 0.12, 0.05, '#1c1917'); o(0, -0.03, 0.05, '#fde047'); break;
+    case 'gear': o(0, 0, 0.18, '#475569'); o(0, 0, 0.07, '#9aa5b1'); break;
+    case 'lamp': r(-0.02, -0.3, 0.04, 0.55, '#1f2937'); o(0, -0.32, 0.08, '#fde047'); break;
+    case 'crate': r(-0.15, -0.1, 0.3, 0.25, '#a16207'); r(-0.15, 0.02, 0.3, 0.02, '#78350f'); break;
+    case 'letter': ctx.fillStyle = 'rgba(244,114,182,.7)'; ctx.font = `900 ${c * 0.35}px serif`; ctx.fillText('ㅋ?A@'[Math.floor(hash(x + y) * 4)], x, y); break;
+    case 'crystal': ctx.fillStyle = '#c084fc'; ctx.beginPath(); ctx.moveTo(x, y - 0.25 * c); ctx.lineTo(x + 0.12 * c, y); ctx.lineTo(x, y + 0.2 * c); ctx.lineTo(x - 0.12 * c, y); ctx.fill(); break;
+    case 'screen': r(-0.16, -0.12, 0.32, 0.22, '#0f172a'); r(-0.13, -0.09, 0.26, 0.16, '#22d3ee'); break;
   }
 }
 

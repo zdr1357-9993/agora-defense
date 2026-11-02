@@ -94,3 +94,21 @@ button.up { margin-top: 6px; padding: 6px 10px; font-size: 12.5px; background: l
 .mat.have { border-color: #22c55e; background: #052e1b; } .mat.cat { padding: 2px 6px; }
 .plus { color: #64748b; }
 table.rates { width: 100%; border-collapse: collapse; font-size: 13px; } .rates th, .rates td { padding: 5px 4px; border-bottom: 1px solid #1e293b; text-align: left; } .rates th { color: #fbbf24; }
+
+/* 도감 카드 (아고라 고유 디자인) */
+.pcard { border-radius: 18px; padding: 10px; background: #fffbeb; color: #1c1917; border: 6px solid #94a3b8; box-shadow: 0 10px 30px rgba(0,0,0,.5); display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 1.45; }
+.pcard.tc2 { border-color: #38bdf8; } .pcard.tc3 { border-color: #a855f7; } .pcard.tc4 { border-color: #f59e0b; } .pcard.tc5 { border-color: #ef4444; }
+.pcard.tc6 { border-image: linear-gradient(135deg,#f472b6,#fbbf24,#34d399,#38bdf8,#a78bfa) 1; border-radius: 4px; }
+.pc-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; } .pc-head b { font-size: 20px; font-family: 'Nanum Myeongjo', serif; }
+.pc-tier { color: #f59e0b; font-size: 13px; } .pc-era { margin-left: auto; font-size: 11px; background: #1c1917; color: #fef3c7; border-radius: 10px; padding: 1px 8px; }
+.pc-art { border-radius: 12px; border: 3px solid #1c1917; height: 170px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
+.pc-art img { width: 160px; height: 160px; image-rendering: pixelated; animation: bob 1.4s infinite ease-in-out; }
+.pc-quote { background: #1c1917; color: #fef3c7; border-radius: 8px; padding: 6px 10px; text-align: center; font-weight: 700; }
+.pc-skill { background: #fff; border: 2px solid #e7e5e4; border-radius: 10px; padding: 6px 10px; display: flex; flex-direction: column; } .pc-skill b { color: #b45309; }
+.pc-stats { display: flex; justify-content: space-around; font-weight: 800; color: #57534e; }
+.pc-lore { font-size: 12px; color: #57534e; font-style: italic; }
+.pc-recipe { background: #ecfccb; border-radius: 8px; padding: 6px 10px; font-weight: 700; color: #365314; } .pc-recipe small { display: block; font-weight: 400; color: #4d7c0f; }
+.pc-foot { text-align: right; font-size: 10px; color: #a8a29e; letter-spacing: .1em; }
+.pop:has(.pcard) { background: transparent; border: 0; padding: 0; }
+.card { background: linear-gradient(180deg,#1e293b,#0f1420); } .card img { width: 56px; height: 56px; }
+#field { background: #0f1420; }
