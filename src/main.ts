@@ -285,7 +285,10 @@ function draw() {
   if (!game || !cell) return;
   const g = game;
   const w = canvas.clientWidth;
+  ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
   ctx.clearRect(0, 0, w, w);
+  ctx.save();
+  if (shake > 0) ctx.translate(rnd(-1, 1) * shake * 8, rnd(-1, 1) * shake * 8);
   ctx.imageSmoothingEnabled = false;
 
   // ---- 바닥: 스테이지별 질감 (칸 테두리 없이 하나의 필드처럼) ----
@@ -357,7 +360,9 @@ function draw() {
     }
     const bob = Math.sin((tick + t.cx * 9 + t.cy * 5) * 0.1) * cell * 0.03;
     const sz = cell * (p.tier >= 5 ? 1.12 : 1.0);
-    ctx.drawImage(philosopherSprite(p), cx - sz / 2, foot - sz * 0.97 + bob, sz, sz);
+    const rc = recoil.get(t.uid) ?? 0;
+    const sx = sz * (1 + rc * 0.12), sy = sz * (1 - rc * 0.1);
+    ctx.drawImage(philosopherSprite(p), cx - sx / 2, foot - sy * 0.97 + bob, sx, sy);
     // 등급 배지
     const bx = (t.cx + 0.14) * cell, by = (t.cy + 0.14) * cell, br = cell * 0.15;
     ctx.fillStyle = TIER_AURA[p.tier]; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
@@ -383,12 +388,14 @@ function draw() {
     ctx.fillStyle = 'rgba(0,0,0,.45)';
     ctx.beginPath(); ctx.ellipse(x, y + sz * 0.42, sz * 0.32, sz * 0.13, 0, 0, Math.PI * 2); ctx.fill();
     ctx.drawImage(monsterSprite(g.stage.era, e.boss ? 'boss' : g.wave < 10 ? 'early' : 'late'), x - sz / 2, y - sz / 2 - walk, sz, sz);
-    const bw = sz * 0.9, r = Math.max(0, e.hp / e.maxHp);
-    ctx.fillStyle = '#0f172a'; ctx.fillRect(x - bw / 2, y - sz / 2 - 8, bw, 5);
-    ctx.fillStyle = r > 0.4 ? '#10b981' : '#ef4444'; ctx.fillRect(x - bw / 2, y - sz / 2 - 8, bw * r, 5);
+    const bw = sz * 0.9, r = Math.max(0, e.hp / e.maxHp), by = y - sz / 2 - 9;
+    ctx.fillStyle = '#3b2a1e'; ctx.beginPath(); ctx.roundRect(x - bw / 2 - 1.5, by - 1.5, bw + 3, 8, 4); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(x - bw / 2, by, bw, 5, 3); ctx.fill();
+    ctx.fillStyle = r > 0.5 ? '#5fc6a0' : r > 0.25 ? '#ffd36b' : '#ff8f8f'; ctx.beginPath(); ctx.roundRect(x - bw / 2, by, Math.max(2, bw * r), 5, 3); ctx.fill();
     if (e.boss) {
-      ctx.fillStyle = '#fca5a5'; ctx.font = `700 ${cell * 0.15}px "Noto Sans KR", sans-serif`; ctx.textAlign = 'center';
-      ctx.fillText(e.name, x, y - sz / 2 - 12);
+      ctx.font = `${Math.max(10, cell * 0.22)}px "Jua", sans-serif`; ctx.textAlign = 'center';
+      ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText(e.name, x, by - 8);
+      ctx.fillStyle = '#c2410c'; ctx.fillText(e.name, x, by - 8);
     }
   }
 
@@ -421,6 +428,8 @@ function draw() {
     ctx.fillText(STAGE_PATHS[g.stage.id].caption, w / 2, w / 2 + cell * 0.1);
     ctx.fillText(`최종 보스: ${g.stage.boss20} (${MAX_WAVE}웨이브)`, w / 2, w / 2 + cell * 0.45);
   }
+  drawFx(w);
+  ctx.restore();
 }
 
 // 스테이지별 필드 테마
@@ -603,6 +612,78 @@ function rateSheet() {
     <table class="rates"><tr><th>합성</th><th>결과</th><th>확률</th></tr>${merges}<tr><td>5·6성</td><td colspan=2>📜 조합표로만 획득</td></tr></table>`);
 }
 
+// ---------- 타격감 연출 ----------
+interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; text?: string; star?: boolean }
+const particles: Particle[] = [];
+const recoil = new Map<number, number>();
+let shake = 0;
+let banner: { text: string; t: number } | null = null;
+const rnd = (a: number, b: number) => a + Math.random() * (b - a);
+const PASTEL = ['#ffb3c7', '#ffd36b', '#a7ecd2', '#a9d8ff', '#c7a6ff'];
+
+function consumeFx(g: Game) {
+  for (const f of g.fx.splice(0)) {
+    if (f.type === 'shot') recoil.set(f.uid, 1);
+    else if (f.type === 'hit') {
+      for (let i = 0; i < (f.big ? 7 : 3); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-2.5, 2.5), vy: rnd(-3, -0.5), life: 0.35, max: 0.35, color: f.big ? '#ffd36b' : '#ffffff', size: rnd(0.04, 0.08), star: f.big });
+      particles.push({ x: f.x + rnd(-0.15, 0.15), y: f.y - 0.3, vx: 0, vy: -1.2, life: 0.7, max: 0.7, color: f.big ? '#ff7a59' : '#3b2a1e', size: f.big ? 0.32 : 0.24, text: fmt(f.dmg) });
+    } else if (f.type === 'kill') {
+      for (let i = 0; i < (f.boss ? 40 : 12); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-3, 3), vy: rnd(-3.5, 1), life: 0.6, max: 0.6, color: PASTEL[i % PASTEL.length], size: rnd(0.06, 0.13) });
+      particles.push({ x: f.x, y: f.y - 0.2, vx: 0, vy: -0.8, life: 0.9, max: 0.9, color: '#e3a72f', size: 0.28, text: `+${f.gold}G` });
+      if (f.boss) { shake = 0.6; banner = { text: '🎉 논파 성공!', t: 1.8 }; }
+    } else if (f.type === 'morph') {
+      for (let i = 0; i < 24 + f.tier * 6; i++) { const a = (i / 24) * Math.PI * 2; particles.push({ x: f.x, y: f.y, vx: Math.cos(a) * rnd(1.5, 3), vy: Math.sin(a) * rnd(1.5, 3), life: 0.7, max: 0.7, color: f.tier >= 5 ? PASTEL[i % 5] : '#fff3b0', size: rnd(0.06, 0.11), star: true }); }
+      if (f.tier >= 5) shake = 0.35;
+    } else if (f.type === 'boss') { banner = { text: `⚠️ ${f.name} 등장!`, t: 2.2 }; shake = 0.4; }
+  }
+}
+const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
+
+function updateFx(dt: number) {
+  for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; if (!p.text) p.vy += 6 * dt; p.life -= dt; }
+  for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
+  for (const [k, v] of recoil) { const n = v - dt * 6; if (n <= 0) recoil.delete(k); else recoil.set(k, n); }
+  if (shake > 0) shake = Math.max(0, shake - dt);
+  if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
+}
+
+function drawStar(x: number, y: number, r: number) {
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+  ctx.closePath(); ctx.fill();
+}
+
+function drawFx(w: number) {
+  for (const p of particles) {
+    const a = Math.max(0, p.life / p.max);
+    ctx.globalAlpha = a;
+    if (p.text) {
+      ctx.font = `900 ${Math.max(10, cell * p.size)}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.strokeText(p.text, p.x * cell, p.y * cell);
+      ctx.fillStyle = p.color; ctx.fillText(p.text, p.x * cell, p.y * cell);
+    } else {
+      ctx.fillStyle = p.color;
+      if (p.star) drawStar(p.x * cell, p.y * cell, p.size * cell);
+      else { ctx.beginPath(); ctx.arc(p.x * cell, p.y * cell, p.size * cell, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
+  ctx.globalAlpha = 1;
+  // 은은한 비네트
+  const v = ctx.createRadialGradient(w / 2, w / 2, w * 0.35, w / 2, w / 2, w * 0.75);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(59,42,30,.18)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, w, w);
+  if (banner) {
+    const s = Math.min(1, (2.2 - banner.t) * 6, banner.t * 3);
+    ctx.save(); ctx.translate(w / 2, w * 0.3); ctx.scale(s, s);
+    ctx.font = `${cell * 0.5}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const tw = ctx.measureText(banner.text).width + cell;
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.roundRect(-tw / 2, -cell * 0.45, tw, cell * 0.9, cell * 0.45); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#c2410c'; ctx.fillText(banner.text, 0, 2);
+    ctx.restore();
+  }
+}
+
 // ---------- 루프 ----------
 let last = performance.now();
 let uiTimer = 0;
@@ -611,6 +692,8 @@ function loop(now: number) {
   last = now;
   if (game) {
     game.update(dt);
+    consumeFx(game);
+    updateFx(dt);
     tick += dt * 60;
     if ((uiTimer += dt) > 0.15) { uiTimer = 0; updateUI(); }
     draw();

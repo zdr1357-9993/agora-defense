@@ -20,6 +20,13 @@ export interface Tower { uid: number; philId: string; cx: number; cy: number; cd
 /** 메타 성장(카드 레벨·장착 도구)을 전투에 넘겨주는 통로 */
 export interface Meta { cardMult(philId: string): number; tool(philId: string): string | undefined }
 export interface Enemy { uid: number; hp: number; maxHp: number; dist: number; speed: number; boss: boolean; reward: number; name: string; path: number }
+/** 화면 연출용 이벤트 (게임 규칙에는 영향 없음) */
+export type FxEvent =
+  | { type: 'hit'; x: number; y: number; dmg: number; big: boolean }
+  | { type: 'kill'; x: number; y: number; gold: number; boss: boolean }
+  | { type: 'shot'; uid: number }
+  | { type: 'morph'; x: number; y: number; tier: number }
+  | { type: 'boss'; name: string };
 export interface Bullet { x: number; y: number; target: number; dmg: number; text: string; color: string }
 
 let uidSeq = 1;
@@ -35,6 +42,7 @@ export class Game {
   bullets: Bullet[] = [];
   catalysts: Record<string, number> = Object.fromEntries(CATALYST_IDS.map((id) => [id, 0]));
   drops: string[] = [];
+  fx: FxEvent[] = [];
   discovered = new Set<string>();
   toSpawn = 0;
   spawnTimer = 0;
@@ -162,6 +170,7 @@ export class Game {
     keep.philId = pick(PHILOSOPHERS.filter((x) => x.tier === tier + 1 && !x.hidden)).id;
     keep.cd = 0;
     this.discovered.add(keep.philId);
+    this.fx.push({ type: 'morph', x: keep.cx + 0.5, y: keep.cy + 0.5, tier: PHIL.get(keep.philId)!.tier });
     return keep;
   }
 
@@ -194,6 +203,7 @@ export class Game {
     keep.philId = r.result;
     keep.cd = 0;
     keep.level = 0;
+    this.fx.push({ type: 'morph', x: keep.cx + 0.5, y: keep.cy + 0.5, tier: PHIL.get(r.result)!.tier });
     this.discovered.add(r.result);
     return keep;
   }
@@ -209,6 +219,7 @@ export class Game {
     this.wave++;
     this.refreshLayout();
     this.running = true;
+    if (this.isBossWave()) this.fx.push({ type: 'boss', name: this.wave === 10 ? this.stage.boss10 : this.stage.boss20 });
     this.countdown = -1;
     this.toSpawn = this.isBossWave() ? 1 : 8 + this.wave * 2;
     this.spawnTimer = 0;
@@ -264,6 +275,7 @@ export class Game {
       }
       if (!best) continue;
       t.cd = st.cooldown;
+      this.fx.push({ type: 'shot', uid: t.uid });
       let dmg = st.dmg * (1 + UPGRADE.perLevel * t.level) * im.dmg * this.meta.cardMult(t.philId);
       if (best.boss && t.philId === this.stage.counter) dmg *= COUNTER_MULT;
       this.bullets.push({ x: tx, y: ty, target: best.uid, dmg, text: p.quote, color: p.tier >= 6 ? 'rainbow' : p.tier >= 4 ? 'gold' : '' });
@@ -274,12 +286,13 @@ export class Game {
       if (!e) { b.dmg = 0; continue; }
       const [ex, ey] = this.enemyPos(e);
       const dx = ex - b.x, dy = ey - b.y, d = Math.hypot(dx, dy), step = 7 * dt;
-      if (d <= step) { e.hp -= b.dmg; b.dmg = 0; } else { b.x += (dx / d) * step; b.y += (dy / d) * step; }
+      if (d <= step) { e.hp -= b.dmg; this.fx.push({ type: 'hit', x: ex, y: ey, dmg: b.dmg, big: b.color !== '' }); b.dmg = 0; } else { b.x += (dx / d) * step; b.y += (dy / d) * step; }
     }
     this.bullets = this.bullets.filter((b) => b.dmg > 0);
 
     for (const e of this.enemies) if (e.hp <= 0) {
       this.gold += e.reward;
+      { const [kx, ky] = this.enemyPos(e); this.fx.push({ type: 'kill', x: kx, y: ky, gold: e.reward, boss: e.boss }); }
       if (!e.boss && Math.random() < 0.03) this.gainCatalyst(this.randomCatalyst());
     }
     this.enemies = this.enemies.filter((e) => e.hp > 0);
