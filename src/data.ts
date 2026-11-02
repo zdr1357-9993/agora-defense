@@ -60,7 +60,8 @@ export const CATALYSTS = catalystsJson as { id: string; name: string }[];
 /** 소환 시 등급별 확률 (엑셀 Rates 시트) */
 export const SUMMON_RATES = ratesJson as { tier: number; rate: number }[];
 export const PHIL = new Map(PHILOSOPHERS.map((p) => [p.id, p]));
-export const CAT_ICON: Record<string, string> = Object.fromEntries(CATALYSTS.map((c) => [c.id, c.name.split(' ')[0]]));
+export const CAT_ICON: Record<string, string> = { C001: '🔥', C002: '💎', C003: '🌀', C004: '⚙️', C005: '🪞' };
+export const CAT_NAME: Record<string, string> = Object.fromEntries(CATALYSTS.map((c) => [c.id, c.name.replace(/^\S*\s/, '').trim()]));
 export const ERA_ICON: Record<string, string> = { 고대: '🏛', 중세: '⛪', 동양: '🏯', 근대: '⚙️', 현대: '📡', 히든: '✨' };
 export const TIER_NAME = ['', '사유', '학파', '전통', '전환', '거장', '근원'];
 

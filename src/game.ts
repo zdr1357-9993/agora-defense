@@ -14,7 +14,7 @@ export const GRID = N;
 export const MAX_WAVE = 20;
 export const BOSS_WAVES = [10, 20];
 /** 웨이브마다 적 체력 증가율 (밸런스 핵심 값) */
-export const HP_GROWTH = 1.3;
+export const HP_GROWTH = 1.22;
 
 // QA 모드: 주소 뒤에 ?qa=1 (전 스테이지 해금·재화 지급). 기본은 처음 시작하는 상태
 export let QA_MODE = typeof location === 'undefined' ? false : new URLSearchParams(location.search).get('qa') === '1';
@@ -133,7 +133,7 @@ export class Game {
   summon() {
     if (this.gold < this.summonCost || !this.emptyCells().length) return null;
     this.gold -= this.summonCost;
-    this.summonCost += 5;
+    this.summonCost += 3;
     let r = this.oneTool ? 0 : Math.random(), tier = 1;
     for (const s of SUMMON_RATES) { if (r < s.rate) { tier = s.tier; break; } r -= s.rate; }
     return this.place(pick(PHILOSOPHERS.filter((p) => p.tier === tier && !p.hidden)).id);
@@ -449,7 +449,7 @@ export class Game {
 
     if (this.running && this.toSpawn === 0 && this.enemies.length === 0) {
       this.running = false;
-      this.gold += 40 + this.wave * 5;
+      this.gold += 50 + this.wave * 8;
       this.gainCatalyst(this.randomCatalyst());
       if (this.isBossWave()) { this.gainCatalyst(this.randomCatalyst()); this.gainCatalyst('C001'); }
       if (this.wave >= this.maxWave) this.over = 'win';

@@ -5,7 +5,7 @@ import { STAGE_STARS, ERA_BONUS, STAR_BONUS } from './affinity';
 import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
 import { ITEM, isOwner, ITEM_BONUS } from './items';
 import {
-  homage, statsOf, TYPE_ICON, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, MAX_MERGE_TIER, UPGRADE, type Stage,
+  homage, statsOf, TYPE_ICON, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, CAT_NAME, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, MAX_MERGE_TIER, UPGRADE, type Stage,
 } from './data';
 import { philosopherSprite, skinnedSprite, SKINS, monsterSprite, itemSprite, TIER_AURA } from './sprites';
 import { SKILLS } from './skills';
@@ -17,6 +17,7 @@ import { ITEMS } from './items';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const spriteUrl = new Map<string, string>();
+import { cardArt } from './tcg';
 const itemUrl = (id: string) => itemSprite(id).toDataURL();
 /** 착용 스킨이 반영된 도트 */
 const spriteFor = (id: string) => skinnedSprite(PHIL.get(id)!, progress?.skinOn?.[id]);
@@ -161,7 +162,9 @@ function showCard(id: string) {
     }).join('')}${progress.skinOn[id] ? '<button data-skin="">기본 모습</button>' : ''}</div>` : ''}
     <div class="pc-tools"><b>🧰 장착 도구</b>${ownedTools.length ? ownedTools.map((it) => `<button data-equip="${it.id}" class="${cur === it.id ? 'on' : ''} ${isOwner(it.id, p.realName) ? 'own' : ''}"><img src="${itemUrl(it.id)}">${it.name}${isOwner(it.id, p.realName) ? ' ★' : ''}</button>`).join('') + (cur ? '<button data-equip="">해제</button>' : '') : '<small>도구 상자에서 도구를 뽑아 오세요</small>'}</div>
     ${n ? `<button class="chunky ${progress.favorite === id ? 'pink' : 'blue'} fav-set">${progress.favorite === id ? '💗 나의 최애 (해제하기)' : '💗 최애로 지정 · 고민방 주인'}</button>` : ''}`;
-  alertBox(cardHtml(id).replace('<div class="pc-foot">', growth + '<div class="pc-foot">'));
+  alertBox(cardHtml(id).replace('<div class="pc-foot">', growth + '<button class="chunky blue tcg-from">🃏 카드로 보기</button><div class="pc-foot">'));
+  const tf = document.querySelector<HTMLButtonElement>('.tcg-from');
+  if (tf) tf.onclick = (e) => { e.stopPropagation(); document.querySelector('.overlay')?.remove(); openTcg(id); };
   for (const b of document.querySelectorAll<HTMLButtonElement>('[data-equip]')) b.onclick = (e) => {
     e.stopPropagation();
     if (b.dataset.equip) progress.loadout[id] = b.dataset.equip; else delete progress.loadout[id];
@@ -348,7 +351,7 @@ function updateUI() {
     const fresh = new Set(g.drops.splice(0));
     lastCatKey = catKey;
     $('cats').innerHTML = (QA_MODE ? '<span class="qa">QA</span>' : '') + `<span class="stage-name">${ERA_ICON[g.stage.era]} ${g.stage.name} ${g.running ? { normal: '', fast: '· 💨빠른 적', tank: '· 🛡단단한 적', swarm: '· 🐜떼', boss: '· 👑보스' }[g.waveKind()] : ''}</span>` + CATALYST_IDS.map((id) =>
-      `<span class="c ${g.catalysts[id] ? 'on' : ''} ${fresh.has(id) ? 'flash' : ''}">${CAT_ICON[id]}${g.catalysts[id]}</span>`).join('');
+      `<span class="c ${g.catalysts[id] ? 'on' : ''} ${fresh.has(id) ? 'flash' : ''}" title="촉매: ${CAT_NAME[id]}">${CAT_ICON[id]}${g.catalysts[id]}</span>`).join('');
   }
 
   // 합성 / 특수 연성
@@ -1105,3 +1108,59 @@ if (remembered) { $<HTMLInputElement>('login-id').value = remembered.id; }
 showLogin();
 setInterval(() => { if (!game && me) { settleIdle(progress, clearedStages()); saveProgress(progress); refreshWallet(); } }, 1000);
 requestAnimationFrame(loop);
+
+// ---------- 🃏 TCG 카드 넘겨보기 ----------
+function tcgCard(id: string) {
+  const p = PHIL.get(id)!, st = statsOf(id);
+  const n = progress.cards[id] ?? 0, lv = cardLevel(n);
+  const art = cardArt(p, spriteFor(id), progress?.skinOn?.[id] ?? '');
+  return `<div class="tcg tcg-t${p.tier}" data-id="${id}"><div class="tcg-inner">
+    <div class="tcg-face tcg-front">
+      <div class="tcg-top"><b>${p.name}</b><span class="tcg-type">${TYPE_ICON[st.type]} ${st.type}</span></div>
+      <div class="tcg-stars">${'★'.repeat(p.tier)}<small>${TIER_NAME[p.tier]} · ${ERA_ICON[p.era] ?? ''} ${p.school}</small></div>
+      <div class="tcg-art"><img src="${art}">${lv ? `<span class="tcg-lv">Lv.${lv}</span>` : ''}</div>
+      <div class="tcg-skill"><b>✦ ${p.skill}</b><p>${p.skillDesc}</p></div>
+      <div class="tcg-stat"><span>⚔ ${Math.round(st.dmg)}</span><span>◎ ${st.range}칸</span><span>⏱ ${(1 / st.cooldown).toFixed(2)}/초</span></div>
+      <div class="tcg-quote">“${p.quote}”</div>
+      <div class="tcg-no">No.${p.id} · AGORA</div>
+    </div>
+    <div class="tcg-face tcg-back">
+      <div class="tcg-backlogo">AGORA</div>
+      <b>${p.name}</b>
+      <p>${p.lore}</p>
+      <small>🎯 ${st.target} 우선 · ${st.note}</small>
+      <small class="tcg-tip">탭하면 앞면으로</small>
+    </div>
+  </div></div>`;
+}
+function openTcg(startId?: string) {
+  const seen = new Set(progress.seen);
+  const list = [...PHILOSOPHERS].filter((p) => seen.has(p.id) || (QA_MODE && !p.hidden)).sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id));
+  if (!list.length) { toast('아직 만난 철학자가 없어요'); return; }
+  const ov = document.createElement('div');
+  ov.className = 'overlay tcg-ov';
+  ov.innerHTML = `<button class="close">✕</button><div class="tcg-track">${list.map((p) => tcgCard(p.id)).join('')}</div>
+    <div class="tcg-nav"><button class="prev">◀</button><span class="tcg-count"></span><button class="next">▶</button></div>`;
+  document.body.appendChild(ov);
+  const track = ov.querySelector('.tcg-track') as HTMLElement;
+  const count = ov.querySelector('.tcg-count') as HTMLElement;
+  const cardW = () => (track.firstElementChild as HTMLElement).offsetWidth + 16;
+  const idx = () => Math.round(track.scrollLeft / cardW());
+  const upd = () => { count.textContent = `${idx() + 1} / ${list.length}`; };
+  const go = (i: number) => track.scrollTo({ left: Math.max(0, Math.min(list.length - 1, i)) * cardW(), behavior: 'smooth' });
+  track.addEventListener('scroll', upd);
+  (ov.querySelector('.prev') as HTMLElement).onclick = () => go(idx() - 1);
+  (ov.querySelector('.next') as HTMLElement).onclick = () => go(idx() + 1);
+  (ov.querySelector('.close') as HTMLElement).onclick = () => ov.remove();
+  track.querySelectorAll('.tcg').forEach((el) => el.addEventListener('click', () => el.classList.toggle('flip')));
+  requestAnimationFrame(() => { const i = startId ? list.findIndex((p) => p.id === startId) : 0; track.scrollLeft = Math.max(0, i) * cardW(); upd(); });
+}
+$('tcg-open').onclick = () => openTcg();
+// 촉매 칩을 누르면 무엇인지 알려 준다
+$('cats').addEventListener('click', (e) => {
+  const el = (e.target as HTMLElement).closest('.c');
+  if (!el) return;
+  const i = [...$('cats').querySelectorAll('.c')].indexOf(el);
+  const id = CATALYST_IDS[i];
+  toast(`${CAT_ICON[id]} 촉매 「${CAT_NAME[id]}」 — 5·6성 조합 재료예요. 웨이브를 깰 때마다 1개, 보스 웨이브는 추가로, 적 처치 시 가끔 떨어져요`);
+});
