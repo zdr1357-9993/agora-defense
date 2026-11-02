@@ -136,6 +136,7 @@ let speed = 1;
 let cell = 0;
 let tick = 0;
 let resultShown = false;
+let introT = 0;
 
 function resize() {
   const dpr = window.devicePixelRatio || 1;
@@ -155,6 +156,7 @@ function startBattle(s: Stage) {
   });
   selected = null;
   resultShown = false;
+  introT = 2.8;
   lastSynthKey = lastInfoKey = lastCatKey = '';
   show('battle');
   updateUI();
@@ -426,7 +428,9 @@ function draw() {
     ctx.restore();
   }
 
-  if (g.wave === 0 && !g.running && g.countdown < 0) {
+  if (introT > 0) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, introT / 0.6, (2.8 - introT) / 0.3);
     ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(0, w / 2 - cell * 0.9, w, cell * 1.8);
     ctx.fillStyle = '#3b2a1e'; ctx.font = `800 ${cell * 0.22}px "Nanum Myeongjo", serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -435,6 +439,7 @@ function draw() {
     ctx.font = `700 ${cell * 0.22}px "Noto Sans KR", sans-serif`;
     ctx.fillText(STAGE_PATHS[g.stage.id].caption, w / 2, w / 2 + cell * 0.1);
     ctx.fillText(`최종 보스: ${g.stage.boss20} (${MAX_WAVE}웨이브)`, w / 2, w / 2 + cell * 0.45);
+    ctx.restore();
   }
   drawFx(w);
   ctx.restore();
@@ -702,6 +707,7 @@ function loop(now: number) {
     game.update(dt);
     consumeFx(game);
     updateFx(dt);
+    if (introT > 0) introT -= dt / speed;
     tick += dt * 60;
     if ((uiTimer += dt) > 0.15) { uiTimer = 0; updateUI(); }
     draw();
