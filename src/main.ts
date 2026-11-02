@@ -1,5 +1,6 @@
-import { Game, GRID, QA_MODE, CATALYST_IDS, MAX_WAVE, type Tower } from './game';
+import { Game, GRID, QA_MODE, CATALYST_IDS, type Tower } from './game';
 import { STAGE_PATHS } from './paths';
+import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
 import { ITEM, isOwner, ITEM_BONUS } from './items';
 import {
   PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, MAX_MERGE_TIER, UPGRADE, type Stage,
@@ -25,21 +26,39 @@ function show(id: 'home' | 'battle') {
   if (id === 'battle') requestAnimationFrame(resize);
 }
 
+let diffId = 'easy';
+/** 스테이지별 난이도 해금: 쉬움은 항상, 다음 단계는 앞 단계를 깨야 */
+const diffUnlocked = (stageId: string, id: string) => {
+  if (QA_MODE) return true;
+  const i = DIFFICULTIES.findIndex((d) => d.id === id);
+  return i === 0 || progress.cleared.includes(clearKey(stageId, DIFFICULTIES[i - 1].id));
+};
 const isUnlocked = (s: Stage) => QA_MODE || !s.unlockAfter || progress.cleared.includes(s.unlockAfter);
 
 // =============== 홈: 스테이지 지도 ===============
 function renderHome() {
   const box = $('stages');
   box.innerHTML = '';
+  const chips = document.createElement('div');
+  chips.className = 'diffs';
+  chips.innerHTML = DIFFICULTIES.map((d) => `<button data-diff="${d.id}" class="${d.id === diffId ? 'on' : ''}" style="--c:${d.color}">${d.icon}<span>${d.name}</span></button>`).join('');
+  box.appendChild(chips);
+  for (const b of chips.querySelectorAll<HTMLButtonElement>('button')) b.onclick = () => { diffId = b.dataset.diff!; renderHome(); };
+  const cur = DIFF.get(diffId)!;
+  const note = document.createElement('p');
+  note.className = 'hint diff-note';
+  note.innerHTML = `${cur.icon} <b>${cur.name}</b> · 적 체력 ×${cur.hp} · 멘탈 ${cur.lives} · 보상 ×${cur.reward} · ${cur.maxWave}웨이브${cur.goalWave ? ` <i>(챌린지 최종 목표 ${cur.goalWave}웨이브 · 현재 ${cur.maxWave}까지 개방)</i>` : ''}`;
+  box.appendChild(note);
   for (const s of STAGES) {
-    const open = isUnlocked(s);
-    const cleared = progress.cleared.includes(s.id);
+    const open = isUnlocked(s) && diffUnlocked(s.id, diffId);
+    const cleared = progress.cleared.includes(clearKey(s.id, diffId));
+    const marks = DIFFICULTIES.map((d) => progress.cleared.includes(clearKey(s.id, d.id)) ? d.icon : '·').join('');
     const b = document.createElement('button');
     b.className = `stage ${open ? '' : 'locked'} ${cleared ? 'cleared' : ''}`;
     b.disabled = !open;
     const hero = PHIL.get(s.counter)!;
     b.innerHTML = `<img src="${portrait(hero.id)}"><div><b>${ERA_ICON[s.era]} ${s.name}</b>${cleared ? ' <span class="badge">CLEAR</span>' : ''}
-      <small>${open ? `${STAGE_PATHS[s.id].caption}<br>최종 보스: ${s.boss20} · 수호자: ${hero.name}` : `🔒 ${STAGES.find((x) => x.id === s.unlockAfter)!.name} 클리어 시 해금`}</small></div>`;
+      <small><span class="marks">${marks}</span> ${open ? `${STAGE_PATHS[s.id].caption}<br>최종 보스: ${s.boss20} · 수호자: ${hero.name}` : !isUnlocked(s) ? `🔒 ${STAGES.find((x) => x.id === s.unlockAfter)?.name} 클리어 시 해금` : `🔒 이 스테이지의 ${DIFFICULTIES[DIFFICULTIES.findIndex((d) => d.id === diffId) - 1]?.name} 클리어 시 해금`}</small></div>`;
     b.onclick = () => startBattle(s);
     box.appendChild(b);
   }
@@ -153,7 +172,7 @@ function startBattle(s: Stage) {
   game = new Game(s, {
     cardMult: (id) => cardMult(progress.cards[id] ?? 0),
     tool: (id) => { const t = progress.loadout[id]; return t && progress.items[t] ? t : undefined; },
-  });
+  }, diffId);
   selected = null;
   resultShown = false;
   introT = 2.8;
@@ -165,8 +184,12 @@ function startBattle(s: Stage) {
 function endBattle() {
   if (game) {
     progress.seen = [...new Set([...progress.seen, ...game.discovered])];
-    progress.gonoe += battleReward(game.wave, game.over === 'win');
-    if (game.over === 'win' && !progress.cleared.includes(game.stage.id)) progress.cleared.push(game.stage.id);
+    progress.gonoe += Math.round(battleReward(game.wave, game.over === 'win') * game.diff.reward);
+    if (game.over === 'win') {
+      if (!progress.cleared.includes(game.stage.id)) progress.cleared.push(game.stage.id);
+      const k = clearKey(game.stage.id, game.diff.id);
+      if (!progress.cleared.includes(k)) progress.cleared.push(k);
+    }
     saveProgress(progress);
   }
   game = null;
@@ -202,6 +225,9 @@ function updateUI() {
   $('gold').textContent = String(g.gold);
   $('lives').textContent = String(g.lives);
   $('wave').textContent = String(g.wave);
+  $('wave-max').textContent = String(g.maxWave);
+  $<HTMLElement>('wave-bar').style.width = `${(g.wave / g.maxWave) * 100}%`;
+  $('diff-chip').textContent = `${g.diff.icon} ${g.diff.name}`;
   $('cost').textContent = String(g.summonCost);
   $<HTMLButtonElement>('summon').disabled = g.gold < g.summonCost || !!g.over;
   $<HTMLButtonElement>('sell').disabled = !selected;
@@ -301,14 +327,6 @@ function draw() {
     ctx.fillStyle = i % 3 ? th.speck : th.speck2;
     ctx.beginPath(); ctx.arc(rx, ry, r, 0, Math.PI * 2); ctx.fill();
   }
-  // 장식 (길·타워 없는 칸에 고정 배치)
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) {
-    if (g.isRoad(x, y) || g.towerAt(x, y)) continue;
-    const r = hash(x * 13 + y * 31 + g.stage.id.length);
-    if (r < 0.28) drawDecor(th.decor[Math.floor(r * 100) % th.decor.length], (x + 0.5) * cell, (y + 0.55) * cell, cell);
-  }
-
   // ---- 길: 굽이치는 두꺼운 길 + 테두리 ----
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   for (const [color, width] of [[th.roadEdge, 0.86], [th.road, 0.7]] as const) {
@@ -438,7 +456,7 @@ function draw() {
     ctx.fillText(g.stage.name, w / 2, w / 2 - cell * 0.35);
     ctx.font = `700 ${cell * 0.22}px "Noto Sans KR", sans-serif`;
     ctx.fillText(STAGE_PATHS[g.stage.id].caption, w / 2, w / 2 + cell * 0.1);
-    ctx.fillText(`최종 보스: ${g.stage.boss20} (${MAX_WAVE}웨이브)`, w / 2, w / 2 + cell * 0.45);
+    ctx.fillText(`${g.diff.icon} ${g.diff.name} · 최종 보스: ${g.stage.boss20} (${g.maxWave}웨이브)`, w / 2, w / 2 + cell * 0.45);
     ctx.restore();
   }
   drawFx(w);
@@ -526,7 +544,7 @@ function renderRoom() {
         <button id="thinker" class="thinker"><img src="${portrait(p.id)}"></button>
         <div class="room-floor"></div></div>
       <div class="room-stat"><span>고뇌</span><b id="room-gonoe">${Math.floor(progress.gonoe).toLocaleString()}</b></div>
-      <p class="hint">${p.name}을(를) 톡톡 두드려 고뇌를 짜내세요. 가만히 둬도 초당 ${(IDLE_PER_SEC * (1 + progress.cleared.length * 0.5)).toFixed(1)}씩 쌓여요 (스테이지 클리어마다 증가, 최대 8시간).${idle ? `<br><b>자리를 비운 사이 고뇌 +${idle.toLocaleString()}</b>` : ''}</p>
+      <p class="hint">${p.name}을(를) 톡톡 두드려 고뇌를 짜내세요. 가만히 둬도 초당 ${(IDLE_PER_SEC * (1 + STAGES.filter((s) => progress.cleared.includes(s.id)).length * 0.5)).toFixed(1)}씩 쌓여요 (스테이지 클리어마다 증가, 최대 8시간).${idle ? `<br><b>자리를 비운 사이 고뇌 +${idle.toLocaleString()}</b>` : ''}</p>
       <div class="row"><button id="tap-up" class="chunky blue">💭 고민의 깊이 Lv.${progress.tapLevel + 1} → ${progress.tapLevel + 2}<small>탭당 +${tapGain(progress)} → +${tapGain(progress) + 1} · ${cost.toLocaleString()} 고뇌</small></button></div>
       <p class="hint">고민방 주인은 도감에서 바꿀 수 있어요.</p>
     </div>`;

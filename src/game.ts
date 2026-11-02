@@ -4,6 +4,7 @@ import {
 } from './data';
 
 import { ITEM_BONUS, isOwner } from './items';
+import { DIFF, type Difficulty } from './difficulty';
 import { N, STAGE_PATHS, pathCells, pathLength, pointAt, type Layout } from './paths';
 
 // 9x9 격자: 스테이지마다 길 모양이 다르고, 길이 아닌 칸에 타워를 배치
@@ -55,7 +56,12 @@ export class Game {
   notice = '';
   noticeTime = 0;
 
-  constructor(public stage: Stage, public meta: Meta = { cardMult: () => 1, tool: () => undefined }) {
+  diff: Difficulty;
+  get maxWave() { return this.diff.maxWave; }
+
+  constructor(public stage: Stage, public meta: Meta = { cardMult: () => 1, tool: () => undefined }, diffId = 'normal') {
+    this.diff = DIFF.get(diffId) ?? DIFF.get('normal')!;
+    this.lives = this.diff.lives;
     this.layout = STAGE_PATHS[stage.id].layoutFor(1);
     this.road = pathCells(this.layout);
   }
@@ -215,7 +221,7 @@ export class Game {
   isBossWave() { return BOSS_WAVES.includes(this.wave); }
 
   startWave() {
-    if (this.running || this.over || this.wave >= MAX_WAVE) return;
+    if (this.running || this.over || this.wave >= this.maxWave) return;
     this.wave++;
     this.refreshLayout();
     this.running = true;
@@ -227,14 +233,14 @@ export class Game {
 
   private spawn() {
     const boss = this.isBossWave();
-    const base = Math.round(25 * 1.3 ** (this.wave - 1));
+    const base = Math.round(25 * 1.3 ** (this.wave - 1) * this.diff.hp);
     const s = this.stage;
     this.enemies.push({
       uid: uidSeq++, boss,
       hp: boss ? base * 30 : base, maxHp: boss ? base * 30 : base,
-      dist: 0, speed: (boss ? 0.9 : 1.4 + this.wave * 0.05) * (this.layout.speedMult ?? 1),
+      dist: 0, speed: (boss ? 0.9 : 1.4 + this.wave * 0.05) * (this.layout.speedMult ?? 1) * this.diff.speed,
       path: Math.floor(Math.random() * this.layout.paths.length),
-      reward: boss ? 150 * (this.wave / 10) : 5 + Math.floor(this.wave / 2),
+      reward: Math.round((boss ? 150 * (this.wave / 10) : 5 + Math.floor(this.wave / 2)) * Math.sqrt(this.diff.reward)),
       name: boss ? (this.wave === 10 ? s.boss10 : s.boss20) : this.wave < 10 ? s.enemyEarly : s.enemyLate,
     });
   }
@@ -302,7 +308,7 @@ export class Game {
       this.gold += 40 + this.wave * 5;
       this.gainCatalyst(this.randomCatalyst());
       if (this.isBossWave()) { this.gainCatalyst(this.randomCatalyst()); this.gainCatalyst('C001'); }
-      if (this.wave >= MAX_WAVE) this.over = 'win';
+      if (this.wave >= this.maxWave) this.over = 'win';
       else this.countdown = 3;
     }
   }

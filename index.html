@@ -42,10 +42,12 @@
     <!-- 전투 -->
     <section id="battle" class="screen hidden">
       <header id="hud">
+        
         <button id="quit" class="ghost">✕</button>
+        <span id="diff-chip" class="diff-chip"></span>
         <span>💰 <b id="gold">0</b></span>
         <span>🧠 <b id="lives">0</b></span>
-        <span>🌊 <b id="wave">0</b>/20</span>
+        <span class="wave-pill">🌊 <b id="wave">0</b>/<i id="wave-max">20</i><em class="wave-track"><em id="wave-bar"></em></em></span>
         <button id="b-recipes">📜</button>
         <button id="speed">1x</button>
       </header>
