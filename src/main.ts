@@ -12,7 +12,7 @@ import { SKILLS } from './skills';
 import { sfx, isMuted, toggleMute } from './sfx';
 import { setAccount, hasSave, loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, awakenLevel, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL, AWAKEN_MAX, AWAKEN_EVERY } from './save';
 import { LINES, UNLOCK_LEVELS } from './lines';
-import { settleIdle, tapGain, tapUpgradeCost, battleReward, pull, canAfford, PULLS, SHOP, buy, CUR_ICON, PITY_LIMIT, FIRST_CLEAR_GEMS, CARD_RATES, QA_GONOE, QA_GEMS, IDLE_PER_SEC, type PullOption } from './meta';
+import { settleIdle, idleRate, tapGain, tapUpgradeCost, battleReward, pull, canAfford, PULLS, SHOP, buy, CUR_ICON, PITY_LIMIT, FIRST_CLEAR_GEMS, CARD_RATES, QA_GONOE, QA_GEMS, IDLE_PER_SEC, type PullOption } from './meta';
 import { ITEMS } from './items';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -49,74 +49,84 @@ const diffUnlocked = (stageId: string, id: string) => {
 const isUnlocked = (s: Stage) => QA_MODE || !s.unlockAfter || progress.cleared.includes(s.unlockAfter);
 
 // =============== 홈: 스테이지 지도 ===============
+/** 쉬움을 모든 스테이지에서 깨야 난이도 탭이 열린다 (신규 유저는 쉬움만) */
+const easyAllCleared = () => STAGES.every((s) => progress.cleared.includes(clearKey(s.id, 'easy')));
+function stageInfo(s: Stage) {
+  const hero = PHIL.get(s.counter)!;
+  const marks = DIFFICULTIES.map((d) => `<span class="${progress.cleared.includes(clearKey(s.id, d.id)) ? 'on' : ''}">${d.icon}</span>`).join('');
+  alertBox(`<h2>${ERA_ICON[s.era]} ${s.name}</h2>
+    <p class="hint">${s.story}</p>
+    <div class="stage-info">
+      <div>🗺 ${STAGE_PATHS[s.id].caption}</div>
+      <div>👑 최종 보스 <b>${s.boss20}</b> · 10웨이브마다 <b>${s.boss10}</b></div>
+      <div>⚔ 보스 카운터 <b>${hero.name}</b> (보스에게 피해 3배)</div>
+      <div>🏠 강해지는 철학자 <b>${(STAGE_STARS[s.id] ?? []).map((n) => PHILOSOPHERS.find((p) => p.realName === n)?.name ?? n).join(', ')}</b> +${STAR_BONUS * 100}%<br>${s.era} 철학자 모두 +${ERA_BONUS * 100}%</div>
+      <div>🏅 클리어 ${marks}</div>
+    </div>`);
+}
 function renderHome() {
   const box = $('stages');
   box.innerHTML = '';
-  const chips = document.createElement('div');
-  chips.className = 'diffs';
-  chips.innerHTML = DIFFICULTIES.map((d) => `<button data-diff="${d.id}" class="${d.id === diffId ? 'on' : ''}" style="--c:${d.color}">${d.icon}<span>${d.name}</span></button>`).join('');
-  box.appendChild(chips);
-  for (const b of chips.querySelectorAll<HTMLButtonElement>('button')) b.onclick = () => { diffId = b.dataset.diff!; renderHome(); };
+  const diffOpen = QA_MODE || easyAllCleared();
+  if (!diffOpen) diffId = 'easy';
+  if (diffOpen) {
+    const chips = document.createElement('div');
+    chips.className = 'diffs';
+    chips.innerHTML = DIFFICULTIES.map((d) => `<button data-diff="${d.id}" class="${d.id === diffId ? 'on' : ''}" style="--c:${d.color}">${d.icon}<span>${d.name}</span></button>`).join('');
+    box.appendChild(chips);
+    for (const b of chips.querySelectorAll<HTMLButtonElement>('button')) b.onclick = () => { diffId = b.dataset.diff!; renderHome(); };
+  }
+  for (const s of STAGES) {
+    const row = document.createElement('div');
+    if (!isUnlocked(s)) {
+      row.className = 'srow locked';
+      row.innerHTML = `<span class="sname">🔒 ???</span><small>${STAGES.find((x) => x.id === s.unlockAfter)?.name} 클리어 시</small>`;
+      box.appendChild(row); continue;
+    }
+    const open = diffUnlocked(s.id, diffId);
+    const cleared = progress.cleared.includes(clearKey(s.id, diffId));
+    row.className = `srow ${open ? '' : 'locked'} ${cleared ? 'cleared' : ''}`;
+    row.innerHTML = `<button class="sgo" ${open ? '' : 'disabled'}><img src="${portrait(s.counter)}"><span class="sname">${ERA_ICON[s.era]} ${s.name}</span>${cleared ? '<span class="badge">CLEAR</span>' : open ? '' : '<small>🔒</small>'}</button><button class="sinfo" aria-label="스테이지 정보">i</button>`;
+    (row.querySelector('.sgo') as HTMLButtonElement).onclick = () => startBattle(s);
+    (row.querySelector('.sinfo') as HTMLButtonElement).onclick = () => stageInfo(s);
+    box.appendChild(row);
+  }
   if (progress.favorite && progress.cards[progress.favorite]) {
     const fav = PHIL.get(progress.favorite)!;
-    const ot = document.createElement('button');
-    ot.className = 'onetool';
-    ot.innerHTML = `<img src="${portrait(fav.id)}"><div><b>💗 최애 원툴 도전</b><small>${fav.name} 한 명 + 흔함만으로 어디까지 버틸까? · 최고 기록 ${progress.oneToolBest[fav.id] ?? 0}웨이브</small></div>`;
-    ot.onclick = () => startBattle(STAGES[0], fav.id);
+    const ot = document.createElement('div');
+    ot.className = 'srow onetool-row';
+    ot.innerHTML = `<button class="sgo"><img src="${portrait(fav.id)}"><span class="sname">💗 ${shortName(fav.name)} 원툴 도전</span><small>최고 ${progress.oneToolBest[fav.id] ?? 0}웨이브</small></button><button class="sinfo">i</button>`;
+    (ot.querySelector('.sgo') as HTMLButtonElement).onclick = () => startBattle(STAGES[0], fav.id);
+    (ot.querySelector('.sinfo') as HTMLButtonElement).onclick = () => alertBox(`<h2>💗 최애 원툴 도전</h2><p>${fav.name} 한 명 + 흔함만으로 어디까지 버틸 수 있을까요? 조합 없이 끝없이 이어지는 웨이브예요.</p>`);
     box.appendChild(ot);
-  }
-  const cur = DIFF.get(diffId)!;
-  const note = document.createElement('p');
-  note.className = 'hint diff-note';
-  note.innerHTML = `${cur.icon} <b>${cur.name}</b> · 적 체력 ×${cur.hp} · 멘탈 ${cur.lives} · 보상 ×${cur.reward} · ${cur.maxWave}웨이브${cur.goalWave ? ` <i>(챌린지 최종 목표 ${cur.goalWave}웨이브 · 현재 ${cur.maxWave}까지 개방)</i>` : ''}`;
-  box.appendChild(note);
-  for (const s of STAGES) {
-    const open = isUnlocked(s) && diffUnlocked(s.id, diffId);
-    const cleared = progress.cleared.includes(clearKey(s.id, diffId));
-    const marks = DIFFICULTIES.map((d) => progress.cleared.includes(clearKey(s.id, d.id)) ? d.icon : '·').join('');
-    const b = document.createElement('button');
-    b.className = `stage ${open ? '' : 'locked'} ${cleared ? 'cleared' : ''}`;
-    b.disabled = !open;
-    const hero = PHIL.get(s.counter)!;
-    if (!isUnlocked(s)) {
-      const b2 = document.createElement('button');
-      b2.className = 'stage locked mystery'; b2.disabled = true;
-      b2.innerHTML = `<img src="${portrait(hero.id)}"><div><b>🔒 ???</b><small>${STAGES.find((x) => x.id === s.unlockAfter)?.name ?? '이전 스테이지'}을(를) 깨면 열립니다</small></div>`;
-      box.appendChild(b2);
-      continue;
-    }
-    b.innerHTML = `<img src="${portrait(hero.id)}"><div><b>${ERA_ICON[s.era]} ${s.name}</b>${cleared ? ' <span class="badge">CLEAR</span>' : ''}
-      <small><span class="marks">${marks}</span> ${open ? `${STAGE_PATHS[s.id].caption}<br>최종 보스: ${s.boss20} · 수호자: ${hero.name}<br><span class="stars-line">🏠 강해지는 철학자: ${(STAGE_STARS[s.id] ?? []).map((n) => shortName(PHILOSOPHERS.find((p) => p.realName === n)?.name ?? n)).join('·')} (+${STAR_BONUS * 100}%) · ${s.era} 철학자 +${ERA_BONUS * 100}%</span>` : !isUnlocked(s) ? `🔒 ${STAGES.find((x) => x.id === s.unlockAfter)?.name} 클리어 시 해금` : `🔒 이 스테이지의 ${DIFFICULTIES[DIFFICULTIES.findIndex((d) => d.id === diffId) - 1]?.name} 클리어 시 해금`}</small></div>`;
-    b.onclick = () => startBattle(s);
-    box.appendChild(b);
   }
 }
 
 // =============== 도감 ===============
+let codexTier = 1;
 function renderCodex() {
   const box = $('codex-list');
   box.innerHTML = '';
   const seen = new Set(progress.seen);
   $('codex-count').textContent = `${PHILOSOPHERS.filter((p) => seen.has(p.id)).length} / ${PHILOSOPHERS.length}`;
-  for (let tier = 7; tier >= 1; tier--) {
-    const list = PHILOSOPHERS.filter((x) => x.tier === tier);
-    const h = document.createElement('h3');
-    h.innerHTML = `<span class="tier-chip t${tier}">${TIER_NAME[tier]}</span> ${tier === 1 ? '<small>(소환으로 등장)</small>' : '<small>(조합으로 탄생)</small>'}`;
-    box.appendChild(h);
-    const grid = document.createElement('div');
-    grid.className = 'codex-grid';
-    for (const p of list) {
-      const known = seen.has(p.id) || (QA_MODE && !p.hidden);
-      const n = progress.cards[p.id] ?? 0, lv = cardLevel(n);
-      const tool = progress.loadout[p.id];
-      const d = document.createElement('div');
-      d.className = `card t${p.tier} ${known ? '' : 'unknown'} ${n ? 'owned' : ''}`;
-      d.innerHTML = `${progress.favorite === p.id ? '<span class="fav">💗</span>' : ''}${lv ? `<span class="lv ${awakenLevel(n) ? 'aw' : ''}">${awakenLevel(n) ? '✦' + awakenLevel(n) : 'Lv.' + lv}</span>` : ''}${tool ? `<img class="tool-badge" src="${itemUrl(tool)}">` : ''}<img src="${portrait(p.id)}"><b>${known ? p.name : '???'}</b><small>${n ? `🎴${n}` : ERA_ICON[p.era] ?? ''}</small>`;
-      if (known) d.onclick = () => showCard(p.id);
-      grid.appendChild(d);
-    }
-    box.appendChild(grid);
+  // 등급 탭: 한 번에 한 등급만 (스크롤 없이)
+  const tabs = document.createElement('div');
+  tabs.className = 'codex-tabs';
+  tabs.innerHTML = [1, 2, 3, 4, 5, 6, 7].map((t) => `<button class="tier-chip t${t} ${t === codexTier ? 'on' : ''}" data-ct="${t}">${TIER_NAME[t]}</button>`).join('');
+  box.appendChild(tabs);
+  for (const b of tabs.querySelectorAll<HTMLButtonElement>('[data-ct]')) b.onclick = () => { codexTier = Number(b.dataset.ct); renderCodex(); };
+  const grid = document.createElement('div');
+  grid.className = 'codex-grid';
+  for (const p of PHILOSOPHERS.filter((x) => x.tier === codexTier)) {
+    const known = seen.has(p.id) || !!progress.cards[p.id] || (QA_MODE && !p.hidden);
+    const n = progress.cards[p.id] ?? 0, lv = cardLevel(n);
+    const d = document.createElement('div');
+    d.className = `card t${p.tier} ${known ? '' : 'unknown'} ${n ? 'owned' : ''}`;
+    d.innerHTML = `${progress.favorite === p.id ? '<span class="fav">💗</span>' : ''}${lv ? `<span class="lv ${awakenLevel(n) ? 'aw' : ''}">${awakenLevel(n) ? '✦' + awakenLevel(n) : 'Lv.' + lv}</span>` : ''}<img src="${portrait(p.id)}"><b>${known ? shortName(p.name) : '???'}</b>`;
+    if (known) d.onclick = () => openTcg(p.id);
+    grid.appendChild(d);
   }
+  box.appendChild(grid);
 }
 
 const CARD_BG: Record<string, string> = {
@@ -225,7 +235,7 @@ function resize() {
   if (!W || !H) return;
   // 세로에 맞춰 칸 크기를 정하고, 가로는 화면 폭까지 넓힌다 (칸이 최대 1.5배까지 옆으로 길어짐)
   const c = Math.min(W / GRID, H / ROWS);
-  const width = Math.floor(Math.min(W, c * GRID * 1.5));
+  const width = Math.floor(c * GRID); // 정사각형 칸
   const height = Math.floor(c * ROWS);
   canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
   canvas.width = width * dpr;
@@ -502,19 +512,19 @@ function draw() {
   ctx.restore(); // 필드 클립 끝 → 대기석 철학자도 그린다
   for (const t of towers) {
     const p = PHIL.get(t.philId)!;
-    const cx = (t.cx + 0.5) * cellX, foot = (t.cy + 0.8) * cell;
+    const cx = (t.cx + 0.5) * cellX, foot = (t.cy + 0.86) * cell;
     const isSel = t === selected;
     if (isSel) { ctx.fillStyle = 'rgba(251,191,36,.55)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
     const hk = g.home(t).kind;
     if (hk) { ctx.fillStyle = hk === 'star' ? 'rgba(255,211,107,.75)' : 'rgba(167,236,210,.6)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.15, 0, 0, Math.PI * 2); ctx.fill(); }
-    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.24, cell * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.3, cell * 0.1, 0, 0, Math.PI * 2); ctx.fill();
     if (p.tier >= 7) {
       ctx.save(); ctx.globalAlpha = 0.35 + 0.2 * Math.sin(tick * 0.08);
       ctx.fillStyle = `hsl(${(tick * 2) % 360},90%,60%)`;
       ctx.beginPath(); ctx.arc(cx, foot - cell * 0.45, cell * 0.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     const bob = Math.sin((tick + t.cx * 9 + t.cy * 5) * 0.1) * cell * 0.03;
-    const sz = cell * (p.tier >= 6 ? 0.86 : 0.74);
+    const sz = cell * (p.tier >= 6 ? 1.08 : 0.96);
     const rc = recoil.get(t.uid) ?? 0;
     const sx = sz * (1 + rc * 0.12), sy = sz * (1 - rc * 0.1);
     ctx.drawImage(spriteFor(p.id), cx - sx / 2, foot - sy * 0.97 + bob, sx, sy);
@@ -524,14 +534,14 @@ function draw() {
     }
     // 이름표
     const nm = (progress.favorite === t.philId ? '💗' : '') + shortName(p.name);
-    const fs = Math.max(8, cell * 0.15);
+    const fs = Math.max(9, cell * 0.18);
     ctx.font = `${fs}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const nw = ctx.measureText(nm).width + 8, ny = foot + fs * 0.35;
     ctx.fillStyle = isSel ? '#ffd36b' : 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.roundRect(cx - nw / 2, ny - fs * 0.62, nw, fs * 1.24, fs * 0.6); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#3b2a1e'; ctx.fillText(nm, cx, ny + 0.5);
     // 등급 배지
-    const bx = (t.cx + 0.2) * cellX, by = (t.cy + 0.2) * cell, br = cell * 0.11;
+    const bx = (t.cx + 0.2) * cellX, by = (t.cy + 0.2) * cell, br = cell * 0.13;
     ctx.fillStyle = TIER_AURA[p.tier]; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#1c1917'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = `900 ${br * 1.3}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -704,16 +714,20 @@ function renderRoom() {
   if (!progress.cards[roomThinker] && owned.length) roomThinker = owned.sort((a, b) => b.tier - a.tier)[0].id;
   const p = PHIL.get(roomThinker)!;
   const cost = tapUpgradeCost(progress);
+  const rate = idleRate(progress, clearedStages());
+  const next = { ...progress, tapLevel: progress.tapLevel + 1 };
   $('tab-room').innerHTML = `
     <div class="room">
+      <div class="room-head"><h2>🤔 고민방</h2><button class="info-btn" id="room-info">i</button></div>
       <div class="room-sky"><div class="room-bubble">“${p.quote}”</div>
         <button id="thinker" class="thinker"><img src="${portrait(p.id)}"></button>
         <div class="room-floor"></div></div>
       <div class="room-stat"><span>고뇌</span><b id="room-gonoe">${Math.floor(progress.gonoe).toLocaleString()}</b></div>
-      <p class="hint">${p.name}을(를) 톡톡 두드려 고뇌를 짜내세요. 가만히 둬도 초당 ${(IDLE_PER_SEC * (1 + clearedStages() * 0.5)).toFixed(1)}씩 쌓여요 (스테이지 클리어마다 증가, 최대 8시간).${idle ? `<br><b>자리를 비운 사이 고뇌 +${idle.toLocaleString()}</b>` : ''}</p>
-      <div class="row"><button id="tap-up" class="chunky blue">💭 고민의 깊이 Lv.${progress.tapLevel + 1} → ${progress.tapLevel + 2}<small>탭당 +${tapGain(progress)} → +${tapGain(progress) + 1} · ${cost.toLocaleString()} 고뇌</small></button></div>
-      <p class="hint">고민방 주인은 도감에서 바꿀 수 있어요.</p>
+      <div class="room-rates"><span>👆 탭당 <b>+${tapGain(progress)}</b></span><span>⏳ 초당 <b>+${rate.toFixed(1)}</b></span></div>
+      ${idle ? `<p class="hint">자리를 비운 사이 고뇌 <b>+${idle.toLocaleString()}</b></p>` : ''}
+      <button id="tap-up" class="chunky blue">💭 고민의 깊이 Lv.${progress.tapLevel + 1} → ${progress.tapLevel + 2}<small>탭 +${tapGain(progress)}→+${tapGain(next)} · 초당 ${rate.toFixed(1)}→${idleRate(next, clearedStages()).toFixed(1)} · 🤔${cost.toLocaleString()}</small></button>
     </div>`;
+  $('room-info').onclick = () => alertBox(`<h2>🤔 고민방</h2><p>철학자를 톡톡 두드리면 고뇌가 나와요.<br>가만히 둬도 쌓이고(최대 ${8}시간), 스테이지를 깰수록 더 빨리 쌓여요.</p><p><b>고민의 깊이</b>를 올리면 탭당 고뇌와 초당 고뇌가 함께 올라요.</p><p>고뇌는 🎴 카드·🧰 도구 뽑기에 써요. 고민방 주인은 도감에서 💗최애로 바꿀 수 있어요.</p>`);
   $('thinker').onclick = (ev) => {
     progress.gonoe += tapGain(progress);
     saveProgress(progress);
@@ -739,23 +753,24 @@ function renderGacha() {
   const rates = CARD_RATES.map((r) => `<span class="tier-chip t${r.tier}">${TIER_NAME[r.tier]} ${(r.rate * 100).toFixed(1)}%</span>`).join(' ');
   $('tab-gacha').innerHTML = `
     <div class="gacha-box master-box">
+      <div class="gb-head"><h2>✨ 거장 초대</h2><button class="info-btn" data-ginfo="m">i</button></div>
       <div class="banner-art">${PHILOSOPHERS.filter((p) => p.tier === 7 && !p.hidden).map((p) => `<img src="${portrait(p.id)}">`).join('')}</div>
-      <h2>✨ 거장 초대 <span class="hot">거장 이상 확정</span></h2>
-      <p class="hint">10회 중 마지막 1장은 반드시 거장 또는 근원! 🎫 초대장으로 1장 확정 소환도 가능해요.</p>
       <div class="row">${pullBtn('m10', 'gold')}${pullBtn('m1', 'pink')}</div>
     </div>
     <div class="gacha-box card-box">
-      <h2>🎴 철학자 카드</h2>
-      <p class="hint">카드가 모이면 레벨업(Lv.${CARD_MAX_LEVEL}까지) · 레벨당 공격력 +${CARD_ATK_PER_LEVEL * 100}% · 이후 ${AWAKEN_EVERY}장마다 <b>각성</b>(최대 ${AWAKEN_MAX}단계): 공격력 +15%, 스킬 강화 · 레벨이 오르면 일화가 열려요</p>
-      <div class="rates-line">${rates}</div>
-      <div class="pity">천장까지 <b>${PITY_LIMIT - progress.pity}</b>회 <span class="bar"><i style="width:${(progress.pity / PITY_LIMIT) * 100}%"></i></span></div>
+      <div class="gb-head"><h2>🎴 철학자 카드</h2><button class="info-btn" data-ginfo="c">i</button></div>
       <div class="row">${pullBtn('c1', 'pink')}${pullBtn('c10', 'gold')}${pullBtn('c10g', 'blue')}</div>
     </div>
     <div class="gacha-box tool-box">
-      <h2>🧰 도구 상자</h2>
-      <p class="hint">도감에서 철학자에게 장착 · 주인에게 끼우면 <b>찰떡!</b> 공격 +60%</p>
+      <div class="gb-head"><h2>🧰 도구 상자</h2><button class="info-btn" data-ginfo="t">i</button></div>
       <div class="row">${pullBtn('t1', 'mint')}${pullBtn('t10', 'gold')}${pullBtn('t10g', 'blue')}</div>
     </div>`;
+  const INFO: Record<string, string> = {
+    m: `<h2>✨ 거장 초대</h2><p>💎 지혜석 10회 뽑기의 마지막 1장은 반드시 <b>거장 또는 근원</b>이에요.<br>🎫 초대장 1장으로 거장 이상 1명을 바로 불러올 수도 있어요.</p>`,
+    c: `<h2>🎴 철학자 카드</h2><p>같은 카드가 모이면 레벨업(Lv.${CARD_MAX_LEVEL}까지) · 레벨당 공격력 +${CARD_ATK_PER_LEVEL * 100}%<br>그 뒤 ${AWAKEN_EVERY}장마다 <b>각성</b>(최대 ${AWAKEN_MAX}단계): 공격력 +15%, 스킬 강화<br>레벨이 오르면 일화가 열려요.</p><div class="rates-line">${rates}</div><p><b>천장</b>: 거장 이상이 안 나와도 ${PITY_LIMIT}회째엔 확정 · 지금 ${PITY_LIMIT - progress.pity}회 남음</p>`,
+    t: `<h2>🧰 도구 상자</h2><p>뽑은 도구는 도감에서 철학자에게 장착해요.<br>그 도구의 주인에게 끼우면 <b>찰떡!</b> 공격력 +60%</p>`,
+  };
+  for (const b of $('tab-gacha').querySelectorAll<HTMLButtonElement>('[data-ginfo]')) b.onclick = () => alertBox(INFO[b.dataset.ginfo!]);
   for (const b of $('tab-gacha').querySelectorAll<HTMLButtonElement>('[data-pull]')) {
     const o = PULLS.find((x) => x.id === b.dataset.pull)!;
     b.disabled = !canAfford(progress, o);
@@ -1191,12 +1206,12 @@ function tcgCard(id: string) {
 }
 function openTcg(startId?: string) {
   const seen = new Set(progress.seen);
-  const list = [...PHILOSOPHERS].filter((p) => seen.has(p.id) || (QA_MODE && !p.hidden)).sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id));
+  const list = [...PHILOSOPHERS].filter((p) => seen.has(p.id) || !!progress.cards[p.id] || (QA_MODE && !p.hidden)).sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id));
   if (!list.length) { toast('아직 만난 철학자가 없어요'); return; }
   const ov = document.createElement('div');
   ov.className = 'overlay tcg-ov';
   ov.innerHTML = `<button class="close">✕</button><div class="tcg-track">${list.map((p) => tcgCard(p.id)).join('')}</div>
-    <div class="tcg-nav"><button class="prev">◀</button><span class="tcg-count"></span><button class="next">▶</button></div>`;
+    <div class="tcg-nav"><button class="prev">◀</button><span class="tcg-count"></span><button class="next">▶</button></div><button class="chunky gold tcg-detail">📋 정보보기</button>`;
   document.body.appendChild(ov);
   const track = ov.querySelector('.tcg-track') as HTMLElement;
   const count = ov.querySelector('.tcg-count') as HTMLElement;
@@ -1208,6 +1223,7 @@ function openTcg(startId?: string) {
   (ov.querySelector('.prev') as HTMLElement).onclick = () => go(idx() - 1);
   (ov.querySelector('.next') as HTMLElement).onclick = () => go(idx() + 1);
   (ov.querySelector('.close') as HTMLElement).onclick = () => ov.remove();
+  (ov.querySelector('.tcg-detail') as HTMLElement).onclick = () => { const id = list[idx()].id; ov.remove(); showCard(id); };
   track.querySelectorAll('.tcg').forEach((el) => el.addEventListener('click', () => el.classList.toggle('flip')));
   requestAnimationFrame(() => { const i = startId ? list.findIndex((p) => p.id === startId) : 0; track.scrollLeft = Math.max(0, i) * cardW(); upd(); });
 }
@@ -1256,24 +1272,25 @@ setInterval(tutTick, 300);
 // ---------- 🎓 화면별 튜토리얼 (탭을 처음 열 때) ----------
 const PAGE_TUT: Record<string, { sel: string; text: string }[]> = {
   stages: [
-    { sel: '.diffs', text: '여기서 <b>난이도</b>를 골라요. 같은 스테이지에서 앞 난이도를 깨야 다음 난이도가 열려요.' },
-    { sel: '.stage:not(.locked)', text: '스테이지를 누르면 전투 시작! 🏠 <b>강해지는 철학자</b>는 이 맵에서 공격력이 크게 올라요(+60%). 같은 시대 철학자도 +25%.' },
+    { sel: '.srow:not(.locked) .sgo', text: '스테이지 이름을 누르면 바로 전투 시작! 처음엔 <b>쉬움</b>으로 해요. 모든 스테이지의 쉬움을 깨면 난이도 탭이 열려요.' },
+    { sel: '.srow:not(.locked) .sinfo', text: '<b>i</b>를 누르면 보스, 길 모양, 이 맵에서 강해지는 철학자 같은 정보를 볼 수 있어요.' },
     { sel: '#open-recipes', text: '📜 <b>조합표</b>에서 모든 조합식을, 🎲 확률에서 소환·등급 정보를 볼 수 있어요. 마음에 드는 조합은 💗로 찜해 두면 전투 중에 따라 보여요.' },
     { sel: '#tabs', text: '아래 탭에서 🤔고민방·🎴뽑기·📖도감·🛍상점으로 가요. 처음 들어가면 거기서도 안내해 드릴게요!' },
   ],
   room: [
     { sel: '#thinker', text: '여기는 <b>고민방</b>. 철학자를 톡톡 두드리면 <b>🤔 고뇌</b>가 나와요.' },
     { sel: '.room-stat', text: '고뇌는 가만히 둬도 쌓여요(최대 8시간). 스테이지를 깰수록 더 빨리 쌓이고, <b>카드·도구 뽑기</b>에 써요.' },
-    { sel: '#tap-up', text: '고뇌를 써서 <b>고민의 깊이</b>를 올리면 한 번 두드릴 때 나오는 고뇌가 늘어요.' },
+    { sel: '#tap-up', text: '고뇌를 써서 <b>고민의 깊이</b>를 올리면 탭할 때와 가만히 둘 때 나오는 고뇌가 <b>둘 다</b> 늘어요.' },
   ],
   gacha: [
     { sel: '.card-box', text: '🎴 <b>철학자 카드</b> 뽑기예요. 같은 카드가 모이면 레벨이 올라 전투 공격력이 세지고, 일화도 열려요.' },
-    { sel: '.pity', text: '<b>천장</b>: 카드 뽑기에서 거장 이상이 안 나와도, 이 막대가 다 차면 <b>거장 이상이 확정</b>으로 나와요.' },
+    { sel: '.card-box .info-btn', text: '<b>i</b>를 누르면 확률, 천장(거장 이상 확정까지 남은 횟수), 성장 규칙을 볼 수 있어요.' },
     { sel: '.master-box', text: '✨ <b>거장 초대</b>는 💎지혜석이나 🎫초대장으로 거장 이상을 확정으로 뽑아요.' },
     { sel: '.tool-box', text: '🧰 <b>도구</b>를 뽑아 도감에서 철학자에게 장착해요. 주인에게 맞는 도구면 <b>찰떡!</b> 공격 +60%.' },
   ],
   codex: [
-    { sel: '.codex-grid', text: '만난 철학자가 <b>도감</b>에 모여요. 누르면 상세 화면에서 도구 장착·스킨·💗최애 지정을 할 수 있어요.' },
+    { sel: '.codex-tabs', text: '등급별로 나눠 봐요. 만난 철학자를 누르면 <b>카드</b>로 보여요.' },
+    { sel: '.codex-grid', text: '카드 아래 <b>📋 정보보기</b>를 누르면 스탯·도구 장착·스킨·💗최애 지정을 할 수 있어요.' },
     { sel: '#tcg-open', text: '🃏 여기를 누르면 카드처럼 <b>옆으로 넘겨 보고</b>, 탭하면 뒤집어서 이야기를 읽을 수 있어요.' },
   ],
   shop: [

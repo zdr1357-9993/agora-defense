@@ -13,9 +13,11 @@ export const tapGain = (p: Progress) => 1 + p.tapLevel;
 export const tapUpgradeCost = (p: Progress) => Math.round(50 * 1.6 ** p.tapLevel);
 
 /** 지난번 계산 이후 쌓인 방치 고뇌를 정산하고 얼마 들어왔는지 돌려줌 */
+/** 가만히 둘 때 초당 고뇌: 스테이지 클리어 + 고민의 깊이(레벨당 +25%) */
+export const idleRate = (p: Progress, clearedStages: number) => IDLE_PER_SEC * (1 + clearedStages * 0.5) * (1 + 0.25 * p.tapLevel);
 export function settleIdle(p: Progress, clearedStages: number, now = Date.now()) {
   const sec = Math.min((now - p.idleAt) / 1000, IDLE_CAP_HOURS * 3600);
-  const gain = Math.floor(sec * IDLE_PER_SEC * (1 + clearedStages * 0.5));
+  const gain = Math.floor(sec * idleRate(p, clearedStages));
   if (gain > 0) { p.gonoe += gain; p.idleAt = now; }
   return gain;
 }

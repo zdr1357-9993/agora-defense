@@ -380,3 +380,73 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 #synth .near, #synth .goal { font-size: 12px; }
 #dock button { padding: 9px 6px; font-size: 16px; }
 @media (max-height: 700px) { #context { height: clamp(96px, 22dvh, 150px); } #battle { gap: 6px; padding: 6px; } #dock button { padding: 7px 4px; } }
+
+/* ---------- 전투 아래: 왼쪽 조합 | 오른쪽 설명 ---------- */
+#context { display: grid; grid-template-columns: 1.15fr 1fr; gap: 8px; padding: 6px; overflow: hidden; }
+#context > #synth { order: 1; margin: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; align-content: flex-start; }
+#context > #info { order: 2; overflow-y: auto; border-left: 2px dashed #e8d8bd; padding-left: 8px; font-size: 12px; display: block; }
+#info > img { width: 34px; height: 34px; float: left; margin: 0 6px 2px 0; }
+#synth button { width: 100%; font-size: 11.5px; padding: 5px 6px; animation: none; }
+#synth .near, #synth .goal { font-size: 11px; line-height: 1.35; }
+#synth:empty::before { content: '⚗ 조합할 수 있는 게 생기면 여기에 떠요'; font-size: 11px; color: #a08b72; }
+
+/* ---------- 스테이지 목록: 이름 + i 버튼 한 줄 ---------- */
+#tab-stages { display: flex; flex-direction: column; gap: 8px; }
+#stages { display: flex; flex-direction: column; gap: 8px; }
+.srow { display: flex; gap: 6px; align-items: stretch; }
+.srow .sgo { flex: 1; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 3px solid var(--line); border-radius: 16px; background: #fffdf6; box-shadow: 0 4px 0 var(--line); font-family: 'Jua'; font-size: 17px; text-align: left; cursor: pointer; }
+.srow .sgo img { width: 40px; height: 40px; image-rendering: pixelated; }
+.srow .sgo .sname { flex: 1; }
+.srow .sgo small { font-size: 12px; color: #8a7560; font-family: inherit; }
+.srow.cleared .sgo { background: #eafaf2; }
+.srow .sinfo { width: 46px; flex: none; border: 3px solid var(--line); border-radius: 16px; background: #a9d8ff; box-shadow: 0 4px 0 var(--line); font-family: Georgia, serif; font-style: italic; font-weight: 700; font-size: 20px; cursor: pointer; }
+.srow.locked { opacity: .55; }
+.srow.locked:not(:has(.sgo)) { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 3px dashed #c4b5a5; border-radius: 16px; font-family: 'Jua'; font-size: 16px; }
+.srow.locked small { font-size: 12px; }
+.onetool-row .sgo { background: #ffe1ef; }
+.home-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.home-tools .chunky { padding: 8px; font-size: 15px; }
+.home-tools .ghost { font-size: 12px; padding: 4px; }
+.stage-info { display: flex; flex-direction: column; gap: 6px; text-align: left; font-size: 13px; }
+.stage-info > div { background: #fffaf0; border: 2px solid #e8d8bd; border-radius: 10px; padding: 6px 8px; }
+.stage-info span { opacity: .3; } .stage-info span.on { opacity: 1; }
+
+/* ---------- 공통 i 버튼 / 고민방 한 화면 ---------- */
+.info-btn { width: 34px; height: 34px; flex: none; border: 3px solid var(--line); border-radius: 50%; background: #a9d8ff; box-shadow: 0 3px 0 var(--line); font-family: Georgia, serif; font-style: italic; font-weight: 700; font-size: 17px; cursor: pointer; padding: 0; }
+.room-head, .tab-head { display: flex; justify-content: space-between; align-items: center; }
+.room-head h2, .tab-head h2 { margin: 0; }
+.room { display: flex; flex-direction: column; gap: 10px; }
+.room-rates { display: flex; justify-content: center; gap: 16px; font-size: 15px; }
+.room-rates b { color: #c2410c; }
+#tap-up { width: 100%; }
+#tap-up small { display: block; font-size: 11px; }
+
+/* ---------- 뽑기: 상자마다 제목 + i, 버튼만 ---------- */
+#tab-gacha { display: flex; flex-direction: column; gap: 10px; }
+.gacha-box { padding: 10px 12px; }
+.gb-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.gb-head h2 { margin: 0; font-size: 18px; }
+.gacha-box .row { display: flex; gap: 6px; }
+.gacha-box .row .chunky { flex: 1; padding: 8px 4px; font-size: 15px; }
+.banner-art img { width: 40px; height: 40px; }
+
+/* ---------- 도감: 등급 탭 + 카드 우선 ---------- */
+.codex-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.codex-tabs button { border: 2px solid var(--line); cursor: pointer; font-family: 'Jua'; font-size: 13px; padding: 3px 8px; opacity: .55; }
+.codex-tabs button.on { opacity: 1; box-shadow: 0 3px 0 var(--line); transform: translateY(-1px); }
+.codex-grid { grid-template-columns: repeat(4, 1fr) !important; }
+.codex-grid .card img { width: 48px; height: 48px; }
+.codex-grid .card b { font-size: 12px; }
+.tcg-detail { margin-top: 10px; min-width: 180px; }
+/* 난이도 칩 한 줄로 작게 */
+#stages .diffs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+#stages .diffs button { padding: 4px 2px; font-size: 18px; line-height: 1.1; }
+#stages .diffs button span { display: block; font-size: 11px; }
+/* 상점: 3열로 작게 */
+.shop-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }
+.shop-item { padding: 8px 4px !important; }
+.shop-item:first-child { grid-column: 1 / -1; }
+.shop-icon { font-size: 26px !important; }
+.shop-item b { font-size: 13px; }
+.shop-item small { font-size: 10px; }
+.shop-item .chunky { padding: 5px 2px; font-size: 13px; }
