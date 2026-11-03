@@ -34,6 +34,10 @@ export interface Progress {
   battleTutDone?: boolean;
   /** 조합표 v2(80명) 기준 ID로 옮겼는지 */
   idv2?: boolean;
+  /** 스토리(쉬움) 클리어한 스테이지 ID */
+  storyCleared?: string[];
+  /** 오프닝을 봤는지 */
+  prologueDone?: boolean;
   tabTut?: string[];
   /** 최애 철학자 (고민방 주인 · 전장 하트) */
   favorite?: string;

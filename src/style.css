@@ -450,3 +450,41 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 .shop-item b { font-size: 13px; }
 .shop-item small { font-size: 10px; }
 .shop-item .chunky { padding: 5px 2px; font-size: 13px; }
+
+/* ---------- 📖 스토리 ---------- */
+.chapter-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #3b2a1e; color: #fff7e2; border-radius: 16px; padding: 6px 8px; }
+.chapter-head div { text-align: center; flex: 1; } .chapter-head small { display: block; font-size: 11px; opacity: .8; } .chapter-head b { font-family: 'Jua'; font-size: 18px; font-weight: 400; }
+.chapter-head button { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #fff7e2; background: #ffd36b; font-size: 14px; cursor: pointer; }
+.chapter-head button:disabled { opacity: .3; }
+.story-prog { text-align: center; margin: 2px 0 0; }
+.vn { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; justify-content: flex-end; background: #000; animation: fadeIn .4s; }
+.vn-bg { position: absolute; inset: 0; background-size: cover; background-position: center; image-rendering: pixelated; filter: saturate(1.1); }
+.vn-title { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); background: rgba(255,253,246,.92); border: 3px solid #3b2a1e; border-radius: 14px; padding: 6px 16px; text-align: center; animation: fadeIn 1s; }
+.vn-title small { display: block; font-size: 11px; color: #8a7560; } .vn-title b { font-family: 'Jua'; font-size: 20px; font-weight: 400; }
+.vn-box { position: relative; margin: 0 10px 22px; min-height: 120px; background: rgba(255,253,246,.96); border: 3px solid #3b2a1e; border-radius: 18px; box-shadow: 0 6px 0 #3b2a1e; display: flex; gap: 10px; padding: 12px; }
+.vn-face { width: 72px; height: 72px; image-rendering: pixelated; background: #fff3d6; border: 2px solid #3b2a1e; border-radius: 14px; margin-top: -40px; flex: none; }
+.vn-name { font-family: 'Jua'; font-weight: 400; color: #c2410c; font-size: 16px; }
+.vn-text { margin: 4px 0 0; font-size: 15px; line-height: 1.55; white-space: pre-wrap; }
+.vn.narr .vn-box { background: rgba(59,42,30,.9); color: #fff7e2; }
+.vn-next { position: absolute; right: 14px; bottom: 8px; animation: bob 1s infinite; font-size: 12px; }
+.vn-skip { position: absolute; top: 14px; right: 12px; z-index: 3; border: 2px solid #3b2a1e; border-radius: 999px; background: rgba(255,255,255,.85); font-family: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer; }
+.vn .vn-title ~ .vn-skip { top: 80px; }
+@keyframes fadeIn { from { opacity: 0; } }
+.mem-cards { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 6px 2px 10px; }
+.mem-cards .tcg { flex: 0 0 72%; }
+/* 오프닝 */
+.prologue { position: fixed; inset: 0; z-index: 70; background: #000; overflow: hidden; }
+.pr-scene { position: absolute; inset: 0; background-size: cover; background-position: center; image-rendering: pixelated; filter: blur(8px) brightness(.6); transform: scale(1.1); transition: filter 1.8s, transform 3s; }
+.prologue.open .pr-scene { filter: none; transform: scale(1); }
+.pr-people { position: absolute; left: 0; right: 0; bottom: 18%; display: flex; justify-content: space-around; opacity: 0; transition: opacity 1.5s 1s; }
+.pr-people img { width: 22%; image-rendering: pixelated; animation: bob 1.6s infinite ease-in-out; }
+.prologue.open .pr-people { opacity: 1; }
+.lid { position: absolute; left: -10%; right: -10%; height: 51%; background: #050302; z-index: 2; transition: transform 1.6s cubic-bezier(.6,0,.2,1); }
+.lid.top { top: 0; border-radius: 0 0 50% 50% / 0 0 30% 30%; } .lid.bottom { bottom: 0; border-radius: 50% 50% 0 0 / 30% 30% 0 0; }
+.prologue.blink1 .lid.top { animation: blinkT 1s; } .prologue.blink1 .lid.bottom { animation: blinkB 1s; }
+@keyframes blinkT { 50% { transform: translateY(-35%); } } @keyframes blinkB { 50% { transform: translateY(35%); } }
+.prologue.open .lid.top { transform: translateY(-100%); } .prologue.open .lid.bottom { transform: translateY(100%); }
+.pr-text { position: absolute; left: 8%; right: 8%; top: 42%; z-index: 3; text-align: center; color: #fff7e2; font-family: 'Jua'; font-size: 20px; line-height: 1.5; text-shadow: 0 2px 6px #000; opacity: 0; }
+.pr-text.show { animation: prText 2.2s forwards; }
+@keyframes prText { 0% { opacity: 0; transform: translateY(8px); } 25%, 80% { opacity: 1; transform: none; } 100% { opacity: .85; } }
+.prologue.open .pr-text { top: 12%; color: #3b2a1e; text-shadow: 0 0 8px #fff, 0 0 2px #fff; }

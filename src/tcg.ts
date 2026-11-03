@@ -149,3 +149,17 @@ export function cardArt(p: Philosopher, sprite: HTMLCanvasElement, skinKey = '')
   cache.set(key, url);
   return url;
 }
+
+/** 시대 배경 그림만 (스토리 장면용) */
+const sceneCache = new Map<string, string>();
+export function sceneArt(era: string): string {
+  const hit = sceneCache.get(era);
+  if (hit) return hit;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const c = cv.getContext('2d')!;
+  (SCENES[era] ?? SCENES['고대'])(c, rng(era.length * 31));
+  const url = cv.toDataURL();
+  sceneCache.set(era, url);
+  return url;
+}

@@ -13,7 +13,7 @@ import { N, STAGE_PATHS, pathCells, pathLength, pointAt, type Layout } from './p
 export const GRID = N;
 /** 대기석 칸 수 (필드 아래 한 줄) */
 export const BENCH = 5;
-export const MAX_WAVE = 50;
+export const MAX_WAVE = 30;
 /** 10웨이브마다 보스 */
 export const BOSS_EVERY = 10;
 /** 웨이브마다 적 체력 증가율 (밸런스 핵심 값) */
@@ -65,6 +65,10 @@ export class Game {
   summonCost = SUMMON_COST;
   /** 무료 소환권 (보스 처치·광장 집회로 얻음) */
   tickets = 0;
+  /** 소환에 나올 수 있는 흔함 (스토리에서 기억이 돌아온 철학자만). 비어 있으면 전원 */
+  summonPool: string[] = [];
+  /** 스토리 스테이지로 들어왔을 때 그 ID */
+  storyId?: string;
   towers: Tower[] = [];
   enemies: Enemy[] = [];
   bullets: Bullet[] = [];
@@ -154,7 +158,8 @@ export class Game {
   summon() {
     if (!this.canSummon()) return null;
     if (this.tickets > 0) this.tickets--; else this.gold -= this.summonCost;
-    return this.place(pick(PHILOSOPHERS.filter((p) => p.tier === 1 && !p.hidden)).id);
+    const pool = this.summonPool.length ? this.summonPool : PHILOSOPHERS.filter((p) => p.tier === 1 && !p.hidden).map((p) => p.id);
+    return this.place(pick(pool));
   }
 
   sell(t: Tower) {

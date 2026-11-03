@@ -43,11 +43,16 @@ export const PITY_LIMIT = 60;
 
 const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 
+/** 카드 뽑기에 나올 수 있는 철학자 (스토리에서 열린 시대만). main에서 지정 */
+let cardFilter: (p: (typeof PHILOSOPHERS)[number]) => boolean = () => true;
+export function setCardFilter(f: typeof cardFilter) { cardFilter = f; }
 export function drawCard(minTier = 1): string {
   const rates = CARD_RATES.filter((c) => c.tier >= minTier);
   let r = Math.random() * rates.reduce((a, c) => a + c.rate, 0), tier = rates[rates.length - 1].tier;
   for (const c of rates) { if (r < c.rate) { tier = c.tier; break; } r -= c.rate; }
-  return pick(PHILOSOPHERS.filter((p) => p.tier === tier && !p.hidden)).id;
+  const all = PHILOSOPHERS.filter((p) => p.tier === tier && !p.hidden);
+  const ok = all.filter(cardFilter);
+  return pick(ok.length ? ok : all).id;
 }
 export function drawTool(): string { return pick(ITEMS).id; }
 
