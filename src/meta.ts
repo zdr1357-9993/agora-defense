@@ -31,10 +31,12 @@ export const TOOL_COST = 150, TOOL_COST_10 = 1350;
 
 /** 철학자 카드 등급 확률 (히든 제외) */
 export const CARD_RATES = [
-  { tier: 1, rate: 0.45 }, { tier: 2, rate: 0.28 }, { tier: 3, rate: 0.15 },
-  { tier: 4, rate: 0.08 }, { tier: 5, rate: 0.035 }, { tier: 6, rate: 0.005 },
+  { tier: 1, rate: 0.36 }, { tier: 2, rate: 0.26 }, { tier: 3, rate: 0.18 }, { tier: 4, rate: 0.11 },
+  { tier: 5, rate: 0.06 }, { tier: 6, rate: 0.025 }, { tier: 7, rate: 0.005 },
 ];
-/** 천장: 이 횟수 안에 5성 이상이 반드시 나온다 */
+/** 거장 이상(6·7등급) */
+export const MASTER_TIER = 6;
+/** 천장: 이 횟수 안에 거장 이상이 반드시 나온다 */
 export const PITY_LIMIT = 60;
 
 const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
@@ -64,7 +66,7 @@ export const CUR_ICON: Record<Currency, string> = { gonoe: '🤔', gems: '💎',
 const wallet = (p: Progress, c: Currency) => (c === 'gonoe' ? p.gonoe : c === 'gems' ? p.gems : p.tickets);
 export const canAfford = (p: Progress, o: PullOption) => wallet(p, o.currency) >= o.cost;
 
-/** 뽑기 실행. 카드는 천장 적용, 거장 뽑기는 5성 이상 1장(10회면 마지막 장) 확정 */
+/** 뽑기 실행. 카드는 천장 적용, 거장 뽑기는 거장 이상 1장(10회면 마지막 장) 확정 */
 export function pull(p: Progress, o: PullOption): string[] | null {
   if (!canAfford(p, o)) return null;
   if (o.currency === 'gonoe') p.gonoe -= o.cost; else if (o.currency === 'gems') p.gems -= o.cost; else p.tickets -= o.cost;
@@ -72,9 +74,9 @@ export function pull(p: Progress, o: PullOption): string[] | null {
   for (let i = 0; i < o.times; i++) {
     if (o.kind === 'tool') { const id = drawTool(); p.items[id] = (p.items[id] ?? 0) + 1; got.push(id); continue; }
     const guarantee = (o.kind === 'master' && i === o.times - 1) || p.pity + 1 >= PITY_LIMIT;
-    const id = drawCard(guarantee ? 5 : 1);
+    const id = drawCard(guarantee ? MASTER_TIER : 1);
     const tier = PHILOSOPHERS.find((x) => x.id === id)!.tier;
-    p.pity = tier >= 5 ? 0 : p.pity + 1;
+    p.pity = tier >= MASTER_TIER ? 0 : p.pity + 1;
     p.cards[id] = (p.cards[id] ?? 0) + 1;
     if (!p.seen.includes(id)) p.seen.push(id);
     got.push(id);
@@ -89,7 +91,7 @@ export const SHOP: ShopItem[] = [
   { id: 'gem60', icon: '💎', name: '지혜석 한 줌', price: '₩1,200', desc: '💎 60', gems: 60 },
   { id: 'gem330', icon: '💰', name: '지혜석 주머니', price: '₩5,900', desc: '💎 300 + 보너스 30', gems: 330, tag: '인기' },
   { id: 'gem1100', icon: '🧳', name: '지혜석 상자', price: '₩19,000', desc: '💎 1,000 + 보너스 100', gems: 1100 },
-  { id: 'master3', icon: '🎫', name: '거장 초대장 3장', price: '₩9,900', desc: '5성 이상 1장 확정 × 3', tickets: 3, tag: '추천' },
+  { id: 'master3', icon: '🎫', name: '거장 초대장 3장', price: '₩9,900', desc: '거장 이상 1장 확정 × 3', tickets: 3, tag: '추천' },
   { id: 'gonoe5k', icon: '🌙', name: '밤샘 고민 묶음', price: '💎 120', desc: '🤔 고뇌 5,000', gonoe: 5000, costGems: 120 },
 ];
 

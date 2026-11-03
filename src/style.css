@@ -352,3 +352,18 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 .tut-btns .tut-next { background: #ffd1e3; }
 @keyframes tutIn { from { opacity: 0; transform: translate(-50%, 8px); } }
 .tut-bubble.upper { bottom: auto; top: 70px; }
+
+/* ---------- 7등급(근원) = 예전 6성 스타일, 6등급(거장)은 새 색 ---------- */
+:root { --t7: linear-gradient(135deg, #ff9ecb, #ffe08a, #9ef0c8, #9fd4ff, #c9b0ff); }
+.reveal.t7 { background: #fff; }
+.card.t7 { background: #fffaf0; border-image: none; box-shadow: 0 4px 0 var(--line), inset 0 0 0 3px #ffe08a; }
+.tier-chip.t7 { background: var(--t7); }
+.pcard.tc7 { background: linear-gradient(160deg, #ffe6f2, #fff6d8, #e3fbef, #e4f2ff, #efe7ff); }
+.t7 { border-left: 5px solid #ffb3e1; }
+.tcg-t7 { --frame: linear-gradient(120deg,#f0abfc,#93c5fd,#86efac,#fde68a,#f0abfc); }
+.tcg-t7 .tcg-front { background-size: 300% 300%; animation: holo 4s linear infinite; }
+.tcg-t5 .tcg-front::after, .tcg-t7 .tcg-front::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg,transparent 30%,rgba(255,255,255,.55) 45%,transparent 60%); background-size: 250% 100%; animation: shine 3s ease-in-out infinite; pointer-events: none; }
+:root { --t6: linear-gradient(135deg, #ff8fa3, #ffc46b); }
+.card.t6, .reveal.t6, .pcard.tc6 { background: linear-gradient(160deg, #ffe3e8, #fff1d6) !important; }
+.tcg-t6 { --frame: linear-gradient(160deg,#fda4af,#fb7185 55%,#fcd34d); }
+.tcg-t6 .tcg-front { animation: none; background-size: auto; }

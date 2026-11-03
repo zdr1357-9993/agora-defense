@@ -1,5 +1,5 @@
 import {
-  PHIL, PHILOSOPHERS, RECIPES, TIER_STATS, statsOf, COUNTER_MULT, SUMMON_RATES, MAX_MERGE_TIER, UPGRADE,
+  PHIL, PHILOSOPHERS, RECIPES, statsOf, COUNTER_MULT, UPGRADE,
   type Recipe, type Stage,
 } from './data';
 
@@ -9,22 +9,27 @@ import { SKILLS, type Skill } from './skills';
 import { homeBonus } from './affinity';
 import { N, STAGE_PATHS, pathCells, pathLength, pointAt, type Layout } from './paths';
 
-// 9x9 격자: 스테이지마다 길 모양이 다르고, 길이 아닌 칸에 타워를 배치
+// 7x7 격자: 바깥 순환로를 도그마가 돌고, 안쪽 5x5(25칸)에 철학자를 배치
 export const GRID = N;
-export const MAX_WAVE = 20;
-export const BOSS_WAVES = [10, 20];
+export const MAX_WAVE = 50;
+/** 10웨이브마다 보스 */
+export const BOSS_EVERY = 10;
 /** 웨이브마다 적 체력 증가율 (밸런스 핵심 값) */
-export const HP_GROWTH = 1.22;
+export const HP_GROWTH = 1.12;
+/** 소환 비용 (고정) */
+export const SUMMON_COST = 40;
+/** 보스를 잡으면 받는 무료 소환권 / 5·15·25…웨이브 광장 집회 보너스 */
+export const BOSS_TICKETS = 3, RALLY_TICKETS = 1;
 
 // QA 모드: 주소 뒤에 ?qa=1 (전 스테이지 해금·재화 지급). 기본은 처음 시작하는 상태
 export let QA_MODE = typeof location === 'undefined' ? false : new URLSearchParams(location.search).get('qa') === '1';
 /** 마스터 계정 로그인 시 QA(전부 해금) 권한 */
 export function setQA(on: boolean) { QA_MODE = on; }
 /** 전투 시작 골드: 마스터(QA) 10000, 일반 200 */
-const startGold = () => (QA_MODE ? 10000 : 200);
+const startGold = () => (QA_MODE ? 10000 : 160);
 export const CATALYST_IDS = ['C001', 'C002', 'C003', 'C004', 'C005'];
 
-export interface Tower { uid: number; philId: string; cx: number; cy: number; cd: number; level: number; shots?: number; stacks?: number; stunT?: number }
+export interface Tower { uid: number; philId: string; cx: number; cy: number; cd: number; level: number; shots?: number; stacks?: number; stunT?: number; sayCd?: number }
 /** 메타 성장(카드 레벨·장착 도구)을 전투에 넘겨주는 통로 */
 export interface Meta { cardMult(philId: string): number; tool(philId: string): string | undefined; awaken?(philId: string): number }
 export type EnemyKind = 'normal' | 'fast' | 'tank' | 'swarm' | 'boss';
@@ -41,17 +46,23 @@ export type FxEvent =
   | { type: 'boss'; name: string }
   | { type: 'bossSkill'; text: string }
   | { type: 'stun'; uid: number }
+  | { type: 'say'; uid: number; text: string }
+  | { type: 'ticket'; n: number; why: string }
   | { type: 'skill'; kind: string; x: number; y: number; tx?: number; ty?: number; r?: number };
 export interface Bullet { x: number; y: number; target: number; dmg: number; text: string; color: string; src: number; skill?: Skill }
 
 let uidSeq = 1;
+/** 항상 켜져 있는 스킬: 발동 순간이 따로 없어 가끔만 말한다 */
+const PASSIVE = new Set(['auraAtk', 'auraSpeed', 'slow', 'splash', 'chain', 'vuln', 'dot', 'stack', 'boss', 'lonely', 'globalSlow']);
 const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 
 export class Game {
   gold = startGold();
   lives = 20;
   wave = 0;
-  summonCost = 50;
+  summonCost = SUMMON_COST;
+  /** 무료 소환권 (보스 처치·광장 집회로 얻음) */
+  tickets = 0;
   towers: Tower[] = [];
   enemies: Enemy[] = [];
   bullets: Bullet[] = [];
@@ -83,7 +94,7 @@ export class Game {
     this.layout = STAGE_PATHS[stage.id].layoutFor(1);
     this.road = pathCells(this.layout);
     if (oneTool) {
-      const free = this.emptyCells().sort((a, b) => Math.hypot(a[0] - 4, a[1] - 4) - Math.hypot(b[0] - 4, b[1] - 4));
+      const free = this.emptyCells().sort((a, b) => Math.hypot(a[0] - 3, a[1] - 3) - Math.hypot(b[0] - 3, b[1] - 3));
       const [cx, cy] = free[0];
       this.towers.push({ uid: uidSeq++, philId: oneTool, cx, cy, cd: 0, level: 0 });
     }
@@ -129,18 +140,16 @@ export class Game {
     return t;
   }
 
-  /** 등급 확률표(SUMMON_RATES)대로 등급을 뽑고, 그 등급에서 무작위 1명 */
+  /** 흔함(1등급) 9명 중 무작위 1명. 무료 소환권이 있으면 먼저 쓴다 */
+  canSummon() { return this.emptyCells().length > 0 && (this.tickets > 0 || this.gold >= this.summonCost); }
   summon() {
-    if (this.gold < this.summonCost || !this.emptyCells().length) return null;
-    this.gold -= this.summonCost;
-    this.summonCost += 3;
-    let r = this.oneTool ? 0 : Math.random(), tier = 1;
-    for (const s of SUMMON_RATES) { if (r < s.rate) { tier = s.tier; break; } r -= s.rate; }
-    return this.place(pick(PHILOSOPHERS.filter((p) => p.tier === tier && !p.hidden)).id);
+    if (!this.canSummon()) return null;
+    if (this.tickets > 0) this.tickets--; else this.gold -= this.summonCost;
+    return this.place(pick(PHILOSOPHERS.filter((p) => p.tier === 1 && !p.hidden)).id);
   }
 
   sell(t: Tower) {
-    this.gold += 25 * 2 ** (PHIL.get(t.philId)!.tier - 1);
+    this.gold += Math.round(this.summonCost * 0.35 * 2.2 ** (PHIL.get(t.philId)!.tier - 1));
     this.towers = this.towers.filter((x) => x !== t);
   }
 
@@ -178,7 +187,7 @@ export class Game {
   // ---------- 강화 (5성 이상) ----------
   upgradeCost(t: Tower) {
     const p = PHIL.get(t.philId)!;
-    if (p.tier < 5 || t.level >= UPGRADE.maxLevel) return null;
+    if (p.tier < UPGRADE.minTier || t.level >= UPGRADE.maxLevel) return null;
     return UPGRADE.baseCost[p.tier] * (t.level + 1);
   }
 
@@ -190,33 +199,7 @@ export class Game {
     return true;
   }
 
-  // ---------- 합성 ----------
-  /** 같은 등급 아무나 3명 → 다음 등급 무작위 (1~3성) */
-  mergeable(): number[] {
-    if (this.oneTool) return [];
-    const n = [0, 0, 0, 0, 0, 0, 0];
-    for (const t of this.towers) { const p = PHIL.get(t.philId)!; if (!p.hidden) n[p.tier]++; }
-    const out: number[] = [];
-    for (let tier = MAX_MERGE_TIER; tier >= 1; tier--) if (n[tier] >= 3) out.push(tier);
-    return out;
-  }
-
-  /** 조합식 재료로 쓰이는 사람은 아껴 두고, 같은 사람이 겹친 것부터 합친다 */
-  mergeThree(tier: number) {
-    const group = this.towers.filter((t) => { const p = PHIL.get(t.philId)!; return p.tier === tier && !p.hidden; });
-    const dup = (t: Tower) => group.filter((x) => x.philId === t.philId).length;
-    group.sort((a, b) => dup(b) - dup(a));
-    const used = group.slice(0, 3);
-    if (used.length < 3) return null;
-    const keep = used[0];
-    this.towers = this.towers.filter((t) => !used.includes(t) || t === keep);
-    keep.philId = pick(PHILOSOPHERS.filter((x) => x.tier === tier + 1 && !x.hidden)).id;
-    keep.cd = 0;
-    this.discovered.add(keep.philId);
-    this.fx.push({ type: 'morph', x: keep.cx + 0.5, y: keep.cy + 0.5, tier: PHIL.get(keep.philId)!.tier });
-    return keep;
-  }
-
+  // ---------- 조합 (무작위 합성 없음: 전부 조합표대로) ----------
   /** 조합표용: 이 조합에서 지금 가진 재료 */
   ownedMaterials(r: Recipe) {
     const pool = this.towers.map((t) => t.philId);
@@ -248,6 +231,7 @@ export class Game {
     keep.level = 0;
     this.fx.push({ type: 'morph', x: keep.cx + 0.5, y: keep.cy + 0.5, tier: PHIL.get(r.result)!.tier });
     this.discovered.add(r.result);
+    keep.sayCd = 0; this.say(keep);
     return keep;
   }
 
@@ -255,9 +239,9 @@ export class Game {
   randomCatalyst() { return pick(CATALYST_IDS); }
   gainCatalyst(id: string) { this.catalysts[id]++; this.drops.push(id); }
 
-  isBossWave() { return this.oneTool ? this.wave % 10 === 0 : BOSS_WAVES.includes(this.wave); }
+  isBossWave() { return this.wave > 0 && this.wave % BOSS_EVERY === 0; }
 
-  /** 웨이브 구성: 2·7·12·17 떼, 3·8·13·18 빠름, 4·9·14·19 단단함 */
+  /** 웨이브 구성: 끝자리 2·7 떼, 3·8 빠름, 4·9 단단함 */
   waveKind(): EnemyKind {
     if (this.isBossWave()) return 'boss';
     const r = this.wave % 5;
@@ -269,10 +253,10 @@ export class Game {
     this.wave++;
     this.refreshLayout();
     this.running = true;
-    if (this.isBossWave()) this.fx.push({ type: 'boss', name: this.wave % 20 === 10 ? this.stage.boss10 : this.stage.boss20 });
+    if (this.isBossWave()) this.fx.push({ type: 'boss', name: this.bossName() });
     this.countdown = -1;
     const k = this.waveKind();
-    const n = 8 + this.wave * 2;
+    const n = 10 + this.wave;
     this.toSpawn = k === 'boss' ? 1 : k === 'swarm' ? Math.round(n * 1.6) : k === 'tank' ? Math.round(n * 0.5) : n;
     this.spawnTimer = 0;
   }
@@ -288,8 +272,8 @@ export class Game {
       uid: uidSeq++, boss, kind, hp, maxHp: hp,
       dist: 0, speed: (1.4 + this.wave * 0.04) * K[1] * (this.layout.speedMult ?? 1) * this.diff.speed,
       path: Math.floor(Math.random() * this.layout.paths.length),
-      reward: Math.max(1, Math.round((boss ? 150 * (this.wave / 10) : (5 + Math.floor(this.wave / 2)) * K[0] ** 0.5) * Math.sqrt(this.diff.reward))),
-      name: boss ? (this.wave % 20 === 10 ? s.boss10 : s.boss20) : this.wave < 10 ? s.enemyEarly : s.enemyLate,
+      reward: Math.max(1, Math.round((boss ? 100 + 20 * this.wave : (2 + Math.floor(this.wave / 8)) * K[0] ** 0.5) * Math.sqrt(this.diff.reward))),
+      name: boss ? this.bossName() : this.wave < 25 ? s.enemyEarly : s.enemyLate,
       skillT: 4,
     });
   }
@@ -314,6 +298,15 @@ export class Game {
     }
   }
 
+  /** 스킬이 터질 때 철학자의 한마디 (같은 철학자는 cool초에 한 번) */
+  say(t: Tower, cool = 6) {
+    if ((t.sayCd ?? 0) > 0) return;
+    t.sayCd = cool;
+    this.fx.push({ type: 'say', uid: t.uid, text: PHIL.get(t.philId)!.quote });
+  }
+  giveTickets(n: number, why: string) { this.tickets += n; this.fx.push({ type: 'ticket', n, why }); }
+  bossName() { return this.wave >= this.maxWave ? this.stage.boss20 : this.stage.boss10; }
+
   // ---------- 피해 처리 ----------
   private damage(e: Enemy, dmg: number) {
     if (e.shieldT && e.shieldT > 0) return 0;
@@ -334,10 +327,10 @@ export class Game {
     if (skill.kind === 'dot') fx('dot');
     switch (skill.kind) {
       case 'slow': e.slowT = 1.5; e.slowV = Math.max(e.slowV ?? 0, skill.v); break;
-      case 'stun': if (!e.boss && Math.random() < skill.v) { e.stunT = 0.8; fx('stun'); } break;
+      case 'stun': if (!e.boss && Math.random() < skill.v) { e.stunT = 0.8; fx('stun'); if (src) this.say(src); } break;
       case 'vuln': e.vulnT = 3; e.vulnV = Math.max(e.vulnT > 0 ? e.vulnV ?? 0 : 0, skill.v); break;
       case 'dot': e.dotT = 3; e.dotV = skill.v; break;
-      case 'execute': if (!e.boss && e.hp > 0 && e.hp / e.maxHp <= skill.v) { e.hp = 0; fx('execute'); } break;
+      case 'execute': if (!e.boss && e.hp > 0 && e.hp / e.maxHp <= skill.v) { e.hp = 0; fx('execute'); if (src) this.say(src); } break;
       case 'splash': for (const o of this.enemies) if (o !== e) { const [ox, oy] = this.enemyPos(o); if (Math.hypot(ox - ex, oy - ey) <= 1.2) this.damage(o, dmg * skill.v); } break;
       case 'chain': {
         const others = this.enemies.filter((o) => o !== e && o.hp > 0).map((o) => { const [ox, oy] = this.enemyPos(o); return { o, d: Math.hypot(ox - ex, oy - ey) }; })
@@ -347,7 +340,7 @@ export class Game {
         break;
       }
       case 'stack': if (src) src.stacks = Math.min(1 / skill.v, (src.stacks ?? 0) + 1); break;
-      case 'gold': if (e.hp <= 0) this.gold += skill.v; break;
+      case 'gold': if (e.hp <= 0) { this.gold += skill.v; if (src) this.say(src, 10); } break;
     }
   }
 
@@ -397,6 +390,7 @@ export class Game {
 
     const { atk, spd } = this.auras();
     for (const t of this.towers) {
+      if (t.sayCd) t.sayCd = Math.max(0, t.sayCd - dt);
       if (t.stunT && t.stunT > 0) { t.stunT -= dt; continue; }
       t.cd -= dt * (1 + (spd.get(t.uid) ?? 0));
       if (t.cd > 0) continue;
@@ -419,15 +413,17 @@ export class Game {
       let dmg = st.dmg * (1 + UPGRADE.perLevel * t.level) * im.dmg * this.meta.cardMult(t.philId) * (1 + (atk.get(t.uid) ?? 0)) * this.home(t).mult;
       if (best.boss && t.philId === this.stage.counter) dmg *= COUNTER_MULT;
       if (skill) {
-        if (skill.kind === 'crit' && Math.random() < skill.v) { dmg *= 2; this.fx.push({ type: 'skill', kind: 'crit', x: tx, y: ty }); }
-        if (skill.kind === 'third' && t.shots % skill.v === 0) { dmg *= skill.v2 ?? 2; this.fx.push({ type: 'skill', kind: 'crit', x: tx, y: ty }); }
+        if (skill.kind === 'crit' && Math.random() < skill.v) { dmg *= 2; this.fx.push({ type: 'skill', kind: 'crit', x: tx, y: ty }); this.say(t); }
+        if (skill.kind === 'third' && t.shots % skill.v === 0) { dmg *= skill.v2 ?? 2; this.fx.push({ type: 'skill', kind: 'crit', x: tx, y: ty }); this.say(t); }
         if (skill.kind === 'boss' && best.boss) dmg *= 1 + skill.v;
         if (skill.kind === 'stack') dmg *= 1 + (t.stacks ?? 0) * skill.v;
         if (skill.kind === 'lonely' && !this.towers.some((o) => o !== t && Math.abs(o.cx - t.cx) <= 1 && Math.abs(o.cy - t.cy) <= 1)) dmg *= 1 + skill.v;
       }
-      const color = p.tier >= 6 ? 'rainbow' : p.tier >= 4 ? 'gold' : '';
-      this.bullets.push({ x: tx, y: ty, target: best.uid, dmg, text: p.quote, color, src: t.uid, skill });
-      if (skill?.kind === 'multi' && Math.random() < skill.v) this.bullets.push({ x: tx, y: ty - 0.3, target: best.uid, dmg, text: p.quote, color, src: t.uid, skill });
+      const color = p.tier >= 7 ? 'rainbow' : p.tier >= 5 ? 'gold' : '';
+      this.bullets.push({ x: tx, y: ty, target: best.uid, dmg, text: '', color, src: t.uid, skill });
+      if (skill?.kind === 'multi' && Math.random() < skill.v) { this.bullets.push({ x: tx, y: ty - 0.3, target: best.uid, dmg, text: '', color, src: t.uid, skill }); this.say(t); }
+      // 상시 효과(오라·둔화 등)는 가끔 한마디
+      if (skill && PASSIVE.has(skill.kind)) this.say(t, 14);
     }
 
     for (const b of this.bullets) {
@@ -449,7 +445,9 @@ export class Game {
 
     if (this.running && this.toSpawn === 0 && this.enemies.length === 0) {
       this.running = false;
-      this.gold += 50 + this.wave * 8;
+      this.gold += 40 + this.wave * 3;
+      if (this.isBossWave()) this.giveTickets(BOSS_TICKETS, '👑 보스 논파 보상');
+      else if (this.wave % 10 === 5) this.giveTickets(RALLY_TICKETS, '📣 광장 집회');
       this.gainCatalyst(this.randomCatalyst());
       if (this.isBossWave()) { this.gainCatalyst(this.randomCatalyst()); this.gainCatalyst('C001'); }
       if (this.wave >= this.maxWave) this.over = 'win';

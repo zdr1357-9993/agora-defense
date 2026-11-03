@@ -5,7 +5,7 @@ import { STAGE_STARS, ERA_BONUS, STAR_BONUS } from './affinity';
 import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
 import { ITEM, isOwner, ITEM_BONUS } from './items';
 import {
-  homage, statsOf, TYPE_ICON, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, CAT_NAME, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, MAX_MERGE_TIER, UPGRADE, type Stage,
+  homage, statsOf, TYPE_ICON, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, CAT_NAME, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, UPGRADE, type Stage,
 } from './data';
 import { philosopherSprite, skinnedSprite, SKINS, monsterSprite, itemSprite, TIER_AURA } from './sprites';
 import { SKILLS } from './skills';
@@ -61,7 +61,7 @@ function renderHome() {
     const fav = PHIL.get(progress.favorite)!;
     const ot = document.createElement('button');
     ot.className = 'onetool';
-    ot.innerHTML = `<img src="${portrait(fav.id)}"><div><b>💗 최애 원툴 도전</b><small>${fav.name} 한 명 + 1성만으로 어디까지 버틸까? · 최고 기록 ${progress.oneToolBest[fav.id] ?? 0}웨이브</small></div>`;
+    ot.innerHTML = `<img src="${portrait(fav.id)}"><div><b>💗 최애 원툴 도전</b><small>${fav.name} 한 명 + 흔함만으로 어디까지 버틸까? · 최고 기록 ${progress.oneToolBest[fav.id] ?? 0}웨이브</small></div>`;
     ot.onclick = () => startBattle(STAGES[0], fav.id);
     box.appendChild(ot);
   }
@@ -98,10 +98,10 @@ function renderCodex() {
   box.innerHTML = '';
   const seen = new Set(progress.seen);
   $('codex-count').textContent = `${PHILOSOPHERS.filter((p) => seen.has(p.id)).length} / ${PHILOSOPHERS.length}`;
-  for (let tier = 6; tier >= 1; tier--) {
+  for (let tier = 7; tier >= 1; tier--) {
     const list = PHILOSOPHERS.filter((x) => x.tier === tier);
     const h = document.createElement('h3');
-    h.innerHTML = `<span class="tier-chip t${tier}">${'★'.repeat(tier)}</span> ${tier}성 · ${TIER_NAME[tier]} ${tier >= 5 ? '<small>(조합으로만)</small>' : ''}`;
+    h.innerHTML = `<span class="tier-chip t${tier}">${TIER_NAME[tier]}</span> ${tier === 1 ? '<small>(소환으로 등장)</small>' : '<small>(조합으로 탄생)</small>'}`;
     box.appendChild(h);
     const grid = document.createElement('div');
     grid.className = 'codex-grid';
@@ -129,7 +129,7 @@ function cardHtml(id: string) {
   const st = statsOf(id);
   const bar = (v: number, max: number) => `<span class="sbar"><i style="width:${Math.min(100, (v / max) * 100)}%"></i></span>`;
   return `<div class="pcard tc${p.tier}">
-    <div class="pc-head"><span class="pc-tier">${'★'.repeat(p.tier)}</span><b>${p.name}</b><span class="pc-era">${ERA_ICON[p.era] ?? ''} ${p.school}</span></div>
+    <div class="pc-head"><span class="pc-tier tier-chip t${p.tier}">${TIER_NAME[p.tier]}</span><b>${p.name}</b><span class="pc-era">${ERA_ICON[p.era] ?? ''} ${p.school}</span></div>
     <div class="pc-art" style="background:${CARD_BG[p.era] ?? CARD_BG['고대']}"><img src="${portrait(id)}"></div>
     <div class="pc-quote">“${p.quote}”</div>
     <div class="pc-skill"><b>✦ ${p.skill}</b><span>${p.skillDesc}</span></div>
@@ -151,7 +151,7 @@ function showCard(id: string) {
   const ownedTools = ITEMS.filter((it) => progress.items[it.id]).sort((a, b) => Number(isOwner(b.id, p.realName)) - Number(isOwner(a.id, p.realName)));
   const cur = progress.loadout[id];
   const aw = awakenLevel(n);
-  const lines = LINES[p.realName] ?? ['', '', ''];
+  const lines = LINES[p.realName] ?? [p.lore, `대표 문장: ${p.quote}`, `${p.school} 계열의 철학자.`];
   const growth = `<div class="pc-growth"><b>🎴 카드 Lv.${lv}</b>${aw ? ` <b class="awaken">✦ 각성 ${'★'.repeat(aw)}${'☆'.repeat(AWAKEN_MAX - aw)}</b>` : ''} <span>${n}장${next ? ` · 다음 ${lv < CARD_MAX_LEVEL ? '레벨' : '각성'}까지 ${next - n}장` : ' · 완전 각성'}</span>
     <div class="bar"><i style="width:${next ? Math.min(100, (n / next) * 100) : 100}%"></i></div>
     <small>전투 공격력 ×${cardMult(n).toFixed(2)}${aw ? ` · 스킬 위력 +${aw * 20}%` : ''}</small></div>
@@ -307,8 +307,8 @@ function updateUI() {
   $<HTMLElement>('wave-bar').style.width = `${(g.wave / g.maxWave) * 100}%`;
   $('diff-chip').textContent = g.diff.icon;
   $('diff-chip').title = g.diff.name;
-  $('cost').textContent = String(g.summonCost);
-  $<HTMLButtonElement>('summon').disabled = g.gold < g.summonCost || !!g.over;
+  $('cost').textContent = g.tickets ? `🎟${g.tickets} 무료` : `${g.summonCost}G`;
+  $<HTMLButtonElement>('summon').disabled = !g.canSummon() || !!g.over;
   $<HTMLButtonElement>('sell').disabled = !selected;
   const start = $<HTMLButtonElement>('start');
   start.textContent = g.over ? '나가기' : g.countdown > 0 ? `다음 웨이브 ${Math.ceil(g.countdown)}` : '웨이브 시작';
@@ -328,7 +328,7 @@ function updateUI() {
 
   // 정보창
   const info = $('info');
-  const infoKey = `${selected?.uid}|${selected?.philId}|${selected?.level}|${g.towers.length > 0}|${selected && g.upgradeCost(selected) !== null ? g.gold >= g.upgradeCost(selected)! : ''}`;
+  const infoKey = `${selected?.uid}|${selected?.philId}|${selected?.level}|${g.towers.length}|${selected && g.upgradeCost(selected) !== null ? g.gold >= g.upgradeCost(selected)! : ''}`;
   if (infoKey !== lastInfoKey) {
     lastInfoKey = infoKey;
     info.className = '';
@@ -337,13 +337,13 @@ function updateUI() {
       const cost = g.upgradeCost(selected);
       const lv = selected.level ? ` <span class="tag lv">Lv.${selected.level}</span>` : '';
       info.className = `t${p.tier}`;
-      info.innerHTML = `<img src="${portrait(p.id)}"><div><b>${'★'.repeat(p.tier)} ${p.name}</b>${lv} · ${p.school}<br>“${p.quote}”<br><small class="type-line">${TYPE_ICON[statsOf(p.id).type]} ${statsOf(p.id).type} · ${statsOf(p.id).target} 우선 · 사거리 ${statsOf(p.id).range}칸</small><br><small class="skill-line">✦ ${p.skill}: ${p.skillDesc}</small>${p.id === g.stage.counter ? '<br><small class="counter">⚔ 이 스테이지 보스에게 피해 3배</small>' : ''}${g.home(selected).kind === 'star' ? `<br><small class="home">🏠 ${g.stage.name}의 핵심 인물! 공격력 +${STAR_BONUS * 100}%</small>` : g.home(selected).kind === 'era' ? `<br><small class="home">🏠 ${g.stage.era} 철학자 · 공격력 +${ERA_BONUS * 100}%</small>` : ''}
+      info.innerHTML = `<img src="${portrait(p.id)}"><div><b><span class="tier-chip t${p.tier}">${TIER_NAME[p.tier]}</span> ${p.name}</b>${lv} · ${p.school}<br>“${p.quote}”<br><small class="type-line">${TYPE_ICON[statsOf(p.id).type]} ${statsOf(p.id).type} · ${statsOf(p.id).target} 우선 · 사거리 ${statsOf(p.id).range}칸</small><br><small class="skill-line">✦ ${p.skill}: ${p.skillDesc}</small>${p.id === g.stage.counter ? '<br><small class="counter">⚔ 이 스테이지 보스에게 피해 3배</small>' : ''}${g.home(selected).kind === 'star' ? `<br><small class="home">🏠 ${g.stage.name}의 핵심 인물! 공격력 +${STAR_BONUS * 100}%</small>` : g.home(selected).kind === 'era' ? `<br><small class="home">🏠 ${g.stage.era} 철학자 · 공격력 +${ERA_BONUS * 100}%</small>` : ''}
         ${toolLine(g, selected)}
         ${cost !== null ? `<br><button id="upgrade" class="up">⬆ 강화 Lv.${selected.level + 1} (${cost}G) · 공격력 +${Math.round(UPGRADE.perLevel * 100)}%</button>` : ''}</div>`;
       const up = document.getElementById('upgrade');
       if (up) { (up as HTMLButtonElement).disabled = g.gold < cost!; up.onclick = () => { if (selected && g.upgrade(selected)) { lastInfoKey = ''; updateUI(); } }; }
     } else info.innerHTML = g.towers.length
-      ? '<small>같은 등급 3명이면 🎲 합성(1~3성)! 5성 이상은 📜 조합표의 재료를 모아 특수 연성.<br>철학자를 눌러 선택 → 빈 칸을 누르면 이동, 다른 철학자를 누르면 자리 바꾸기.</small>'
+      ? `<small>소환하면 <b>흔함</b> 철학자가 나와요. 그 위는 전부 📜 조합표대로 재료를 모아 조합!<br>재료가 다 모이면 아래에 ⚗ 조합 버튼이 떠요. 하나만 모자란 조합도 알려 드려요.<br>철학자를 눌러 선택 → 빈 칸을 누르면 이동. 자리 ${g.towers.length}/25</small>`
       : `<small><b>${g.stage.name}</b> — ${g.stage.story}<br>소환 버튼으로 철학자를 불러오세요.</small>`;
   }
 
@@ -356,13 +356,14 @@ function updateUI() {
       `<span class="c ${g.catalysts[id] ? 'on' : ''} ${fresh.has(id) ? 'flash' : ''}" title="촉매: ${CAT_NAME[id]}">${CAT_ICON[id]}${g.catalysts[id]}</span>`).join('');
   }
 
-  // 합성 / 특수 연성
-  const merges = g.over ? [] : g.mergeable();
+  // 조합: 지금 만들 수 있는 것 + 하나만 모자란 것
   const recipes = g.over ? [] : g.availableRecipes()
     .sort((a, b) => Number(g.hasCatalyst(b)) - Number(g.hasCatalyst(a)) || PHIL.get(b.result)!.tier - PHIL.get(a.result)!.tier)
-    .slice(0, 3);
+    .slice(0, 4);
+  const near = g.over || g.oneTool ? [] : RECIPES.filter((r) => !recipes.includes(r) && g.ownedMaterials(r).filter((x) => !x).length === 1 && !PHIL.get(r.result)!.hidden)
+    .sort((a, b) => PHIL.get(a.result)!.tier - PHIL.get(b.result)!.tier).slice(0, 3);
   const goals = RECIPES.filter((r) => (progress.likedRecipes ?? []).includes(r.id));
-  const key = merges.join() + '|' + recipes.map((r) => r.id + g.hasCatalyst(r)).join() + '|' + goals.map((r) => g.ownedMaterials(r).join('')).join();
+  const key = near.map((r) => r.id).join() + '|' + recipes.map((r) => r.id + g.hasCatalyst(r)).join() + '|' + goals.map((r) => g.ownedMaterials(r).join('')).join();
   if (key !== lastSynthKey) {
     lastSynthKey = key;
     const box = $('synth');
@@ -375,22 +376,24 @@ function updateUI() {
       el.innerHTML = `💗 <b>${known ? res.name : '???'}</b> ${r.materials.map((m, i) => `<span class="${own[i] ? 'have' : ''}">${own[i] ? '✔' : '·'}${shortName(PHIL.get(m)!.name)}</span>`).join('')}${r.catalyst ? `<span class="${g.catalysts[r.catalyst] ? 'have' : ''}">${CAT_ICON[r.catalyst]}</span>` : ''} <i>${own.filter(Boolean).length}/${own.length}</i>`;
       box.appendChild(el);
     }
-    for (const tier of merges.slice(0, 2)) {
-      const b = document.createElement('button');
-      b.className = 'merge';
-      b.textContent = `🎲 ${tier}성 ×3 → 무작위 ${tier + 1}성`;
-      b.onclick = () => { selected = g.mergeThree(tier); updateUI(); };
-      box.appendChild(b);
-    }
     for (const r of recipes) {
       const b = document.createElement('button');
       const res = PHIL.get(r.result)!;
       const ok = g.hasCatalyst(r);
       const seen = progress.seen.includes(res.id) || QA_MODE;
-      b.textContent = `⚗ ${ok ? '특수 연성!' : '촉매 부족'} ${r.materials.map((m) => PHIL.get(m)!.name).join('+')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''} → ${res.hidden && !seen ? '???' : res.name}`;
+      b.textContent = `⚗ ${ok ? '조합!' : '촉매 부족'} ${r.materials.map((m) => PHIL.get(m)!.name).join('+')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''} → ${res.hidden && !seen ? '???' : res.name}`;
       if (!ok) { b.disabled = true; b.classList.add('locked'); }
       b.onclick = () => { selected = g.synthesize(r); updateUI(); };
       box.appendChild(b);
+    }
+    for (const r of near) {
+      const res = PHIL.get(r.result)!, own = g.ownedMaterials(r);
+      const miss = r.materials.find((_, i) => !own[i])!;
+      const seen = progress.seen.includes(res.id) || QA_MODE;
+      const el = document.createElement('div');
+      el.className = 'near';
+      el.innerHTML = `💡 <b>${shortName(PHIL.get(miss)!.name)}</b>만 있으면 → <span class="tier-chip t${res.tier}">${TIER_NAME[res.tier]}</span> ${seen ? res.name : '???'}`;
+      box.appendChild(el);
     }
   }
 }
@@ -416,7 +419,7 @@ function draw() {
   }
   // ---- 길: 굽이치는 두꺼운 길 + 테두리 ----
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  for (const [color, width] of [[th.roadEdge, 0.86], [th.road, 0.7]] as const) {
+  for (const [color, width] of [[th.roadEdge, 0.9], [th.road, 0.72]] as const) {
     ctx.strokeStyle = color; ctx.lineWidth = cell * width;
     for (const path of g.layout.paths) {
       ctx.beginPath();
@@ -432,6 +435,19 @@ function draw() {
     ctx.stroke();
   }
   ctx.setLineDash([]);
+  // 진행 방향 화살표 (각 변 가운데)
+  for (const path of g.layout.paths) for (let i = 1; i < path.length; i++) {
+    const [ax, ay] = path[i - 1], [bx, by] = path[i];
+    const mx = ((ax + bx) / 2 + 0.5) * cell, my = ((ay + by) / 2 + 0.5) * cell, ang = Math.atan2(by - ay, bx - ax);
+    ctx.save(); ctx.translate(mx, my); ctx.rotate(ang); ctx.fillStyle = th.roadEdge;
+    ctx.beginPath(); ctx.moveTo(cell * 0.18, 0); ctx.lineTo(-cell * 0.1, -cell * 0.14); ctx.lineTo(-cell * 0.1, cell * 0.14); ctx.fill(); ctx.restore();
+  }
+  // 철학자 자리 25칸 (빈자리만 은은하게)
+  for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) {
+    if (g.isRoad(x, y) || g.towerAt(x, y)) continue;
+    ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.strokeStyle = 'rgba(59,42,30,.12)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect((x + 0.12) * cell, (y + 0.12) * cell, cell * 0.76, cell * 0.76, cell * 0.18); ctx.fill(); ctx.stroke();
+  }
   ctx.font = `${cell * 0.55}px sans-serif`;
   const first = g.layout.paths[0];
   if (!g.layout.loop) {
@@ -472,13 +488,13 @@ function draw() {
     const hk = g.home(t).kind;
     if (hk) { ctx.fillStyle = hk === 'star' ? 'rgba(255,211,107,.75)' : 'rgba(167,236,210,.6)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.15, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.32, cell * 0.11, 0, 0, Math.PI * 2); ctx.fill();
-    if (p.tier >= 6) {
+    if (p.tier >= 7) {
       ctx.save(); ctx.globalAlpha = 0.35 + 0.2 * Math.sin(tick * 0.08);
       ctx.fillStyle = `hsl(${(tick * 2) % 360},90%,60%)`;
       ctx.beginPath(); ctx.arc(cx, foot - cell * 0.45, cell * 0.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     const bob = Math.sin((tick + t.cx * 9 + t.cy * 5) * 0.1) * cell * 0.03;
-    const sz = cell * (p.tier >= 5 ? 1.12 : 1.0);
+    const sz = cell * (p.tier >= 6 ? 1.12 : 1.0);
     const rc = recoil.get(t.uid) ?? 0;
     const sx = sz * (1 + rc * 0.12), sy = sz * (1 - rc * 0.1);
     ctx.drawImage(spriteFor(p.id), cx - sx / 2, foot - sy * 0.97 + bob, sx, sy);
@@ -539,13 +555,29 @@ function draw() {
 
   ctx.font = `700 ${Math.max(9, cell * 0.14)}px "Noto Sans KR", sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  // 탄환: 작은 빛 구슬 (대사는 스킬이 터질 때만 말풍선으로)
   for (const b of g.bullets) {
-    const text = b.text.length > 9 ? b.text.slice(0, 8) + '…' : b.text;
-    const tw = ctx.measureText(text).width + 10, x = b.x * cell, y = b.y * cell;
-    ctx.fillStyle = b.color === 'rainbow' ? `hsl(${(tick * 3) % 360},90%,80%)` : b.color === 'gold' ? '#ffd36b' : '#ffffff';
-    ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.roundRect(x - tw / 2, y - 9, tw, 18, 9); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#3b2a1e'; ctx.fillText(text, x, y);
+    const x = b.x * cell, y = b.y * cell, r = cell * (b.color ? 0.11 : 0.08);
+    ctx.fillStyle = b.color === 'rainbow' ? `hsl(${(tick * 3) % 360},90%,75%)` : b.color === 'gold' ? '#ffd36b' : '#ffffff';
+    ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  // 스킬 대사 말풍선
+  ctx.font = `${Math.max(10, cell * 0.2)}px "Jua", sans-serif`;
+  for (const [uid, sp] of speeches) {
+    const t = g.towers.find((x) => x.uid === uid);
+    if (!t) { speeches.delete(uid); continue; }
+    const a = Math.min(1, sp.t / 0.3, (2.4 - sp.t) / 0.15 + 0.2);
+    const text = sp.text.length > 16 ? sp.text.slice(0, 15) + '…' : sp.text;
+    const tw = ctx.measureText(text).width + 14, th = cell * 0.36;
+    let x = (t.cx + 0.5) * cell; const y = t.cy * cell - th * 0.2;
+    x = Math.max(tw / 2 + 2, Math.min(w - tw / 2 - 2, x));
+    ctx.save(); ctx.globalAlpha = Math.max(0, a);
+    ctx.fillStyle = '#fffdf6'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(x - tw / 2, y - th, tw, th, th / 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo((t.cx + 0.42) * cell, y - 1); ctx.lineTo((t.cx + 0.5) * cell, y + cell * 0.1); ctx.lineTo((t.cx + 0.58) * cell, y - 1); ctx.fill();
+    ctx.fillStyle = '#3b2a1e'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y - th / 2 + 1);
+    ctx.restore();
   }
 
   if (g.noticeTime > 0) {
@@ -575,7 +607,7 @@ function draw() {
 
 // 스테이지별 필드 테마
 const THEME: Record<string, { ground: string; speck: string; speck2: string; road: string; roadEdge: string; roadLine: string; decor: string[] }> = {
-  고대: { ground: '#f6ead2', speck: '#ecdcbc', speck2: '#fff6e4', road: '#fffaf0', roadEdge: '#c9a877', roadLine: 'rgba(255,255,255,.5)', decor: ['column', 'olive', 'amphora'] },
+  고대: { ground: '#f6ead2', speck: '#ecdcbc', speck2: '#fff6e4', road: '#fff3d6', roadEdge: '#b88a4f', roadLine: 'rgba(255,255,255,.5)', decor: ['column', 'olive', 'amphora'] },
   중세: { ground: '#d9cdea', speck: '#cbbde0', speck2: '#e6dcf3', road: '#f3eadb', roadEdge: '#8b7aa8', roadLine: 'rgba(139,122,168,.6)', decor: ['candle', 'stone', 'banner'] },
   동양: { ground: '#cdeeb5', speck: '#bde4a1', speck2: '#ddf5c9', road: '#fff7e2', roadEdge: '#9cbf7a', roadLine: 'rgba(255,255,255,.45)', decor: ['bamboo', 'pine', 'lantern'] },
   근대: { ground: '#d4dde8', speck: '#c5d0dd', speck2: '#e2e9f1', road: '#fdf6e9', roadEdge: '#7b8ea6', roadLine: 'rgba(123,142,166,.7)', decor: ['gear', 'lamp', 'crate'] },
@@ -604,7 +636,7 @@ function drawDecor(kind: string, x: number, y: number, c: number) {
   }
 }
 
-const SHORT: Record<string, string> = { '마르틴 로우데거': '로우데거', '장 폴 사리티리': '사리티리', '자크 디리타': '디리타', '에마뉘엘 리비나스': '리비나스', '테오도어 아도로노': '아도로노', '알베르 카뮈': '카뮈',  '고타마 붓다': '붓다', '다산 정약용': '정약용', '퇴계 이황': '이황', '루트비히 비트겐슈타인': '비트겐', '아르투어 쇼펜하우어': '쇼펜하우어', '고트프리트 라이프니츠': '라이프니츠', '쇠렌 키르케고르': '키르케고르', '헤라클레이토스': '헤라클레', '아리스토텔레스': '아리스토', '나가르주나': '나가르',  '엘레아의 제논': '제논', '오컴의 윌리엄': '오컴', '이븐 시나': '이븐시나', '이븐 루시드': '이븐루시드', '알 킨디': '알킨디', '힐데가르트 폰 빙엔': '힐데가르트' };
+const SHORT: Record<string, string> = { '광장의 소크라테스': '광장소크', '떠도는 공자': '떠돌공자', '마르틴 로우데거': '로우데거', '장 폴 사리티리': '사리티리', '자크 디리타': '디리타', '에마뉘엘 리비나스': '리비나스', '테오도어 아도로노': '아도로노', '알베르 카뮈': '카뮈',  '고타마 붓다': '붓다', '다산 정약용': '정약용', '퇴계 이황': '이황', '루트비히 비트겐슈타인': '비트겐', '아르투어 쇼펜하우어': '쇼펜하우어', '고트프리트 라이프니츠': '라이프니츠', '쇠렌 키르케고르': '키르케고르', '헤라클레이토스': '헤라클레', '아리스토텔레스': '아리스토', '나가르주나': '나가르',  '엘레아의 제논': '제논', '오컴의 윌리엄': '오컴', '이븐 시나': '이븐시나', '이븐 루시드': '이븐루시드', '알 킨디': '알킨디', '힐데가르트 폰 빙엔': '힐데가르트' };
 function shortName(name: string) {
   const s = SHORT[name] ?? name.split(' ').pop()!;
   return s.length > 5 ? s.slice(0, 4) + '…' : s;
@@ -684,12 +716,12 @@ function pullBtn(id: string, cls: string) {
   return `<button class="chunky ${cls}" data-pull="${id}">${o.label}<small>${CUR_ICON[o.currency]} ${o.cost.toLocaleString()}</small></button>`;
 }
 function renderGacha() {
-  const rates = CARD_RATES.map((r) => `<span class="tier-chip t${r.tier}">${r.tier}★ ${(r.rate * 100).toFixed(1)}%</span>`).join(' ');
+  const rates = CARD_RATES.map((r) => `<span class="tier-chip t${r.tier}">${TIER_NAME[r.tier]} ${(r.rate * 100).toFixed(1)}%</span>`).join(' ');
   $('tab-gacha').innerHTML = `
     <div class="gacha-box master-box">
-      <div class="banner-art">${PHILOSOPHERS.filter((p) => p.tier === 6 && !p.hidden).map((p) => `<img src="${portrait(p.id)}">`).join('')}</div>
-      <h2>✨ 거장 초대 <span class="hot">5성 이상 확정</span></h2>
-      <p class="hint">10회 중 마지막 1장은 반드시 5성 또는 6성! 🎫 초대장으로 1장 확정 소환도 가능해요.</p>
+      <div class="banner-art">${PHILOSOPHERS.filter((p) => p.tier === 7 && !p.hidden).map((p) => `<img src="${portrait(p.id)}">`).join('')}</div>
+      <h2>✨ 거장 초대 <span class="hot">거장 이상 확정</span></h2>
+      <p class="hint">10회 중 마지막 1장은 반드시 거장 또는 근원! 🎫 초대장으로 1장 확정 소환도 가능해요.</p>
       <div class="row">${pullBtn('m10', 'gold')}${pullBtn('m1', 'pink')}</div>
     </div>
     <div class="gacha-box card-box">
@@ -722,7 +754,7 @@ function gachaShow(o: PullOption, got: string[], before: Record<string, number>)
   const isTool = o.kind === 'tool';
   const tiers = got.map((id) => (isTool ? 3 : PHIL.get(id)!.tier));
   const top = Math.max(...tiers);
-  const glow = top >= 6 ? 'rainbow' : top >= 5 ? 'gold' : top >= 4 ? 'orange' : 'blue';
+  const glow = top >= 7 ? 'rainbow' : top >= 6 ? 'gold' : top >= 5 ? 'orange' : 'blue';
   const ov = document.createElement('div');
   ov.className = `gacha-stage glow-${glow}`;
   ov.innerHTML = `<div class="rays"></div><div class="scroll-wrap"><div class="scroll">${isTool ? '🧰' : '📜'}</div><p>터치해서 펼치기</p></div>
@@ -746,14 +778,14 @@ function gachaShow(o: PullOption, got: string[], before: Record<string, number>)
       counted[id] = (counted[id] ?? 0) + 1;
       const now = cardLevel(counted[id]);
       const tag = prev === 0 ? '<i class="new">NEW</i>' : now > prev ? `<i class="lvup">Lv.${now}!</i>` : '';
-      el.className = `gcard t${tier} ${tier >= 5 ? 'legend' : ''} ${tier >= 6 ? 'mythic' : ''}`;
-      el.innerHTML = `${tag}<img src="${portrait(id)}"><b>${p.name}</b><small>${'★'.repeat(tier)}</small>`;
-      if (tier >= 5) { burst(ov, tier); shakeEl(ov); }
+      el.className = `gcard t${tier} ${tier >= 6 ? 'legend' : ''} ${tier >= 7 ? 'mythic' : ''}`;
+      el.innerHTML = `${tag}<img src="${portrait(id)}"><b>${p.name}</b><small>${TIER_NAME[tier]}</small>`;
+      if (tier >= 6) { burst(ov, tier - 1); shakeEl(ov); }
     }
-    sfx.reveal(tier);
+    sfx.reveal(tier - 1);
     cardsEl.appendChild(el);
     idx++;
-    if (chain) timer = window.setTimeout(() => flipNext(), tier >= 5 ? 700 : 160);
+    if (chain) timer = window.setTimeout(() => flipNext(), tier >= 6 ? 700 : 160);
     else if (idx >= got.length) flipNext(false);
   };
   const open = () => {
@@ -813,7 +845,7 @@ function recipeSheet() {
     const owned = g ? g.ownedMaterials(r) : r.materials.map(() => false);
     const mats = r.materials.map((m, i) => {
       const p = PHIL.get(m)!;
-      return `<span class="mat t${p.tier} ${owned[i] ? 'have' : ''}"><img src="${portrait(m)}">${p.name}<i>${p.tier}성</i></span>`;
+      return `<span class="mat t${p.tier} ${owned[i] ? 'have' : ''}"><img src="${portrait(m)}">${p.name}<i>${TIER_NAME[p.tier]}</i></span>`;
     }).join('<b class="plus">+</b>');
     const cat = r.catalyst ? `<b class="plus">+</b><span class="mat cat ${g && g.catalysts[r.catalyst] ? 'have' : ''}">${CAT_ICON[r.catalyst]}</span>` : '';
     const ready = g && owned.every(Boolean) && g.hasCatalyst(r);
@@ -836,16 +868,12 @@ function recipeSheet() {
 }
 
 function rateSheet() {
-  const rates = SUMMON_RATES.map((r) => {
-    const n = PHILOSOPHERS.filter((p) => p.tier === r.tier && !p.hidden).length;
-    return `<tr><td><span class="tier-chip t${r.tier}">${'★'.repeat(r.tier)}</span></td><td><b>${(r.rate * 100).toFixed(0)}%</b></td><td>${n}명 · 1인당 ${(r.rate * 100 / n).toFixed(2)}%</td></tr>`;
-  }).join('');
-  const merges = [1, 2, 3].filter((t) => t <= MAX_MERGE_TIER).map((t) => {
-    const n = PHILOSOPHERS.filter((p) => p.tier === t + 1 && !p.hidden).length;
-    return `<tr><td>${t}성 ×3</td><td>→ ${t + 1}성</td><td>${n}명 중 1명 (각 ${(100 / n).toFixed(1)}%)</td></tr>`;
-  }).join('');
-  alertBox(`<h2>🎲 확률표</h2><table class="rates"><tr><th>등급</th><th>소환</th><th>인원</th></tr>${rates}</table>
-    <table class="rates"><tr><th>합성</th><th>결과</th><th>확률</th></tr>${merges}<tr><td>5·6성</td><td colspan=2>📜 조합표로만 획득</td></tr></table>`);
+  const commons = PHILOSOPHERS.filter((p) => p.tier === 1 && !p.hidden);
+  const rows = [1, 2, 3, 4, 5, 6, 7].map((t) => `<tr><td><span class="tier-chip t${t}">${TIER_NAME[t]}</span></td><td>${PHILOSOPHERS.filter((p) => p.tier === t).length}명</td><td>${t === 1 ? '소환' : '📜 조합'}</td></tr>`).join('');
+  alertBox(`<h2>🎲 소환과 등급</h2><p>소환하면 <b>흔함 ${commons.length}명</b> 중 한 명이 똑같은 확률(각 ${(100 / commons.length).toFixed(1)}%)로 나와요.<br>그 위 등급은 전부 조합표대로 만들어요.</p>
+    <p class="hint">${commons.map((p) => p.name).join(' · ')}</p>
+    <table class="rates"><tr><th>등급</th><th>인원</th><th>얻는 법</th></tr>${rows}</table>
+    <p class="hint">🎟 무료 소환권: 10웨이브마다 보스를 잡으면 ${3}장, 5·15·25·35·45웨이브 광장 집회에서 1장</p>`);
 }
 
 // ---------- 타격감 연출 ----------
@@ -884,14 +912,17 @@ function consumeFx(g: Game) {
       particles.push({ x: f.x, y: f.y - 0.2, vx: 0, vy: -0.8, life: 0.9, max: 0.9, color: '#e3a72f', size: 0.28, text: `+${f.gold}G` });
       if (f.boss) { shake = 0.6; banner = { text: '🎉 논파 성공!', t: 1.8 }; }
     } else if (f.type === 'morph') {
-      if (f.tier >= 5) sfx.synth(f.tier); else sfx.merge();
+      if (f.tier >= 5) sfx.synth(f.tier - 1); else sfx.merge();
       for (let i = 0; i < 24 + f.tier * 6; i++) { const a = (i / 24) * Math.PI * 2; particles.push({ x: f.x, y: f.y, vx: Math.cos(a) * rnd(1.5, 3), vy: Math.sin(a) * rnd(1.5, 3), life: 0.7, max: 0.7, color: f.tier >= 5 ? PASTEL[i % 5] : '#fff3b0', size: rnd(0.06, 0.11), star: true }); }
       if (f.tier >= 5) shake = 0.35;
     } else if (f.type === 'boss') { bossIntro = { name: f.name, t: 2.6 }; shake = 0.4; sfx.boss(); }
     else if (f.type === 'bossSkill' && f.text) { banner = { text: f.text, t: 1.6 }; shake = 0.25; sfx.bossSkill(); }
+    else if (f.type === 'say') speeches.set(f.uid, { text: f.text, t: 2.4 });
+    else if (f.type === 'ticket') { banner = { text: `${f.why}! 🎟 무료 소환권 +${f.n}`, t: 2 }; sfx.reveal(5); }
     else if (f.type === 'stun') { const t = g.towers.find((x) => x.uid === f.uid); if (t) for (let i = 0; i < 8; i++) particles.push({ x: t.cx + 0.5, y: t.cy + 0.3, vx: rnd(-1, 1), vy: rnd(-2, -0.5), life: 0.6, max: 0.6, color: '#c7a6ff', size: 0.07 }); }
   }
 }
+const speeches = new Map<number, { text: string; t: number }>();
 const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
 
 function updateFx(dt: number) {
@@ -901,6 +932,7 @@ function updateFx(dt: number) {
   for (let i = shapes.length - 1; i >= 0; i--) if (shapes[i].life <= 0) shapes.splice(i, 1);
   for (const [k, v] of recoil) { const n = v - dt * 6; if (n <= 0) recoil.delete(k); else recoil.set(k, n); }
   if (shake > 0) shake = Math.max(0, shake - dt);
+  for (const [k, v] of speeches) { v.t -= dt; if (v.t <= 0) speeches.delete(k); }
   if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
   if (bossIntro) { bossIntro.t -= dt; if (bossIntro.t <= 0) bossIntro = null; }
 }
@@ -1059,8 +1091,8 @@ function welcome() {
     <p>도그마들이 아고라로 몰려오고 있어요.<br>철학자를 소환하고, 합치고, 조합해서 막아 주세요.</p>
     <div class="welcome">
       <div>🎲 <b>소환</b> 골드로 철학자를 불러요</div>
-      <div>🔁 <b>합성</b> 같은 등급 3명 → 한 등급 위</div>
-      <div>📜 <b>조합</b> 5성 이상은 조합표대로 모아야 탄생</div>
+      <div>🎟 <b>소환</b>은 흔함 9명 중 한 명</div>
+      <div>📜 <b>조합</b> 그 위는 전부 조합표대로 모아야 탄생</div>
       <div>🤔 <b>고민방</b> 고뇌를 모아 카드를 뽑고 성장</div>
     </div>
     <p>첫 선물로 🤔 300 · 💎 100 · 탈레스 카드를 드려요.<br>먼저 <b>아테네의 광장 · 쉬움</b>부터!</p>`), 300);
@@ -1166,18 +1198,18 @@ $('cats').addEventListener('click', (e) => {
   if (!el) return;
   const i = [...$('cats').querySelectorAll('.c')].indexOf(el);
   const id = CATALYST_IDS[i];
-  toast(`${CAT_ICON[id]} 촉매 「${CAT_NAME[id]}」 — 5·6성 조합 재료예요. 웨이브를 깰 때마다 1개, 보스 웨이브는 추가로, 적 처치 시 가끔 떨어져요`);
+  toast(`${CAT_ICON[id]} 촉매 「${CAT_NAME[id]}」 — 희귀 이상 조합 재료예요. 웨이브를 깰 때마다 1개, 보스 웨이브는 추가로, 적 처치 시 가끔 떨어져요`);
 });
 
 // ---------- 🎓 전투 튜토리얼 (첫 전투에서 단계별 안내) ----------
 const TUT: { sel: string; text: string; done?: (g: Game) => boolean; pos?: 'top' }[] = [
-  { sel: '#summon', text: '👋 먼저 <b>소환</b>을 눌러 철학자를 불러 보세요. 골드가 들고, 누를수록 조금씩 비싸져요.', done: (g) => g.towers.length >= 1 },
+  { sel: '#summon', text: '👋 먼저 <b>소환</b>을 눌러 철학자를 불러 보세요. 흔함 9명 중 한 명이 나와요.', done: (g) => g.towers.length >= 1 },
   { sel: '#summon', text: '좋아요! 철학자는 빈 칸에 자동으로 앉아요. <b>두 번 더</b> 소환해 볼까요?', done: (g) => g.towers.length >= 3 },
   { sel: '#field', text: '칸에 앉은 철학자를 <b>탭</b>하면 정보·강화·판매가 나와요. 선택한 채로 다른 칸을 탭하면 <b>자리를 옮겨요</b>.', pos: 'top' },
-  { sel: '#synth', text: '같은 등급 3명이 모이면 여기 <b>🎲 합성</b> 버튼이 떠요 → 한 등급 위 철학자가 무작위로! 5성 이상은 📜 조합표대로 모아야 해요.', pos: 'top' },
+  { sel: '#synth', text: '조합 재료가 모이면 여기 <b>⚗ 조합</b> 버튼이 떠요. 하나만 모자란 조합은 💡로 알려 줘요. 예: 광장의 소크라테스 둘 → 플라톤!', pos: 'top' },
   { sel: '#start', text: '준비 끝! <b>웨이브 시작</b>을 누르면 도그마(적)가 몰려와요.', done: (g) => g.running },
   { sel: '#lives', text: '🧠 이게 <b>멘탈</b>이에요. 도그마가 길 끝에 닿으면 1(보스는 5)씩 깎이고, 못 잡은 적은 <b>다시 돌아와요</b>. 0이 되면 패배!', pos: 'top' },
-  { sel: '#cats', text: '웨이브를 깨면 골드와 <b>촉매</b>(🔥💎🌀⚙️🪞)를 얻어요. 촉매는 5·6성 조합 재료예요. 칩을 누르면 설명이 나와요.', pos: 'top' },
+  { sel: '#cats', text: '웨이브를 깨면 골드와 <b>촉매</b>(🔥💎🌀⚙️🪞)를 얻어요. 촉매는 희귀 이상 조합 재료예요. 보스를 잡으면 🎟 무료 소환권도 줘요. 칩을 누르면 설명이 나와요.', pos: 'top' },
   { sel: '#b-recipes', text: '📜 은 조합표, 1x 는 배속이에요. 이제 20웨이브까지 버텨 보세요. 화이팅! 🏛', pos: 'top' },
 ];
 let tutStep = -1, tutShown = -2;
@@ -1206,7 +1238,7 @@ const PAGE_TUT: Record<string, { sel: string; text: string }[]> = {
   stages: [
     { sel: '.diffs', text: '여기서 <b>난이도</b>를 골라요. 같은 스테이지에서 앞 난이도를 깨야 다음 난이도가 열려요.' },
     { sel: '.stage:not(.locked)', text: '스테이지를 누르면 전투 시작! 🏠 <b>강해지는 철학자</b>는 이 맵에서 공격력이 크게 올라요(+60%). 같은 시대 철학자도 +25%.' },
-    { sel: '#open-recipes', text: '📜 <b>조합표</b>에서 5·6성 만드는 법을, 🎲 확률에서 소환 확률을 볼 수 있어요. 마음에 드는 조합은 💗로 찜해 두면 전투 중에 따라 보여요.' },
+    { sel: '#open-recipes', text: '📜 <b>조합표</b>에서 모든 조합식을, 🎲 확률에서 소환·등급 정보를 볼 수 있어요. 마음에 드는 조합은 💗로 찜해 두면 전투 중에 따라 보여요.' },
     { sel: '#tabs', text: '아래 탭에서 🤔고민방·🎴뽑기·📖도감·🛍상점으로 가요. 처음 들어가면 거기서도 안내해 드릴게요!' },
   ],
   room: [
@@ -1216,8 +1248,8 @@ const PAGE_TUT: Record<string, { sel: string; text: string }[]> = {
   ],
   gacha: [
     { sel: '.card-box', text: '🎴 <b>철학자 카드</b> 뽑기예요. 같은 카드가 모이면 레벨이 올라 전투 공격력이 세지고, 일화도 열려요.' },
-    { sel: '.pity', text: '<b>천장</b>: 카드 뽑기에서 5성 이상이 안 나와도, 이 막대가 다 차면 <b>5성 이상이 확정</b>으로 나와요.' },
-    { sel: '.master-box', text: '✨ <b>거장 초대</b>는 💎지혜석이나 🎫초대장으로 5성 이상을 확정으로 뽑아요.' },
+    { sel: '.pity', text: '<b>천장</b>: 카드 뽑기에서 거장 이상이 안 나와도, 이 막대가 다 차면 <b>거장 이상이 확정</b>으로 나와요.' },
+    { sel: '.master-box', text: '✨ <b>거장 초대</b>는 💎지혜석이나 🎫초대장으로 거장 이상을 확정으로 뽑아요.' },
     { sel: '.tool-box', text: '🧰 <b>도구</b>를 뽑아 도감에서 철학자에게 장착해요. 주인에게 맞는 도구면 <b>찰떡!</b> 공격 +60%.' },
   ],
   codex: [

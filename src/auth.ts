@@ -37,13 +37,11 @@ export function seedVeteran(p: Progress) {
   p.firstClears = [...p.cleared.filter((x) => x.includes(':'))];
   p.gonoe = 4200; p.gems = 650; p.tickets = 1; p.tapLevel = 6; p.tutorialDone = true; p.battleTutDone = true; p.tabTut = ['stages', 'room', 'gacha', 'codex', 'shop'];
   p.cards = {
-    T101: 9, T102: 6, T103: 7, T104: 12, T105: 10, T106: 5,
-    T201: 5, T202: 6, T203: 4, T204: 3, T205: 4, T206: 2, T207: 3,
-    T301: 3, T302: 2, T303: 4, T304: 2, T305: 1, T306: 2, T307: 1,
-    T401: 2, T402: 1, T403: 2, T405: 1, T406: 1,
-    T501: 1, T507: 1, T601: 1,
+    T101: 9, T103: 6, T102: 7, T207: 12, T301: 10, T107: 5, T402: 5, T308: 6, T405: 4, T408: 3, T211: 4, T309: 2, T311: 3, T411: 3,
+    T410: 2, T501: 4, T510: 2, T502: 1, T508: 2, T312: 1, T505: 2, T509: 1, T504: 2, T503: 1, T413: 1, T601: 1, T607: 1, T701: 1,
   };
+  p.idv2 = true;
   p.items = { cup: 1, hammer: 2, razor: 1, book: 1, lotus: 1, owl: 1 };
-  p.loadout = { T601: 'cup', T401: 'hammer', T201: 'razor', T303: 'owl' };
+  p.loadout = { T701: 'cup', T505: 'hammer', T402: 'razor', T501: 'owl' };
   p.seen = [...Object.keys(p.cards)];
 }

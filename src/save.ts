@@ -1,4 +1,5 @@
 // 진행 상황 저장 (브라우저 localStorage, 실패해도 게임은 계속)
+import legacyIds from './data/legacy_ids.json';
 const BASE_KEY = 'agora_progress_v3';
 let account = 'guest';
 /** 로그인한 계정별로 저장 칸을 나눈다 */
@@ -31,6 +32,8 @@ export interface Progress {
   firstClears: string[];
   tutorialDone: boolean;
   battleTutDone?: boolean;
+  /** 조합표 v2(80명) 기준 ID로 옮겼는지 */
+  idv2?: boolean;
   tabTut?: string[];
   /** 최애 철학자 (고민방 주인 · 전장 하트) */
   favorite?: string;
@@ -43,14 +46,33 @@ export interface Progress {
   likedRecipes?: string[];
 }
 
-const fresh = (): Progress => ({ cleared: [], seen: [], gonoe: 300, idleAt: Date.now(), cards: { T101: 1 }, items: {}, loadout: {}, tapLevel: 0, gems: 100, pity: 0, tickets: 0, purchases: [], firstClears: [], tutorialDone: false, skins: [], skinOn: {}, oneToolBest: {} });
+const fresh = (): Progress => ({ cleared: [], seen: [], gonoe: 300, idleAt: Date.now(), cards: { T101: 1 }, items: {}, loadout: {}, tapLevel: 0, gems: 100, pity: 0, tickets: 0, purchases: [], firstClears: [], tutorialDone: false, skins: [], skinOn: {}, oneToolBest: {}, idv2: true });
+
+/** 조합표 v2로 철학자 ID가 바뀌었다: 예전 카드·도감·장착을 새 ID로 옮긴다 (재화·클리어는 그대로) */
+function migrate(p: Progress): Progress {
+  if (p.idv2) return p;
+  const M = legacyIds as Record<string, string>;
+  const mapId = (id: string) => M[id];
+  const remap = <T>(o: Record<string, T>) => { const n: Record<string, T> = {}; for (const [k, v] of Object.entries(o ?? {})) { const nk = mapId(k); if (nk) n[nk] = v; } return n; };
+  p.cards = remap(p.cards);
+  p.seen = (p.seen ?? []).map(mapId).filter(Boolean);
+  p.loadout = remap(p.loadout);
+  p.skinOn = remap(p.skinOn);
+  p.oneToolBest = remap(p.oneToolBest);
+  p.skins = (p.skins ?? []).map((x) => { const [id, k] = x.split(':'); return mapId(id) ? `${mapId(id)}:${k}` : ''; }).filter(Boolean);
+  if (p.favorite) p.favorite = mapId(p.favorite);
+  p.likedRecipes = [];
+  if (!Object.keys(p.cards).length) p.cards = { T101: 1 };
+  p.idv2 = true;
+  return p;
+}
 
 export function hasSave() { try { return !!localStorage.getItem(KEY_OF()); } catch { return false; } }
 
 export function loadProgress(): Progress {
   try {
     const raw = localStorage.getItem(KEY_OF());
-    if (raw) return { ...fresh(), ...JSON.parse(raw) };
+    if (raw) return migrate({ ...fresh(), ...JSON.parse(raw) });
   } catch { /* 저장소 사용 불가 */ }
   return fresh();
 }
