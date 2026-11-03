@@ -4,7 +4,7 @@ export const ERA_BONUS = 0.25;
 export const STAR_BONUS = 0.6;
 
 export const STAGE_STARS: Record<string, string[]> = {
-  S1: ['광장의 소크라테스', '플라톤', '아리스토텔레스'],
+  S1: ['델포이의 소크라테스', '플라톤', '아리스토텔레스'],
   S2: ['아우구스티누스', '오컴의 윌리엄', '바울'],
   S3: ['대성지성 공자', '노자', '장자'],
   S4: ['임마누엘 칸트', '데이비드 흄', '르네 데카르트'],

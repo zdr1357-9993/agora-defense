@@ -31,7 +31,7 @@ export const SKILLS: Record<string, Skill> = {
   '에마뉘엘 레비나스': S('boss', 0.7), '테오도어 아도르노': S('splash', 0.6), '니시다 기타로': S('auraAtk', 0.25),
   '다산 정약용': S('boss', 0.6), 바울: S('auraAtk', 0.3),
   // 6성
-  '광장의 소크라테스': S('auraAtk', 0.35), '임마누엘 칸트': S('globalSlow', 0.3), '자크 데리다': S('execute', 0.2),
+  '델포이의 소크라테스': S('auraAtk', 0.35), '임마누엘 칸트': S('globalSlow', 0.3), '자크 데리다': S('execute', 0.2),
   '대성지성 공자': S('auraAtk', 0.4), '고타마 붓다': S('auraSpeed', 0.35), 예수: S('auraAtk', 0.5),
   '알베르 카뮈': S('stack', 0.04),
   // v2 조합표로 새로 들어온 철학자
