@@ -210,26 +210,29 @@ const ctx = canvas.getContext('2d')!;
 let game: Game | null = null;
 let selected: Tower | null = null;
 let speed = 1;
-let cell = 0;
+let cell = 0, cellX = 0; // cell: 세로 칸(크기 기준), cellX: 가로 칸 (화면 폭에 맞춰 넓어짐)
 let tick = 0;
 let resultShown = false;
 let introT = 0;
 
 /** 필드(7칸) + 대기석 한 줄 높이 */
-const ROWS = GRID + 1.2;
+const ROWS = GRID + 1.4;
 /** 화면 높이에 맞춰 필드 크기를 정한다: 남는 공간 안에서 가장 크게 (스크롤 없이 한 화면) */
 function resize() {
   const dpr = window.devicePixelRatio || 1;
   const wrap = $('field-wrap');
   const W = wrap.clientWidth, H = wrap.clientHeight;
   if (!W || !H) return;
-  const width = Math.floor(Math.min(W, (H * GRID) / ROWS));
-  const height = Math.floor((width * ROWS) / GRID);
+  // 세로에 맞춰 칸 크기를 정하고, 가로는 화면 폭까지 넓힌다 (칸이 최대 1.5배까지 옆으로 길어짐)
+  const c = Math.min(W / GRID, H / ROWS);
+  const width = Math.floor(Math.min(W, c * GRID * 1.5));
+  const height = Math.floor(c * ROWS);
   canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
   canvas.width = width * dpr;
   canvas.height = height * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  cell = width / GRID;
+  cell = height / ROWS;
+  cellX = width / GRID;
 }
 window.addEventListener('resize', resize);
 new ResizeObserver(resize).observe($('field-wrap'));
@@ -411,25 +414,25 @@ function updateUI() {
 function draw() {
   if (!game || !cell) return;
   const g = game;
-  const w = canvas.clientWidth, hTot = canvas.clientHeight;
+  const w = canvas.clientWidth, hTot = canvas.clientHeight, fh = GRID * cell; // fh: 필드 높이
   ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
   ctx.clearRect(0, 0, w, hTot);
   // 대기석 판 (필드 아래)
-  ctx.fillStyle = '#f3e3c3'; ctx.fillRect(0, w, w, hTot - w);
-  ctx.fillStyle = '#3b2a1e'; ctx.fillRect(0, w - 1.5, w, 3);
+  ctx.fillStyle = '#f3e3c3'; ctx.fillRect(0, fh, w, hTot - fh);
+  ctx.fillStyle = '#3b2a1e'; ctx.fillRect(0, fh - 1.5, w, 3);
   ctx.font = `${Math.max(10, cell * 0.2)}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('대기석', cell * 0.5, w + cell * 0.6); ctx.fillText(`${BENCH - game.benchSlots().length}/${BENCH}`, cell * 6.5, w + cell * 0.6);
-  for (let x = 1; x <= BENCH; x++) if (!game.towerAt(x, GRID)) { ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.strokeStyle = 'rgba(59,42,30,.25)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.roundRect((x + 0.1) * cell, w + cell * 0.12, cell * 0.8, cell * 0.95, cell * 0.18); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); }
+  ctx.fillText('대기석', cellX * 0.5, fh + cell * 0.6); ctx.fillText(`${BENCH - game.benchSlots().length}/${BENCH}`, cellX * 6.5, fh + cell * 0.6);
+  for (let x = 1; x <= BENCH; x++) if (!game.towerAt(x, GRID)) { ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.strokeStyle = 'rgba(59,42,30,.25)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.roundRect((x + 0.5) * cellX - cell * 0.4, fh + cell * 0.12, cell * 0.8, cell * 0.95, cell * 0.18); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); }
   ctx.save();
   if (shake > 0) ctx.translate(rnd(-1, 1) * shake * 8, rnd(-1, 1) * shake * 8);
   ctx.imageSmoothingEnabled = false;
 
   // ---- 바닥: 스테이지별 질감 (칸 테두리 없이 하나의 필드처럼) ----
   const th = THEME[g.stage.era] ?? THEME['고대'];
-  ctx.fillStyle = th.ground; ctx.fillRect(0, 0, w, w);
-  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, w); ctx.clip();
+  ctx.fillStyle = th.ground; ctx.fillRect(0, 0, w, fh);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, fh); ctx.clip();
   for (let i = 0; i < 140; i++) {
-    const rx = hash(i * 7.1) * w, ry = hash(i * 3.3 + 1) * w, r = 1 + hash(i) * 2.5;
+    const rx = hash(i * 7.1) * w, ry = hash(i * 3.3 + 1) * fh, r = 1 + hash(i) * 2.5;
     ctx.fillStyle = i % 3 ? th.speck : th.speck2;
     ctx.beginPath(); ctx.arc(rx, ry, r, 0, Math.PI * 2); ctx.fill();
   }
@@ -439,7 +442,7 @@ function draw() {
     ctx.strokeStyle = color; ctx.lineWidth = cell * width;
     for (const path of g.layout.paths) {
       ctx.beginPath();
-      path.forEach(([px, py], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, (px + 0.5) * cell, (py + 0.5) * cell));
+      path.forEach(([px, py], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, (px + 0.5) * cellX, (py + 0.5) * cell));
       if (g.layout.loop) ctx.closePath();
       ctx.stroke();
     }
@@ -447,14 +450,14 @@ function draw() {
   ctx.strokeStyle = th.roadLine; ctx.lineWidth = 2; ctx.setLineDash([4, 8]);
   for (const path of g.layout.paths) {
     ctx.beginPath();
-    path.forEach(([px, py], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, (px + 0.5) * cell, (py + 0.5) * cell));
+    path.forEach(([px, py], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, (px + 0.5) * cellX, (py + 0.5) * cell));
     ctx.stroke();
   }
   ctx.setLineDash([]);
   // 진행 방향 화살표 (각 변 가운데)
   for (const path of g.layout.paths) for (let i = 1; i < path.length; i++) {
     const [ax, ay] = path[i - 1], [bx, by] = path[i];
-    const mx = ((ax + bx) / 2 + 0.5) * cell, my = ((ay + by) / 2 + 0.5) * cell, ang = Math.atan2(by - ay, bx - ax);
+    const mx = ((ax + bx) / 2 + 0.5) * cellX, my = ((ay + by) / 2 + 0.5) * cell, ang = Math.atan2(by - ay, bx - ax);
     ctx.save(); ctx.translate(mx, my); ctx.rotate(ang); ctx.fillStyle = th.roadEdge;
     ctx.beginPath(); ctx.moveTo(cell * 0.18, 0); ctx.lineTo(-cell * 0.1, -cell * 0.14); ctx.lineTo(-cell * 0.1, cell * 0.14); ctx.fill(); ctx.restore();
   }
@@ -462,26 +465,26 @@ function draw() {
   for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) {
     if (g.isRoad(x, y) || g.towerAt(x, y)) continue;
     ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.strokeStyle = 'rgba(59,42,30,.12)'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.roundRect((x + 0.12) * cell, (y + 0.12) * cell, cell * 0.76, cell * 0.76, cell * 0.18); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect((x + 0.12) * cellX + (cellX - cell) / 2, (y + 0.12) * cell, cell * 0.76, cell * 0.76, cell * 0.18); ctx.fill(); ctx.stroke();
   }
   ctx.font = `${cell * 0.55}px sans-serif`;
   const first = g.layout.paths[0];
   if (!g.layout.loop) {
-    ctx.fillText('🚪', (first[0][0] + 0.5) * cell, (first[0][1] + 0.5) * cell);
+    ctx.fillText('🚪', (first[0][0] + 0.5) * cellX, (first[0][1] + 0.5) * cell);
     const end = first[first.length - 1];
-    ctx.fillText(g.stage.id === 'S2' ? '⛪' : '🏁', (end[0] + 0.5) * cell, (end[1] + 0.5) * cell);
+    ctx.fillText(g.stage.id === 'S2' ? '⛪' : '🏁', (end[0] + 0.5) * cellX, (end[1] + 0.5) * cell);
   }
 
   // 선택 시: 사거리 + 옮길 수 있는 자리 표시
   if (selected) {
     const st = statsOf(selected.philId);
     ctx.save(); ctx.beginPath();
-    ctx.arc((selected.cx + 0.5) * cell, (selected.cy + 0.5) * cell, (st.range + g.itemMult(selected).range) * cell, 0, Math.PI * 2);
+    ctx.ellipse((selected.cx + 0.5) * cellX, (selected.cy + 0.5) * cell, (st.range + g.itemMult(selected).range) * cellX, (st.range + g.itemMult(selected).range) * cell, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(251,191,36,.10)'; ctx.fill();
     ctx.strokeStyle = 'rgba(251,191,36,.6)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); ctx.stroke();
     ctx.restore();
     ctx.fillStyle = 'rgba(56,189,248,.28)';
-    for (const [x, y] of g.emptyCells()) { ctx.beginPath(); ctx.arc((x + 0.5) * cell, (y + 0.62) * cell, cell * 0.16, 0, Math.PI * 2); ctx.fill(); }
+    for (const [x, y] of g.emptyCells()) { ctx.beginPath(); ctx.arc((x + 0.5) * cellX, (y + 0.62) * cell, cell * 0.16, 0, Math.PI * 2); ctx.fill(); }
   }
 
   // ---- 오라 철학자: 주변 8칸에 은은한 빛 ----
@@ -490,8 +493,8 @@ function draw() {
     if (!s || (s.kind !== 'auraAtk' && s.kind !== 'auraSpeed' && s.kind !== 'globalSlow')) continue;
     const pulse = 0.5 + 0.5 * Math.sin(tick * 0.06 + t.uid);
     ctx.fillStyle = s.kind === 'auraAtk' ? `rgba(255,159,67,${0.08 + pulse * 0.06})` : s.kind === 'auraSpeed' ? `rgba(95,198,160,${0.08 + pulse * 0.06})` : `rgba(96,165,250,${0.05 + pulse * 0.04})`;
-    if (s.kind === 'globalSlow') { ctx.beginPath(); ctx.arc((t.cx + 0.5) * cell, (t.cy + 0.5) * cell, cell * (1.6 + pulse * 0.3), 0, Math.PI * 2); ctx.fill(); }
-    else { ctx.beginPath(); ctx.roundRect((t.cx - 1) * cell + 4, (t.cy - 1) * cell + 4, cell * 3 - 8, cell * 3 - 8, cell * 0.5); ctx.fill(); }
+    if (s.kind === 'globalSlow') { ctx.beginPath(); ctx.arc((t.cx + 0.5) * cellX, (t.cy + 0.5) * cell, cell * (1.6 + pulse * 0.3), 0, Math.PI * 2); ctx.fill(); }
+    else { ctx.beginPath(); ctx.roundRect((t.cx - 1) * cellX + 4, (t.cy - 1) * cell + 4, cellX * 3 - 8, cell * 3 - 8, cell * 0.5); ctx.fill(); }
   }
 
   // ---- 철학자: 그림자 + 큰 도트 + 등급 배지 ----
@@ -499,7 +502,7 @@ function draw() {
   ctx.restore(); // 필드 클립 끝 → 대기석 철학자도 그린다
   for (const t of towers) {
     const p = PHIL.get(t.philId)!;
-    const cx = (t.cx + 0.5) * cell, foot = (t.cy + 0.8) * cell;
+    const cx = (t.cx + 0.5) * cellX, foot = (t.cy + 0.8) * cell;
     const isSel = t === selected;
     if (isSel) { ctx.fillStyle = 'rgba(251,191,36,.55)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
     const hk = g.home(t).kind;
@@ -528,27 +531,27 @@ function draw() {
     ctx.beginPath(); ctx.roundRect(cx - nw / 2, ny - fs * 0.62, nw, fs * 1.24, fs * 0.6); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#3b2a1e'; ctx.fillText(nm, cx, ny + 0.5);
     // 등급 배지
-    const bx = (t.cx + 0.2) * cell, by = (t.cy + 0.2) * cell, br = cell * 0.11;
+    const bx = (t.cx + 0.2) * cellX, by = (t.cy + 0.2) * cell, br = cell * 0.11;
     ctx.fillStyle = TIER_AURA[p.tier]; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#1c1917'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = `900 ${br * 1.3}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(String(p.tier), bx, by + 0.5);
     const tool = g.toolOf(t);
     if (tool) {
-      const isz = cell * 0.38, ix = (t.cx + 0.62) * cell, iy = (t.cy + 0.42) * cell;
+      const isz = cell * 0.38, ix = (t.cx + 0.62) * cellX, iy = (t.cy + 0.42) * cell;
       if (isOwner(tool, p.realName)) { ctx.fillStyle = 'rgba(253,224,71,.55)'; ctx.beginPath(); ctx.arc(ix + isz / 2, iy + isz / 2, isz * 0.62, 0, Math.PI * 2); ctx.fill(); }
       ctx.drawImage(itemSprite(tool), ix, iy, isz, isz);
     }
-    if (hk === 'star') { ctx.font = `${cell * 0.22}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('🏠', (t.cx + 0.86) * cell, (t.cy + 0.78) * cell); }
+    if (hk === 'star') { ctx.font = `${cell * 0.22}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('🏠', (t.cx + 0.86) * cellX, (t.cy + 0.78) * cell); }
     if (t.level) {
       ctx.fillStyle = '#22d3ee'; ctx.font = `900 ${cell * 0.2}px sans-serif`;
-      ctx.fillText(`+${t.level}`, (t.cx + 0.85) * cell, (t.cy + 0.15) * cell);
+      ctx.fillText(`+${t.level}`, (t.cx + 0.85) * cellX, (t.cy + 0.15) * cell);
     }
   }
 
   for (const e of g.enemies) {
     const [ex, ey] = g.enemyPos(e);
-    const x = ex * cell, y = ey * cell, sz = cell * (e.boss ? 1.25 : 0.85);
+    const x = ex * cellX, y = ey * cell, sz = cell * (e.boss ? 1.25 : 0.85);
     const walk = Math.abs(Math.sin(tick * 0.2 + e.uid)) * 3;
     ctx.fillStyle = 'rgba(0,0,0,.45)';
     ctx.beginPath(); ctx.ellipse(x, y + sz * 0.42, sz * 0.32, sz * 0.13, 0, 0, Math.PI * 2); ctx.fill();
@@ -574,7 +577,7 @@ function draw() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   // 탄환: 작은 빛 구슬 (대사는 스킬이 터질 때만 말풍선으로)
   for (const b of g.bullets) {
-    const x = b.x * cell, y = b.y * cell, r = cell * (b.color ? 0.11 : 0.08);
+    const x = b.x * cellX, y = b.y * cell, r = cell * (b.color ? 0.11 : 0.08);
     ctx.fillStyle = b.color === 'rainbow' ? `hsl(${(tick * 3) % 360},90%,75%)` : b.color === 'gold' ? '#ffd36b' : '#ffffff';
     ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -587,38 +590,38 @@ function draw() {
     const a = Math.min(1, sp.t / 0.3, (2.4 - sp.t) / 0.15 + 0.2);
     const text = sp.text.length > 16 ? sp.text.slice(0, 15) + '…' : sp.text;
     const tw = ctx.measureText(text).width + 14, th = cell * 0.36;
-    let x = (t.cx + 0.5) * cell; const y = t.cy * cell - th * 0.2;
+    let x = (t.cx + 0.5) * cellX; const y = t.cy * cell - th * 0.2;
     x = Math.max(tw / 2 + 2, Math.min(w - tw / 2 - 2, x));
     ctx.save(); ctx.globalAlpha = Math.max(0, a);
     ctx.fillStyle = '#fffdf6'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(x - tw / 2, y - th, tw, th, th / 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo((t.cx + 0.42) * cell, y - 1); ctx.lineTo((t.cx + 0.5) * cell, y + cell * 0.1); ctx.lineTo((t.cx + 0.58) * cell, y - 1); ctx.fill();
+    ctx.beginPath(); ctx.moveTo((t.cx + 0.42) * cellX, y - 1); ctx.lineTo((t.cx + 0.5) * cellX, y + cell * 0.1); ctx.lineTo((t.cx + 0.58) * cellX, y - 1); ctx.fill();
     ctx.fillStyle = '#3b2a1e'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y - th / 2 + 1);
     ctx.restore();
   }
 
   if (g.noticeTime > 0) {
     ctx.save(); ctx.globalAlpha = Math.min(1, g.noticeTime);
-    ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(0, w / 2 - cell * 0.45, w, cell * 0.9);
+    ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(0, fh / 2 - cell * 0.45, w, cell * 0.9);
     ctx.fillStyle = '#3b2a1e'; ctx.font = `800 ${Math.max(12, cell * 0.32)}px "Noto Sans KR", sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(g.notice, w / 2, w / 2);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(g.notice, w / 2, fh / 2);
     ctx.restore();
   }
 
   if (introT > 0) {
     ctx.save();
     ctx.globalAlpha = Math.min(1, introT / 0.6, (2.8 - introT) / 0.3);
-    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(0, w / 2 - cell * 0.9, w, cell * 1.8);
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(0, fh / 2 - cell * 0.9, w, cell * 1.8);
     ctx.fillStyle = '#3b2a1e'; ctx.font = `800 ${cell * 0.22}px "Nanum Myeongjo", serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = `800 ${cell * 0.4}px "Nanum Myeongjo", serif`;
-    ctx.fillText(g.stage.name, w / 2, w / 2 - cell * 0.35);
+    ctx.fillText(g.stage.name, w / 2, fh / 2 - cell * 0.35);
     ctx.font = `700 ${cell * 0.22}px "Noto Sans KR", sans-serif`;
-    ctx.fillText(STAGE_PATHS[g.stage.id].caption, w / 2, w / 2 + cell * 0.1);
-    ctx.fillText(`${g.diff.icon} ${g.diff.name} · 최종 보스: ${g.stage.boss20} (${g.maxWave}웨이브)`, w / 2, w / 2 + cell * 0.45);
+    ctx.fillText(STAGE_PATHS[g.stage.id].caption, w / 2, fh / 2 + cell * 0.1);
+    ctx.fillText(`${g.diff.icon} ${g.diff.name} · 최종 보스: ${g.stage.boss20} (${g.maxWave}웨이브)`, w / 2, fh / 2 + cell * 0.45);
     ctx.restore();
   }
-  drawFx(w);
+  drawFx(w, fh);
   ctx.restore();
 }
 
@@ -962,14 +965,14 @@ function drawStar(x: number, y: number, r: number) {
 
 function drawShapes() {
   for (const s of shapes) {
-    const k = 1 - s.life / s.max, a = s.life / s.max, X = s.x * cell, Y = s.y * cell;
+    const k = 1 - s.life / s.max, a = s.life / s.max, X = s.x * cellX, Y = s.y * cell;
     ctx.save(); ctx.globalAlpha = a;
     switch (s.kind) {
       case 'splash': // 원형 폭발
         ctx.fillStyle = 'rgba(255,179,107,.35)'; ctx.strokeStyle = '#ff9f43'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(X, Y, (s.r ?? 1) * cell * (0.3 + k * 0.7), 0, Math.PI * 2); ctx.fill(); ctx.stroke(); break;
       case 'chain': { // 지그재그 번개
-        const TX = (s.tx ?? s.x) * cell, TY = (s.ty ?? s.y) * cell;
+        const TX = (s.tx ?? s.x) * cellX, TY = (s.ty ?? s.y) * cell;
         ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 3; ctx.shadowColor = '#e0f2fe'; ctx.shadowBlur = 8;
         ctx.beginPath(); ctx.moveTo(X, Y);
         for (let i = 1; i < 5; i++) { const t = i / 5; ctx.lineTo(X + (TX - X) * t + rnd(-6, 6), Y + (TY - Y) * t + rnd(-6, 6)); }
@@ -998,26 +1001,26 @@ function drawShapes() {
   }
 }
 
-function drawFx(w: number) {
+function drawFx(w: number, fh: number) {
   drawShapes();
   for (const p of particles) {
     const a = Math.max(0, p.life / p.max);
     ctx.globalAlpha = a;
     if (p.text) {
       ctx.font = `900 ${Math.max(10, cell * p.size)}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.strokeText(p.text, p.x * cell, p.y * cell);
-      ctx.fillStyle = p.color; ctx.fillText(p.text, p.x * cell, p.y * cell);
+      ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.strokeText(p.text, p.x * cellX, p.y * cell);
+      ctx.fillStyle = p.color; ctx.fillText(p.text, p.x * cellX, p.y * cell);
     } else {
       ctx.fillStyle = p.color;
-      if (p.star) drawStar(p.x * cell, p.y * cell, p.size * cell);
-      else { ctx.beginPath(); ctx.arc(p.x * cell, p.y * cell, p.size * cell, 0, Math.PI * 2); ctx.fill(); }
+      if (p.star) drawStar(p.x * cellX, p.y * cell, p.size * cell);
+      else { ctx.beginPath(); ctx.arc(p.x * cellX, p.y * cell, p.size * cell, 0, Math.PI * 2); ctx.fill(); }
     }
   }
   ctx.globalAlpha = 1;
   // 은은한 비네트
-  const v = ctx.createRadialGradient(w / 2, w / 2, w * 0.35, w / 2, w / 2, w * 0.75);
+  const v = ctx.createRadialGradient(w / 2, fh / 2, fh * 0.35, w / 2, fh / 2, w * 0.75);
   v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(59,42,30,.18)');
-  ctx.fillStyle = v; ctx.fillRect(0, 0, w, w);
+  ctx.fillStyle = v; ctx.fillRect(0, 0, w, fh);
   // 대형 보스 HP바 (상단)
   const boss = game?.enemies.find((e) => e.boss);
   if (boss) {
@@ -1034,8 +1037,8 @@ function drawFx(w: number) {
   if (bossIntro) {
     const T = 2.6 - bossIntro.t, slide = Math.min(1, T * 4), out = Math.min(1, bossIntro.t * 3);
     ctx.save(); ctx.globalAlpha = out;
-    ctx.fillStyle = 'rgba(59,42,30,.55)'; ctx.fillRect(0, 0, w, w);
-    const bandY = w * 0.36, bandH = cell * 2.2;
+    ctx.fillStyle = 'rgba(59,42,30,.55)'; ctx.fillRect(0, 0, w, fh);
+    const bandY = fh * 0.36, bandH = cell * 2.2;
     ctx.fillStyle = '#ff8f8f'; ctx.fillRect(0, bandY, w, bandH);
     ctx.fillStyle = '#ffb3c7'; ctx.fillRect(0, bandY + 6, w, bandH - 12);
     for (let i = 0; i < 8; i++) { ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(((T * 600 + i * 90) % (w + 80)) - 80, bandY + 10 + (i % 3) * 18, 50, 4); }
@@ -1048,7 +1051,7 @@ function drawFx(w: number) {
   }
   if (banner) {
     const s = Math.min(1, (2.2 - banner.t) * 6, banner.t * 3);
-    ctx.save(); ctx.translate(w / 2, w * 0.3); ctx.scale(s, s);
+    ctx.save(); ctx.translate(w / 2, fh * 0.3); ctx.scale(s, s);
     ctx.font = `${cell * 0.5}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const tw = ctx.measureText(banner.text).width + cell;
     ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 4;
