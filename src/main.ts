@@ -499,19 +499,19 @@ function draw() {
   ctx.restore(); // 필드 클립 끝 → 대기석 철학자도 그린다
   for (const t of towers) {
     const p = PHIL.get(t.philId)!;
-    const cx = (t.cx + 0.5) * cell, foot = (t.cy + 0.9) * cell;
+    const cx = (t.cx + 0.5) * cell, foot = (t.cy + 0.8) * cell;
     const isSel = t === selected;
     if (isSel) { ctx.fillStyle = 'rgba(251,191,36,.55)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
     const hk = g.home(t).kind;
     if (hk) { ctx.fillStyle = hk === 'star' ? 'rgba(255,211,107,.75)' : 'rgba(167,236,210,.6)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.15, 0, 0, Math.PI * 2); ctx.fill(); }
-    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.32, cell * 0.11, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.24, cell * 0.08, 0, 0, Math.PI * 2); ctx.fill();
     if (p.tier >= 7) {
       ctx.save(); ctx.globalAlpha = 0.35 + 0.2 * Math.sin(tick * 0.08);
       ctx.fillStyle = `hsl(${(tick * 2) % 360},90%,60%)`;
       ctx.beginPath(); ctx.arc(cx, foot - cell * 0.45, cell * 0.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     const bob = Math.sin((tick + t.cx * 9 + t.cy * 5) * 0.1) * cell * 0.03;
-    const sz = cell * (p.tier >= 6 ? 1.12 : 1.0);
+    const sz = cell * (p.tier >= 6 ? 0.86 : 0.74);
     const rc = recoil.get(t.uid) ?? 0;
     const sx = sz * (1 + rc * 0.12), sy = sz * (1 - rc * 0.1);
     ctx.drawImage(spriteFor(p.id), cx - sx / 2, foot - sy * 0.97 + bob, sx, sy);
@@ -521,14 +521,14 @@ function draw() {
     }
     // 이름표
     const nm = (progress.favorite === t.philId ? '💗' : '') + shortName(p.name);
-    const fs = Math.max(9, cell * 0.21);
+    const fs = Math.max(8, cell * 0.15);
     ctx.font = `${fs}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const nw = ctx.measureText(nm).width + 8, ny = foot + fs * 0.35;
     ctx.fillStyle = isSel ? '#ffd36b' : 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.roundRect(cx - nw / 2, ny - fs * 0.62, nw, fs * 1.24, fs * 0.6); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#3b2a1e'; ctx.fillText(nm, cx, ny + 0.5);
     // 등급 배지
-    const bx = (t.cx + 0.14) * cell, by = (t.cy + 0.14) * cell, br = cell * 0.15;
+    const bx = (t.cx + 0.2) * cell, by = (t.cy + 0.2) * cell, br = cell * 0.11;
     ctx.fillStyle = TIER_AURA[p.tier]; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#1c1917'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = `900 ${br * 1.3}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -653,7 +653,7 @@ function drawDecor(kind: string, x: number, y: number, c: number) {
   }
 }
 
-const SHORT: Record<string, string> = { '광장의 소크라테스': '광장소크', '떠도는 공자': '떠돌공자', '마르틴 로우데거': '로우데거', '장 폴 사리티리': '사리티리', '자크 디리타': '디리타', '에마뉘엘 리비나스': '리비나스', '테오도어 아도로노': '아도로노', '알베르 카뮈': '카뮈',  '고타마 붓다': '붓다', '다산 정약용': '정약용', '퇴계 이황': '이황', '루트비히 비트겐슈타인': '비트겐', '아르투어 쇼펜하우어': '쇼펜하우어', '고트프리트 라이프니츠': '라이프니츠', '쇠렌 키르케고르': '키르케고르', '헤라클레이토스': '헤라클레', '아리스토텔레스': '아리스토', '나가르주나': '나가르',  '엘레아의 제논': '제논', '오컴의 윌리엄': '오컴', '이븐 시나': '이븐시나', '이븐 루시드': '이븐루시드', '알 킨디': '알킨디', '힐데가르트 폰 빙엔': '힐데가르트' };
+const SHORT: Record<string, string> = { '광장의 소크라테스': '소크라테스', '대성지성 공자': '공자', '마르틴 로우데거': '로우데거', '장 폴 사리티리': '사리티리', '자크 디리타': '디리타', '에마뉘엘 리비나스': '리비나스', '테오도어 아도로노': '아도로노', '알베르 카뮈': '카뮈',  '고타마 붓다': '붓다', '다산 정약용': '정약용', '퇴계 이황': '이황', '루트비히 비트겐슈타인': '비트겐', '아르투어 쇼펜하우어': '쇼펜하우어', '고트프리트 라이프니츠': '라이프니츠', '쇠렌 키르케고르': '키르케고르', '헤라클레이토스': '헤라클레', '아리스토텔레스': '아리스토', '나가르주나': '나가르',  '엘레아의 제논': '제논', '오컴의 윌리엄': '오컴', '이븐 시나': '이븐시나', '이븐 루시드': '이븐루시드', '알 킨디': '알킨디', '힐데가르트 폰 빙엔': '힐데가르트' };
 function shortName(name: string) {
   const s = SHORT[name] ?? name.split(' ').pop()!;
   return s.length > 5 ? s.slice(0, 4) + '…' : s;
@@ -1223,7 +1223,7 @@ const TUT: { sel: string; text: string; done?: (g: Game) => boolean; pos?: 'top'
   { sel: '#summon', text: '👋 먼저 <b>소환</b>을 눌러 철학자를 불러 보세요. 흔함 9명 중 한 명이 나와요.', done: (g) => g.towers.length >= 1 },
   { sel: '#summon', text: '좋아요! 철학자는 빈 칸에 자동으로 앉아요. <b>두 번 더</b> 소환해 볼까요?', done: (g) => g.towers.length >= 3 },
   { sel: '#field', text: '칸에 앉은 철학자를 <b>탭</b>하면 정보·강화·판매가 나와요. 선택한 채로 다른 칸을 탭하면 <b>자리를 옮겨요</b>. 맨 아래 <b>대기석</b> 5칸은 싸우지 않지만 조합 재료로 쓰여요. 필드가 차면 소환된 철학자가 대기석으로 가요.', pos: 'top' },
-  { sel: '#synth', text: '조합 재료가 모이면 여기 <b>⚗ 조합</b> 버튼이 떠요. 하나만 모자란 조합은 💡로 알려 줘요. 예: 광장의 소크라테스 둘 → 플라톤!', pos: 'top' },
+  { sel: '#synth', text: '조합 재료가 모이면 여기 <b>⚗ 조합</b> 버튼이 떠요. 하나만 모자란 조합은 💡로 알려 줘요. 예: 소크라테스 둘 → 플라톤!', pos: 'top' },
   { sel: '#start', text: '준비 끝! <b>웨이브 시작</b>을 누르면 도그마(적)가 몰려와요.', done: (g) => g.running },
   { sel: '#lives', text: '🧠 이게 <b>멘탈</b>이에요. 도그마가 길 끝에 닿으면 1(보스는 5)씩 깎이고, 못 잡은 적은 <b>다시 돌아와요</b>. 0이 되면 패배!', pos: 'top' },
   { sel: '#cats', text: '웨이브를 깨면 골드와 <b>촉매</b>(🔥💎🌀⚙️🪞)를 얻어요. 촉매는 희귀 이상 조합 재료예요. 보스를 잡으면 🎟 무료 소환권도 줘요. 칩을 누르면 설명이 나와요.', pos: 'top' },

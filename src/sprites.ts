@@ -53,7 +53,7 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
   if (hit) return hit;
   const n = parseInt(p.id.slice(1), 10);
   // 흔함의 '젊은 시절' 철학자는 꼭대기 본인과 같은 얼굴
-  const LOOK: Record<string, string> = { '광장의 소크라테스': '소크라테스', '떠도는 공자': '공자', 싯다르타: '고타마 붓다' };
+  const LOOK: Record<string, string> = { '광장의 소크라테스': '소크라테스', '대성지성 공자': '공자', 싯다르타: '고타마 붓다' };
   const me = LOOK[p.realName ?? p.name] ?? p.realName ?? p.name;
   const is = (...names: string[]) => names.includes(me);
 
