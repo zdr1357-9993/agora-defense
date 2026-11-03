@@ -488,3 +488,45 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 .pr-text.show { animation: prText 2.2s forwards; }
 @keyframes prText { 0% { opacity: 0; transform: translateY(8px); } 25%, 80% { opacity: 1; transform: none; } 100% { opacity: .85; } }
 .prologue.open .pr-text { top: 12%; color: #3b2a1e; text-shadow: 0 0 8px #fff, 0 0 2px #fff; }
+
+/* ---------- 전투 아래 패널 v3: 그림 위주로 깔끔하게 ---------- */
+#context { display: grid; grid-template-columns: 1.25fr 1fr; gap: 8px; padding: 8px; background: #fffdf6; flex: 1 1 auto; min-height: 104px; height: auto; }
+#context > #synth { order: 1; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; margin: 0; }
+#context > #info { order: 2; border-left: none; padding: 0; overflow-y: auto; }
+.sy-head { font-family: 'Jua'; font-size: 13px; color: #8a7560; }
+.sy-row { display: flex; align-items: center; gap: 4px; width: 100%; padding: 4px 6px; border-radius: 12px; border: 2px solid var(--line); background: #fff; font-family: 'Jua'; font-size: 13px; text-align: left; box-shadow: 0 2px 0 var(--line); animation: none !important; }
+.sy-row img { width: 24px; height: 24px; image-rendering: pixelated; }
+.sy-row img.unk { filter: brightness(0) opacity(.35); }
+.sy-row .mats { display: flex; gap: 1px; }
+.sy-row .mats i { display: inline-flex; background: #f4ecdd; border-radius: 6px; opacity: .4; }
+.sy-row .mats i.have, .sy-row.ready .mats i { opacity: 1; }
+.sy-row .mats em { font-style: normal; font-size: 14px; }
+.sy-row .arrow { font-size: 12px; color: #c2410c; }
+.sy-row b { font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sy-row.ready { background: linear-gradient(90deg, #fff6d6, #ffe7a3); cursor: pointer; }
+.sy-row.ready:active { transform: translateY(2px); box-shadow: none; }
+.sy-row.locked { background: #eee; opacity: .6; }
+.sy-row.near { border-style: dashed; box-shadow: none; background: #fffaf0; color: #8a7560; font-size: 12px; }
+.sy-row.near small { font-size: 11px; white-space: nowrap; }
+.sy-row.near i.miss img { filter: grayscale(1) opacity(.7); }
+.sy-row.goal { background: #ffeef6; box-shadow: none; }
+#synth:empty::before { content: none; }
+.icard { display: flex !important; flex-direction: column; gap: 5px; height: 100%; background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 6px 8px; box-sizing: border-box; }
+.icard .ic-top { display: flex; gap: 6px; align-items: center; }
+.icard .ic-top img { width: 40px; height: 40px; float: none; margin: 0; image-rendering: pixelated; background: #fff3d6; border: 2px solid var(--line); border-radius: 10px; animation: bob 1.2s infinite ease-in-out; }
+.icard .ic-top b { display: block; font-family: 'Jua'; font-weight: 400; font-size: 14px; color: #3b2a1e; line-height: 1.2; }
+.icard .tier-chip { font-size: 10px; padding: 0 5px; }
+.icard .ic-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.icard .ic-tags span { font-size: 10.5px; background: #f4ecdd; border-radius: 999px; padding: 1px 6px; }
+.icard .ic-skill { font-size: 11px; line-height: 1.35; color: #5b4636; }
+.icard .ic-skill b { color: #7c3aed; font-weight: 400; font-family: 'Jua'; }
+.icard .equip { font-size: 10.5px; }
+.icard .up { margin-top: auto; font-size: 12px; padding: 4px; }
+.icard.empty { justify-content: center; align-items: center; text-align: center; color: #8a7560; background: #fffaf0; border-style: dashed; }
+.icard .ic-hint { font-family: 'Jua'; font-size: 14px; }
+.icard small { font-size: 10.5px; }
+#field-wrap { flex: 0 0 auto; }
+/* 전장 위에 뜨는 스토리 대화 */
+.vn.over { background: rgba(20,12,6,.35); }
+.vn.over .vn-bg { display: none; }
+.vn.over .vn-box { margin-bottom: 110px; }
