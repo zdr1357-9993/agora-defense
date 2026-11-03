@@ -33,7 +33,7 @@ export const CHAPTERS = [
 ];
 
 /** 처음부터 소환되는 흔함 */
-export const START_POOL = ['탈레스', '피타고라스', '헤라클레이토스'];
+export const START_POOL = ['탈레스', '피타고라스', '헤라클레이토스', '파르메니데스'];
 
 export const STORY: StoryStage[] = [
   // ---------- 1장 고대 그리스 ----------
@@ -49,7 +49,7 @@ export const STORY: StoryStage[] = [
       ['탈레스', '신화 대신 이유를 묻는 것, 그게 철학의 시작이지.'],
       ['나', '기억이 하나씩 돌아온다. 다음은… 수(數)의 사람들?'],
     ],
-    unlock: ['파르메니데스'], memories: ['탈레스', '아낙시만드로스'],
+    unlock: ['데모크리토스'], memories: ['탈레스', '아낙시만드로스'],
   },
   {
     id: 'P2', chapter: 1, title: '엘레아의 역설', when: '기원전 5세기 · 엘레아', base: 'S1', boss: '끝나지 않는 거북이',
@@ -61,7 +61,7 @@ export const STORY: StoryStage[] = [
     outro: [
       ['제논', '역설에 지지 않는 머리로군. 스승님(파르메니데스)께 소개하지.'],
     ],
-    unlock: ['데모크리토스'], memories: ['파르메니데스', '제논'],
+    unlock: ['소크라테스'], memories: ['파르메니데스', '제논'],
   },
   {
     id: 'P3', chapter: 1, title: '역병의 아테네', when: '기원전 430년 · 아테네', base: 'S1', boss: '공포를 파는 소피스트',
@@ -73,7 +73,7 @@ export const STORY: StoryStage[] = [
     outro: [
       ['나', '말이 무기가 되는 시대. 그 말에 질문으로 맞선 사람이 있었지…'],
     ],
-    unlock: ['소크라테스'], memories: ['데모크리토스', '프로타고라스'],
+    memories: ['데모크리토스', '프로타고라스'],
   },
   {
     id: 'P4', chapter: 1, title: '소크라테스의 재판', when: '기원전 399년 · 아테네 법정', base: 'S1', boss: '아테네 배심원단',

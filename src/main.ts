@@ -408,7 +408,7 @@ function updateUI() {
   // 조합: 지금 만들 수 있는 것 + 하나만 모자란 것
   const recipes = g.over ? [] : g.availableRecipes()
     .sort((a, b) => Number(g.hasCatalyst(b)) - Number(g.hasCatalyst(a)) || PHIL.get(b.result)!.tier - PHIL.get(a.result)!.tier)
-    .slice(0, 3);
+    ;
   const near = g.over || g.oneTool ? [] : RECIPES.filter((r) => !recipes.includes(r) && g.ownedMaterials(r).filter((x) => !x).length === 1 && !PHIL.get(r.result)!.hidden)
     .sort((a, b) => PHIL.get(a.result)!.tier - PHIL.get(b.result)!.tier).slice(0, 2);
   const goals = RECIPES.filter((r) => (progress.likedRecipes ?? []).includes(r.id));
@@ -430,7 +430,7 @@ function updateUI() {
       el.innerHTML = `<span class="mats">${r.materials.map((m, i) => `<i class="${own[i] ? 'have' : ''}">${face(m)}</i>`).join('')}</span><span class="arrow">💗</span>${face(res.id, known)}<b>${known ? shortName(res.name) : '???'}</b>`;
       box.appendChild(el);
     }
-    for (const r of recipes) {
+    for (const r of recipes.slice(0, 8)) {
       const b = document.createElement('button');
       const res = PHIL.get(r.result)!;
       const ok = g.hasCatalyst(r);
@@ -465,7 +465,9 @@ function draw() {
   ctx.fillStyle = '#3b2a1e'; ctx.fillRect(0, fh - 1.5, w, 3);
   ctx.font = `${Math.max(10, cell * 0.2)}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('대기석', cellX * 0.5, fh + cell * 0.6); ctx.fillText(`${BENCH - game.benchSlots().length}/${BENCH}`, cellX * 6.5, fh + cell * 0.6);
-  for (let x = 1; x <= BENCH; x++) if (!game.towerAt(x, GRID)) { ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.strokeStyle = 'rgba(59,42,30,.25)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.roundRect((x + 0.5) * cellX - cell * 0.4, fh + cell * 0.12, cell * 0.8, cell * 0.95, cell * 0.18); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); }
+  // 대기석: 칸 대신 나무 벤치 한 줄
+  ctx.fillStyle = '#d9b98a'; ctx.beginPath(); ctx.roundRect(cellX * 0.95, fh + cell * 0.78, cellX * 5.1, cell * 0.16, cell * 0.08); ctx.fill();
+  ctx.fillStyle = '#b08a5a'; for (const lx of [1.2, 5.8]) ctx.fillRect(cellX * lx, fh + cell * 0.94, cell * 0.08, cell * 0.22);
   ctx.save();
   if (shake > 0) ctx.translate(rnd(-1, 1) * shake * 8, rnd(-1, 1) * shake * 8);
   ctx.imageSmoothingEnabled = false;
@@ -503,12 +505,6 @@ function draw() {
     const mx = ((ax + bx) / 2 + 0.5) * cellX, my = ((ay + by) / 2 + 0.5) * cell, ang = Math.atan2(by - ay, bx - ax);
     ctx.save(); ctx.translate(mx, my); ctx.rotate(ang); ctx.fillStyle = th.roadEdge;
     ctx.beginPath(); ctx.moveTo(cell * 0.18, 0); ctx.lineTo(-cell * 0.1, -cell * 0.14); ctx.lineTo(-cell * 0.1, cell * 0.14); ctx.fill(); ctx.restore();
-  }
-  // 철학자 자리 25칸 (빈자리만 은은하게)
-  for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) {
-    if (g.isRoad(x, y) || g.towerAt(x, y)) continue;
-    ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.strokeStyle = 'rgba(59,42,30,.12)'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.roundRect((x + 0.12) * cellX + (cellX - cell) / 2, (y + 0.12) * cell, cell * 0.76, cell * 0.76, cell * 0.18); ctx.fill(); ctx.stroke();
   }
   ctx.font = `${cell * 0.55}px sans-serif`;
   const first = g.layout.paths[0];
