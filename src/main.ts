@@ -18,7 +18,9 @@ import { ITEMS } from './items';
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const spriteUrl = new Map<string, string>();
 import { cardArt, sceneArt } from './tcg';
-import { STORY, STORY_MAP, CHAPTERS, START_POOL, type StoryStage, type Line } from './story';
+import { STORY, STORY_MAP, CHAPTERS, type StoryStage, type Line } from './story';
+/** 이 등급 이상은 카드가 있어야 조합 가능 (6 = 거장, 예전 5성) */
+const LOCK_TIER = 6;
 const itemUrl = (id: string) => itemSprite(id).toDataURL();
 /** 착용 스킨이 반영된 도트 */
 const spriteFor = (id: string) => skinnedSprite(PHIL.get(id)!, progress?.skinOn?.[id]);
@@ -262,7 +264,9 @@ function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
     awaken: (id) => awakenLevel(progress.cards[id] ?? 0),
     tool: (id) => { const t = progress.loadout[id]; return t && progress.items[t] ? t : undefined; },
   }, story ? 'easy' : oneTool ? 'normal' : diffId, oneTool);
-  if (story) { game.storyId = story.id; game.summonPool = summonPool(); }
+  if (story) game.storyId = story.id;
+  // 거장 이상은 카드(기억)를 가진 철학자만 조합할 수 있다
+  if (!QA_MODE) game.locked = new Set(PHILOSOPHERS.filter((p) => p.tier >= LOCK_TIER && !p.hidden && !progress.cards[p.id]).map((p) => p.id));
   // 마스터 계정은 전장에 들어갈 때 무조건 골드 10000
   if (me?.role === 'master') game.gold = 10000;
   selected = null;
@@ -435,9 +439,12 @@ function updateUI() {
       const res = PHIL.get(r.result)!;
       const ok = g.hasCatalyst(r);
       const seen = progress.seen.includes(res.id) || QA_MODE;
-      b.className = `sy-row ready t${res.tier} ${ok ? '' : 'locked'}`;
+      const lockedR = g.isLocked(r);
+      b.className = `sy-row ready t${res.tier} ${ok && !lockedR ? '' : 'locked'}`;
       b.innerHTML = `<span class="mats">${r.materials.map((m) => `<i>${face(m)}</i>`).join('')}${r.catalyst ? `<em>${CAT_ICON[r.catalyst]}</em>` : ''}</span><span class="arrow">➜</span>${face(res.id, seen || !res.hidden)}<b>${res.hidden && !seen ? '???' : shortName(res.name)}</b>`;
-      if (!ok) b.disabled = true;
+      if (!ok || lockedR) b.disabled = true;
+      if (lockedR) b.title = '카드가 있어야 조합할 수 있어요 (뽑기에서 얻기)';
+      if (lockedR) b.insertAdjacentHTML('beforeend', '<small class="lk">🔒카드 필요</small>');
       b.onclick = () => { selected = g.synthesize(r); updateUI(); };
       box.appendChild(b);
     }
@@ -796,7 +803,7 @@ function renderGacha() {
     </div>`;
   const INFO: Record<string, string> = {
     m: `<h2>✨ 거장 초대</h2><p>💎 지혜석 10회 뽑기의 마지막 1장은 반드시 <b>거장 또는 근원</b>이에요.<br>🎫 초대장 1장으로 거장 이상 1명을 바로 불러올 수도 있어요.</p>`,
-    c: `<h2>🧠 기억 떠올리기</h2><p>고뇌를 써서 잊어버린 철학자의 <b>기억(카드)</b>을 떠올려요. 이야기에서 지나온 시대의 철학자만 떠올릴 수 있어요 (지금: ${[...openEras()].join(', ')}).</p><p>같은 카드가 모이면 레벨업(Lv.${CARD_MAX_LEVEL}까지) · 레벨당 공격력 +${CARD_ATK_PER_LEVEL * 100}%<br>그 뒤 ${AWAKEN_EVERY}장마다 <b>각성</b>(최대 ${AWAKEN_MAX}단계): 공격력 +15%, 스킬 강화<br>레벨이 오르면 일화가 열려요.</p><div class="rates-line">${rates}</div><p><b>천장</b>: 거장 이상이 안 나와도 ${PITY_LIMIT}회째엔 확정 · 지금 ${PITY_LIMIT - progress.pity}회 남음</p>`,
+    c: `<h2>🧠 기억 떠올리기</h2><p>고뇌를 써서 잊어버린 철학자의 <b>기억(카드)</b>을 떠올려요. <b>거장·근원</b>은 카드가 있어야 전투에서 조합할 수 있어요. 이야기에서 지나온 시대의 철학자만 떠올릴 수 있어요 (지금: ${[...openEras()].join(', ')}).</p><p>같은 카드가 모이면 레벨업(Lv.${CARD_MAX_LEVEL}까지) · 레벨당 공격력 +${CARD_ATK_PER_LEVEL * 100}%<br>그 뒤 ${AWAKEN_EVERY}장마다 <b>각성</b>(최대 ${AWAKEN_MAX}단계): 공격력 +15%, 스킬 강화<br>레벨이 오르면 일화가 열려요.</p><div class="rates-line">${rates}</div><p><b>천장</b>: 거장 이상이 안 나와도 ${PITY_LIMIT}회째엔 확정 · 지금 ${PITY_LIMIT - progress.pity}회 남음</p>`,
     t: `<h2>🧰 도구 상자</h2><p>뽑은 도구는 도감에서 철학자에게 장착해요.<br>그 도구의 주인에게 끼우면 <b>찰떡!</b> 공격력 +60%</p>`,
   };
   for (const b of $('tab-gacha').querySelectorAll<HTMLButtonElement>('[data-ginfo]')) b.onclick = () => alertBox(INFO[b.dataset.ginfo!]);
@@ -1359,13 +1366,6 @@ setInterval(pageTutTick, 300);
 
 
 // =============== 📖 스토리 모드 ===============
-/** 지금 소환할 수 있는 흔함 ID (기억이 돌아온 철학자만) */
-function summonPool(): string[] {
-  if (QA_MODE || easyAllCleared()) return [];
-  const names = new Set(START_POOL);
-  for (const st of STORY) if ((progress.storyCleared ?? []).includes(st.id)) for (const n of st.unlock ?? []) names.add(n);
-  return PHILOSOPHERS.filter((p) => p.tier === 1 && names.has(p.realName)).map((p) => p.id);
-}
 /** 기억이 열린 시대: 지금 진행 중인 장까지 */
 function openEras(): Set<string> {
   const done = progress.storyCleared ?? [];
@@ -1396,8 +1396,7 @@ function renderStory(box: HTMLElement) {
     (row.querySelector('.sinfo') as HTMLButtonElement).onclick = () => alertBox(`<h2>${st.title}</h2><p class="hint">${st.when}</p>
       <div class="stage-info"><div>👑 보스 <b>${st.boss}</b> (${DIFF.get('easy')!.maxWave}웨이브)</div>
       <div>🧠 깨면 돌아오는 기억: <b>${st.memories.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b></div>
-      ${st.unlock?.length ? `<div>🎟 소환에 새로 등장: <b>${st.unlock.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b></div>` : ''}
-      <div>🎲 지금 소환되는 흔함: ${(summonPool().length ? summonPool() : PHILOSOPHERS.filter((p) => p.tier === 1).map((p) => p.id)).map((id) => PHIL.get(id)!.name).join(' · ')}</div></div>`);
+      <div>🔒 거장·근원은 카드(기억)가 있어야 전투에서 조합할 수 있어요. 🧠 기억 떠올리기에서 얻어요.</div></div>`);
     box.appendChild(row);
   }
   const total = STORY.length, n = done.length;
@@ -1457,7 +1456,6 @@ function memoryReveal(ids: string[], st: StoryStage) {
   ov.className = 'overlay memory';
   ov.innerHTML = `<div class="pop"><h2>🧠 기억이 돌아왔다</h2><p class="hint">${st.title}의 기억 · 카드 ${ids.length}장</p>
     <div class="mem-cards">${ids.map((id) => tcgCard(id)).join('')}</div>
-    ${st.unlock?.length ? `<p>🎟 이제 소환에서 <b>${st.unlock.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b>도 나와요!</p>` : ''}
     <button class="primary chunky gold close">계속</button></div>`;
   ov.onclick = (e) => { if ((e.target as HTMLElement).classList.contains('close')) { ov.remove(); storyChapter = 0; renderHome(); } };
   document.body.appendChild(ov);

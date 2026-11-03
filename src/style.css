@@ -530,3 +530,4 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 .vn.over { background: rgba(20,12,6,.35); }
 .vn.over .vn-bg { display: none; }
 .vn.over .vn-box { margin-bottom: 110px; }
+.sy-row .lk { margin-left: auto; font-size: 10px; color: #8a7560; font-family: inherit; }

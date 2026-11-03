@@ -220,7 +220,10 @@ export class Game {
     return r.materials.map((m) => { const i = pool.indexOf(m); if (i >= 0) pool.splice(i, 1); return i >= 0; });
   }
 
+  /** 카드(기억)가 없어 아직 조합할 수 없는 결과 — 거장 이상은 뽑기로 카드를 얻어야 열린다 */
+  locked = new Set<string>();
   availableRecipes(): Recipe[] { return this.oneTool ? [] : RECIPES.filter((r) => this.pickMaterials(r) !== null); }
+  isLocked(r: Recipe) { return this.locked.has(r.result); }
 
   private pickMaterials(r: Recipe): Tower[] | null {
     const used = new Set<Tower>();
@@ -236,7 +239,7 @@ export class Game {
 
   synthesize(r: Recipe) {
     const mats = this.pickMaterials(r);
-    if (!mats || !this.hasCatalyst(r)) return null;
+    if (!mats || !this.hasCatalyst(r) || this.isLocked(r)) return null;
     if (r.catalyst) this.catalysts[r.catalyst]--;
     const keep = mats.find((t) => !this.isBench(t)) ?? mats[0];
     this.towers = this.towers.filter((t) => !mats.includes(t) || t === keep);
