@@ -20,6 +20,8 @@ export const BOSS_EVERY = 10;
 export const HP_GROWTH = 1.12;
 /** 소환 비용 (고정) */
 export const SUMMON_COST = 40;
+/** 골드로 소환할 때마다 오르는 비용 */
+export const SUMMON_STEP = 1;
 /** 보스를 잡으면 받는 무료 소환권 / 5·15·25…웨이브 광장 집회 보너스 */
 export const BOSS_TICKETS = 3, RALLY_TICKETS = 1;
 
@@ -28,7 +30,7 @@ export let QA_MODE = typeof location === 'undefined' ? false : new URLSearchPara
 /** 마스터 계정 로그인 시 QA(전부 해금) 권한 */
 export function setQA(on: boolean) { QA_MODE = on; }
 /** 전투 시작 골드: 마스터(QA) 10000, 일반 200 */
-const startGold = () => (QA_MODE ? 10000 : 160);
+const startGold = () => (QA_MODE ? 10000 : 220);
 export const CATALYST_IDS = ['C001', 'C002', 'C003', 'C004', 'C005'];
 
 export interface Tower { uid: number; philId: string; cx: number; cy: number; cd: number; level: number; shots?: number; stacks?: number; stunT?: number; sayCd?: number }
@@ -157,13 +159,13 @@ export class Game {
   canSummon() { return (this.emptyCells().length > 0 || this.benchSlots().length > 0) && (this.tickets > 0 || this.gold >= this.summonCost); }
   summon() {
     if (!this.canSummon()) return null;
-    if (this.tickets > 0) this.tickets--; else this.gold -= this.summonCost;
+    if (this.tickets > 0) this.tickets--; else { this.gold -= this.summonCost; this.summonCost += SUMMON_STEP; }
     const pool = this.summonPool.length ? this.summonPool : PHILOSOPHERS.filter((p) => p.tier === 1 && !p.hidden).map((p) => p.id);
     return this.place(pick(pool));
   }
 
   sell(t: Tower) {
-    this.gold += Math.round(this.summonCost * 0.35 * 2.2 ** (PHIL.get(t.philId)!.tier - 1));
+    this.gold += Math.round(SUMMON_COST * 0.35 * 2.2 ** (PHIL.get(t.philId)!.tier - 1));
     this.towers = this.towers.filter((x) => x !== t);
   }
 

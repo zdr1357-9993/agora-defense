@@ -18,7 +18,7 @@ import { ITEMS } from './items';
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const spriteUrl = new Map<string, string>();
 import { cardArt, sceneArt } from './tcg';
-import { STORY, STORY_MAP, CHAPTERS, type StoryStage, type Line } from './story';
+import { STORY, STORY_MAP, CHAPTERS, START_POOL, type StoryStage, type Line } from './story';
 /** 이 등급 이상은 카드가 있어야 조합 가능 (6 = 거장, 예전 5성) */
 const LOCK_TIER = 6;
 const itemUrl = (id: string) => itemSprite(id).toDataURL();
@@ -265,6 +265,7 @@ function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
     tool: (id) => { const t = progress.loadout[id]; return t && progress.items[t] ? t : undefined; },
   }, story ? 'easy' : oneTool ? 'normal' : diffId, oneTool);
   if (story) game.storyId = story.id;
+  if (!oneTool) game.summonPool = summonPool();
   // 거장 이상은 카드(기억)를 가진 철학자만 조합할 수 있다
   if (!QA_MODE) game.locked = new Set(PHILOSOPHERS.filter((p) => p.tier >= LOCK_TIER && !p.hidden && !progress.cards[p.id]).map((p) => p.id));
   // 마스터 계정은 전장에 들어갈 때 무조건 골드 10000
@@ -1366,6 +1367,13 @@ setInterval(pageTutTick, 300);
 
 
 // =============== 📖 스토리 모드 ===============
+/** 소환되는 흔함: 그리스 여섯 명 + 스토리에서 만난 동양의 셋 */
+function summonPool(): string[] {
+  if (QA_MODE) return [];
+  const names = new Set(START_POOL);
+  for (const st of STORY) if ((progress.storyCleared ?? []).includes(st.id)) for (const n of st.unlock ?? []) names.add(n);
+  return PHILOSOPHERS.filter((p) => p.tier === 1 && names.has(p.realName)).map((p) => p.id);
+}
 /** 기억이 열린 시대: 지금 진행 중인 장까지 */
 function openEras(): Set<string> {
   const done = progress.storyCleared ?? [];
@@ -1396,6 +1404,7 @@ function renderStory(box: HTMLElement) {
     (row.querySelector('.sinfo') as HTMLButtonElement).onclick = () => alertBox(`<h2>${st.title}</h2><p class="hint">${st.when}</p>
       <div class="stage-info"><div>👑 보스 <b>${st.boss}</b> (${DIFF.get('easy')!.maxWave}웨이브)</div>
       <div>🧠 깨면 돌아오는 기억: <b>${st.memories.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b></div>
+      ${st.unlock?.length ? `<div>🎟 깨면 소환에 새로 등장: <b>${st.unlock.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b></div>` : ''}
       <div>🔒 거장·근원은 카드(기억)가 있어야 전투에서 조합할 수 있어요. 🧠 기억 떠올리기에서 얻어요.</div></div>`);
     box.appendChild(row);
   }
@@ -1456,6 +1465,7 @@ function memoryReveal(ids: string[], st: StoryStage) {
   ov.className = 'overlay memory';
   ov.innerHTML = `<div class="pop"><h2>🧠 기억이 돌아왔다</h2><p class="hint">${st.title}의 기억 · 카드 ${ids.length}장</p>
     <div class="mem-cards">${ids.map((id) => tcgCard(id)).join('')}</div>
+    ${st.unlock?.length ? `<p>🎟 이제 소환에서 <b>${st.unlock.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b>도 나와요!</p>` : ''}
     <button class="primary chunky gold close">계속</button></div>`;
   ov.onclick = (e) => { if ((e.target as HTMLElement).classList.contains('close')) { ov.remove(); storyChapter = 0; renderHome(); } };
   document.body.appendChild(ov);
