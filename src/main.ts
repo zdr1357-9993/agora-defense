@@ -1,4 +1,4 @@
-import { Game, GRID, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
+import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
 import { login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
 import { STAGE_PATHS } from './paths';
 import { STAGE_STARS, ERA_BONUS, STAR_BONUS } from './affinity';
@@ -215,16 +215,24 @@ let tick = 0;
 let resultShown = false;
 let introT = 0;
 
+/** 필드(7칸) + 대기석 한 줄 높이 */
+const ROWS = GRID + 1.2;
+/** 화면 높이에 맞춰 필드 크기를 정한다: 남는 공간 안에서 가장 크게 (스크롤 없이 한 화면) */
 function resize() {
   const dpr = window.devicePixelRatio || 1;
-  const size = canvas.clientWidth;
-  if (!size) return;
-  canvas.width = size * dpr;
-  canvas.height = size * dpr;
+  const wrap = $('field-wrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  if (!W || !H) return;
+  const width = Math.floor(Math.min(W, (H * GRID) / ROWS));
+  const height = Math.floor((width * ROWS) / GRID);
+  canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  cell = size / GRID;
+  cell = width / GRID;
 }
 window.addEventListener('resize', resize);
+new ResizeObserver(resize).observe($('field-wrap'));
 
 function startBattle(s: Stage, oneTool?: string) {
   game = new Game(s, {
@@ -274,8 +282,9 @@ canvas.addEventListener('pointerdown', (ev) => {
   if (!game) return;
   const r = canvas.getBoundingClientRect();
   const cx = Math.floor(((ev.clientX - r.left) / r.width) * GRID);
-  const cy = Math.floor(((ev.clientY - r.top) / r.height) * GRID);
-  if (cx < 0 || cy < 0 || cx >= GRID || cy >= GRID || game.isRoad(cx, cy)) { selected = null; updateUI(); return; }
+  const cy = Math.min(GRID, Math.floor(((ev.clientY - r.top) / r.height) * ROWS));
+  const benchHit = cy === GRID && cx >= 1 && cx <= BENCH;
+  if (cx < 0 || cy < 0 || cx >= GRID || (cy === GRID && !benchHit) || (cy < GRID && game.isRoad(cx, cy))) { selected = null; updateUI(); return; }
   const t = game.towerAt(cx, cy);
   if (selected && selected === t) selected = null;
   else if (selected) { game.moveTo(selected, cx, cy); selected = null; }
@@ -328,7 +337,7 @@ function updateUI() {
 
   // 정보창
   const info = $('info');
-  const infoKey = `${selected?.uid}|${selected?.philId}|${selected?.level}|${g.towers.length}|${selected && g.upgradeCost(selected) !== null ? g.gold >= g.upgradeCost(selected)! : ''}`;
+  const infoKey = `${selected?.uid}|${selected?.philId}|${selected?.level}|${g.towers.length}|${selected?.cy}|${selected && g.upgradeCost(selected) !== null ? g.gold >= g.upgradeCost(selected)! : ''}`;
   if (infoKey !== lastInfoKey) {
     lastInfoKey = infoKey;
     info.className = '';
@@ -343,7 +352,7 @@ function updateUI() {
       const up = document.getElementById('upgrade');
       if (up) { (up as HTMLButtonElement).disabled = g.gold < cost!; up.onclick = () => { if (selected && g.upgrade(selected)) { lastInfoKey = ''; updateUI(); } }; }
     } else info.innerHTML = g.towers.length
-      ? `<small>소환하면 <b>흔함</b> 철학자가 나와요. 그 위는 전부 📜 조합표대로 재료를 모아 조합!<br>재료가 다 모이면 아래에 ⚗ 조합 버튼이 떠요. 하나만 모자란 조합도 알려 드려요.<br>철학자를 눌러 선택 → 빈 칸을 누르면 이동. 자리 ${g.towers.length}/25</small>`
+      ? `<small>자리 <b>${g.fielded().length}/25</b> · 대기석 <b>${BENCH - g.benchSlots().length}/${BENCH}</b> · 철학자 탭 → 빈 칸 탭으로 이동(대기석 포함)</small>`
       : `<small><b>${g.stage.name}</b> — ${g.stage.story}<br>소환 버튼으로 철학자를 불러오세요.</small>`;
   }
 
@@ -402,9 +411,15 @@ function updateUI() {
 function draw() {
   if (!game || !cell) return;
   const g = game;
-  const w = canvas.clientWidth;
+  const w = canvas.clientWidth, hTot = canvas.clientHeight;
   ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
-  ctx.clearRect(0, 0, w, w);
+  ctx.clearRect(0, 0, w, hTot);
+  // 대기석 판 (필드 아래)
+  ctx.fillStyle = '#f3e3c3'; ctx.fillRect(0, w, w, hTot - w);
+  ctx.fillStyle = '#3b2a1e'; ctx.fillRect(0, w - 1.5, w, 3);
+  ctx.font = `${Math.max(10, cell * 0.2)}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('대기석', cell * 0.5, w + cell * 0.6); ctx.fillText(`${BENCH - game.benchSlots().length}/${BENCH}`, cell * 6.5, w + cell * 0.6);
+  for (let x = 1; x <= BENCH; x++) if (!game.towerAt(x, GRID)) { ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.strokeStyle = 'rgba(59,42,30,.25)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.roundRect((x + 0.1) * cell, w + cell * 0.12, cell * 0.8, cell * 0.95, cell * 0.18); ctx.fill(); ctx.stroke(); ctx.setLineDash([]); }
   ctx.save();
   if (shake > 0) ctx.translate(rnd(-1, 1) * shake * 8, rnd(-1, 1) * shake * 8);
   ctx.imageSmoothingEnabled = false;
@@ -412,6 +427,7 @@ function draw() {
   // ---- 바닥: 스테이지별 질감 (칸 테두리 없이 하나의 필드처럼) ----
   const th = THEME[g.stage.era] ?? THEME['고대'];
   ctx.fillStyle = th.ground; ctx.fillRect(0, 0, w, w);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, w); ctx.clip();
   for (let i = 0; i < 140; i++) {
     const rx = hash(i * 7.1) * w, ry = hash(i * 3.3 + 1) * w, r = 1 + hash(i) * 2.5;
     ctx.fillStyle = i % 3 ? th.speck : th.speck2;
@@ -480,6 +496,7 @@ function draw() {
 
   // ---- 철학자: 그림자 + 큰 도트 + 등급 배지 ----
   const towers = [...g.towers].sort((a, b) => a.cy - b.cy);
+  ctx.restore(); // 필드 클립 끝 → 대기석 철학자도 그린다
   for (const t of towers) {
     const p = PHIL.get(t.philId)!;
     const cx = (t.cx + 0.5) * cell, foot = (t.cy + 0.9) * cell;
@@ -1205,7 +1222,7 @@ $('cats').addEventListener('click', (e) => {
 const TUT: { sel: string; text: string; done?: (g: Game) => boolean; pos?: 'top' }[] = [
   { sel: '#summon', text: '👋 먼저 <b>소환</b>을 눌러 철학자를 불러 보세요. 흔함 9명 중 한 명이 나와요.', done: (g) => g.towers.length >= 1 },
   { sel: '#summon', text: '좋아요! 철학자는 빈 칸에 자동으로 앉아요. <b>두 번 더</b> 소환해 볼까요?', done: (g) => g.towers.length >= 3 },
-  { sel: '#field', text: '칸에 앉은 철학자를 <b>탭</b>하면 정보·강화·판매가 나와요. 선택한 채로 다른 칸을 탭하면 <b>자리를 옮겨요</b>.', pos: 'top' },
+  { sel: '#field', text: '칸에 앉은 철학자를 <b>탭</b>하면 정보·강화·판매가 나와요. 선택한 채로 다른 칸을 탭하면 <b>자리를 옮겨요</b>. 맨 아래 <b>대기석</b> 5칸은 싸우지 않지만 조합 재료로 쓰여요. 필드가 차면 소환된 철학자가 대기석으로 가요.', pos: 'top' },
   { sel: '#synth', text: '조합 재료가 모이면 여기 <b>⚗ 조합</b> 버튼이 떠요. 하나만 모자란 조합은 💡로 알려 줘요. 예: 광장의 소크라테스 둘 → 플라톤!', pos: 'top' },
   { sel: '#start', text: '준비 끝! <b>웨이브 시작</b>을 누르면 도그마(적)가 몰려와요.', done: (g) => g.running },
   { sel: '#lives', text: '🧠 이게 <b>멘탈</b>이에요. 도그마가 길 끝에 닿으면 1(보스는 5)씩 깎이고, 못 잡은 적은 <b>다시 돌아와요</b>. 0이 되면 패배!', pos: 'top' },

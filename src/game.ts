@@ -11,6 +11,8 @@ import { N, STAGE_PATHS, pathCells, pathLength, pointAt, type Layout } from './p
 
 // 7x7 격자: 바깥 순환로를 도그마가 돌고, 안쪽 5x5(25칸)에 철학자를 배치
 export const GRID = N;
+/** 대기석 칸 수 (필드 아래 한 줄) */
+export const BENCH = 5;
 export const MAX_WAVE = 50;
 /** 10웨이브마다 보스 */
 export const BOSS_EVERY = 10;
@@ -130,10 +132,17 @@ export class Game {
     }
   }
 
+  // ---------- 대기석: 필드 아래 5칸. 싸우지는 않지만 조합 재료로 쓰인다 ----------
+  isBench(t: Tower) { return t.cy >= GRID; }
+  /** 싸우는 철학자만 (대기석 제외) */
+  fielded() { return this.towers.filter((t) => t.cy < GRID); }
+  benchSlots() { const out: number[] = []; for (let x = 1; x <= BENCH; x++) if (!this.towerAt(x, GRID)) out.push(x); return out; }
+
   private place(philId: string) {
     const cells = this.emptyCells();
-    if (!cells.length) return null;
-    const [cx, cy] = pick(cells);
+    const bench = this.benchSlots();
+    if (!cells.length && !bench.length) return null;
+    const [cx, cy] = cells.length ? pick(cells) : [bench[0], GRID];
     const t = { uid: uidSeq++, philId, cx, cy, cd: 0, level: 0 };
     this.towers.push(t);
     this.discovered.add(philId);
@@ -141,7 +150,7 @@ export class Game {
   }
 
   /** 흔함(1등급) 9명 중 무작위 1명. 무료 소환권이 있으면 먼저 쓴다 */
-  canSummon() { return this.emptyCells().length > 0 && (this.tickets > 0 || this.gold >= this.summonCost); }
+  canSummon() { return (this.emptyCells().length > 0 || this.benchSlots().length > 0) && (this.tickets > 0 || this.gold >= this.summonCost); }
   summon() {
     if (!this.canSummon()) return null;
     if (this.tickets > 0) this.tickets--; else this.gold -= this.summonCost;
@@ -154,7 +163,7 @@ export class Game {
   }
 
   moveTo(t: Tower, cx: number, cy: number) {
-    if (this.isRoad(cx, cy)) return;
+    if (cy === GRID ? cx < 1 || cx > BENCH : this.isRoad(cx, cy)) return;
     const other = this.towerAt(cx, cy);
     if (other) { other.cx = t.cx; other.cy = t.cy; }
     t.cx = cx; t.cy = cy;
@@ -224,7 +233,7 @@ export class Game {
     const mats = this.pickMaterials(r);
     if (!mats || !this.hasCatalyst(r)) return null;
     if (r.catalyst) this.catalysts[r.catalyst]--;
-    const keep = mats[0];
+    const keep = mats.find((t) => !this.isBench(t)) ?? mats[0];
     this.towers = this.towers.filter((t) => !mats.includes(t) || t === keep);
     keep.philId = r.result;
     keep.cd = 0;
@@ -280,7 +289,7 @@ export class Game {
 
   // ---------- 보스 고유 기술 (스테이지별) ----------
   private bossSkill(e: Enemy) {
-    const near = (r: number) => this.towers.filter((t) => { const [x, y] = this.enemyPos(e); return Math.hypot(t.cx + 0.5 - x, t.cy + 0.5 - y) <= r; });
+    const near = (r: number) => this.fielded().filter((t) => { const [x, y] = this.enemyPos(e); return Math.hypot(t.cx + 0.5 - x, t.cy + 0.5 - y) <= r; });
     const stun = (t: Tower, s: number) => { t.stunT = s; this.fx.push({ type: 'stun', uid: t.uid }); };
     switch (this.stage.id) {
       case 'S1': { // 독배: 가까운 철학자 하나를 잠재움
@@ -288,12 +297,12 @@ export class Game {
         this.fx.push({ type: 'bossSkill', text: '🍷 독배! 철학자가 잠들었다' }); break;
       }
       case 'S2': { // 화형: 가장 높은 등급 철학자를 봉인
-        const top = [...this.towers].sort((a, b) => PHIL.get(b.philId)!.tier - PHIL.get(a.philId)!.tier)[0];
+        const top = this.fielded().sort((a, b) => PHIL.get(b.philId)!.tier - PHIL.get(a.philId)!.tier)[0];
         if (top && !this.towers.some((t) => t.philId === this.stage.counter)) stun(top, 3);
         this.fx.push({ type: 'bossSkill', text: this.towers.some((t) => t.philId === this.stage.counter) ? '🪒 면도날이 화형을 막았다!' : '🔥 화형! 최고 등급이 봉인됐다' }); break;
       }
       case 'S3': e.shieldT = 1.5; this.fx.push({ type: 'bossSkill', text: '📜 암기 보호막! 잠시 무적' }); break;
-      case 'S4': for (const t of this.towers) if (Math.random() < 0.35) stun(t, 1.2); this.fx.push({ type: 'bossSkill', text: '🐋 리바이어던의 포효! 일부가 얼어붙었다' }); break;
+      case 'S4': for (const t of this.fielded()) if (Math.random() < 0.35) stun(t, 1.2); this.fx.push({ type: 'bossSkill', text: '🐋 리바이어던의 포효! 일부가 얼어붙었다' }); break;
       case 'S5': e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.06); this.fx.push({ type: 'bossSkill', text: '📱 확증편향! 보스 체력 회복' }); break;
     }
   }
@@ -347,10 +356,10 @@ export class Game {
   /** 주변 8칸 오라 합산 */
   private auras() {
     const atk = new Map<number, number>(), spd = new Map<number, number>();
-    for (const a of this.towers) {
+    for (const a of this.fielded()) {
       const s = this.skillOf(a.philId);
       if (!s || (s.kind !== 'auraAtk' && s.kind !== 'auraSpeed') || (a.stunT ?? 0) > 0) continue;
-      for (const t of this.towers) if (t !== a && Math.abs(t.cx - a.cx) <= 1 && Math.abs(t.cy - a.cy) <= 1) {
+      for (const t of this.fielded()) if (t !== a && Math.abs(t.cx - a.cx) <= 1 && Math.abs(t.cy - a.cy) <= 1) {
         const m = s.kind === 'auraAtk' ? atk : spd;
         m.set(t.uid, (m.get(t.uid) ?? 0) + s.v);
       }
@@ -370,7 +379,7 @@ export class Game {
 
     // 맵 전체 둔화 (가장 강한 것 하나)
     let gSlow = 0;
-    for (const t of this.towers) { const s = this.skillOf(t.philId); if (s?.kind === 'globalSlow') gSlow = Math.max(gSlow, s.v); }
+    for (const t of this.fielded()) { const s = this.skillOf(t.philId); if (s?.kind === 'globalSlow') gSlow = Math.max(gSlow, s.v); }
 
     const escaped: Enemy[] = [];
     for (const e of this.enemies) {
@@ -391,6 +400,7 @@ export class Game {
     const { atk, spd } = this.auras();
     for (const t of this.towers) {
       if (t.sayCd) t.sayCd = Math.max(0, t.sayCd - dt);
+      if (t.cy >= GRID) continue; // 대기석은 쉬는 중
       if (t.stunT && t.stunT > 0) { t.stunT -= dt; continue; }
       t.cd -= dt * (1 + (spd.get(t.uid) ?? 0));
       if (t.cd > 0) continue;
@@ -417,7 +427,7 @@ export class Game {
         if (skill.kind === 'third' && t.shots % skill.v === 0) { dmg *= skill.v2 ?? 2; this.fx.push({ type: 'skill', kind: 'crit', x: tx, y: ty }); this.say(t); }
         if (skill.kind === 'boss' && best.boss) dmg *= 1 + skill.v;
         if (skill.kind === 'stack') dmg *= 1 + (t.stacks ?? 0) * skill.v;
-        if (skill.kind === 'lonely' && !this.towers.some((o) => o !== t && Math.abs(o.cx - t.cx) <= 1 && Math.abs(o.cy - t.cy) <= 1)) dmg *= 1 + skill.v;
+        if (skill.kind === 'lonely' && !this.fielded().some((o) => o !== t && Math.abs(o.cx - t.cx) <= 1 && Math.abs(o.cy - t.cy) <= 1)) dmg *= 1 + skill.v;
       }
       const color = p.tier >= 7 ? 'rainbow' : p.tier >= 5 ? 'gold' : '';
       this.bullets.push({ x: tx, y: ty, target: best.uid, dmg, text: '', color, src: t.uid, skill });

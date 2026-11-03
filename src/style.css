@@ -367,3 +367,16 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 .card.t6, .reveal.t6, .pcard.tc6 { background: linear-gradient(160deg, #ffe3e8, #fff1d6) !important; }
 .tcg-t6 { --frame: linear-gradient(160deg,#fda4af,#fb7185 55%,#fcd34d); }
 .tcg-t6 .tcg-front { animation: none; background-size: auto; }
+
+/* ---------- 한 화면에 다 보이게: 필드는 남는 높이에 맞춰 줄어들고, 아래 패널은 고정 높이 ---------- */
+#battle { height: 100%; }
+#field-wrap { flex: 1 1 0; min-height: 0; display: flex; align-items: center; justify-content: center; }
+#field { width: auto; aspect-ratio: auto; flex: none; }
+#context { flex: none; height: clamp(108px, 24dvh, 200px); min-height: 0; padding: 6px 10px; }
+#info > img { width: 40px; height: 40px; }
+#info b { font-size: 14px; }
+#synth { margin-top: 6px; gap: 4px; }
+#synth button { padding: 5px 8px; font-size: 12px; }
+#synth .near, #synth .goal { font-size: 12px; }
+#dock button { padding: 9px 6px; font-size: 16px; }
+@media (max-height: 700px) { #context { height: clamp(96px, 22dvh, 150px); } #battle { gap: 6px; padding: 6px; } #dock button { padding: 7px 4px; } }
