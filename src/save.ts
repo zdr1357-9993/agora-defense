@@ -1,5 +1,5 @@
 // 진행 상황 저장 (브라우저 localStorage, 실패해도 게임은 계속)
-import legacyIds from './data/legacy_ids.json';
+import legacyIds from './legacy_ids.json';
 const BASE_KEY = 'agora_progress_v3';
 let account = 'guest';
 /** 로그인한 계정별로 저장 칸을 나눈다 */
