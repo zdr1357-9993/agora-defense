@@ -1227,7 +1227,8 @@ $<HTMLFormElement>('login-form').onsubmit = async (e) => {
   if (!acc) { $('login-err').textContent = '아이디 또는 비밀번호가 맞지 않아요'; shakeEl($('login-card')); return; }
   sfx.reveal(5);
   enter(acc);
-  void syncCloud(acc.id, $<HTMLInputElement>('login-pw').value);
+  lastPw = $<HTMLInputElement>('login-pw').value;
+  void syncCloud(acc.id, lastPw);
 };
 
 // ---------- ☁️ 서버 저장 동기화 ----------
@@ -1249,10 +1250,12 @@ async function syncCloud(id: string, pw: string) {
 function cloudBadge() {
   const el = document.getElementById('cloud-state');
   if (!el) return;
-  el.textContent = cloudState === 'ok' ? '☁️ 서버 저장 켜짐' : cloudState === 'confirm' ? '☁️ 설정 필요: ' + cloudMsg : cloudState === 'error' ? '☁️ 서버 연결 실패 (이 기기에만 저장 중)' : '☁️ 서버 저장 꺼짐';
+  el.textContent = cloudState === 'ok' ? '☁️ 서버 저장 켜짐' : cloudState === 'confirm' ? '☁️ 설정 필요: ' + cloudMsg : cloudState === 'error' ? `☁️ 서버 연결 실패 (이 기기에만 저장 중)\n원인: ${cloudMsg || '알 수 없음'}` : '☁️ 서버 저장 꺼짐';
   el.className = `cloud-state ${cloudState}`;
   el.title = cloudMsg;
 }
+// 설정을 열 때마다 서버 상태를 다시 표시하고, 실패 상태면 한 번 더 연결을 시도한다
+let lastPw = '';
 $('logout').onclick = () => { if (window.confirm('로그아웃할까요?')) { void cloudLogout(); cloudBadge(); $('settings').classList.add('hidden'); rememberLogin(null); showLogin(); } };
 $('admin-gems').onclick = () => { progress.gems += 10000; progress.gonoe += 100000; progress.tickets += 10; saveProgress(progress); refreshWallet(); toast('👑 재화 지급 완료'); };
 $('admin-unlock').onclick = () => { for (const s of STAGES) for (const d of DIFFICULTIES) { const k = clearKey(s.id, d.id); if (!progress.cleared.includes(k)) progress.cleared.push(k); } for (const s of STAGES) if (!progress.cleared.includes(s.id)) progress.cleared.push(s.id); saveProgress(progress); renderHome(); toast('👑 전 스테이지·난이도 클리어 처리'); };
@@ -1558,6 +1561,6 @@ function playPrologue() {
 (window as unknown as { __g: () => Game | null }).__g = () => game; // 테스트용 훅
 
 // ---------- ⚙️ 설정 시트 ----------
-$('open-settings').onclick = () => { sfx.click(); $('settings').classList.remove('hidden'); };
+$('open-settings').onclick = () => { sfx.click(); $('settings').classList.remove('hidden'); cloudBadge(); if (me && lastPw && cloudState !== 'ok') void syncCloud(me.id, lastPw); };
 $('close-settings').onclick = () => $('settings').classList.add('hidden');
 $('settings').onclick = (e) => { if (e.target === $('settings')) $('settings').classList.add('hidden'); };

@@ -38,7 +38,8 @@ export async function cloudLogin(id: string, pw: string): Promise<boolean> {
     cloudState = 'ok'; cloudMsg = '';
     return true;
   } catch (e) {
-    cloudState = 'error'; cloudMsg = (e as Error).message ?? String(e);
+    const err = e as { message?: string; status?: number; code?: string };
+    cloudState = 'error'; cloudMsg = `[로그인] ${err.message ?? String(e)}${err.code ? ` (${err.code})` : ''}`;
     return false;
   }
 }
@@ -47,7 +48,7 @@ export async function cloudLogin(id: string, pw: string): Promise<boolean> {
 export async function cloudLoad(): Promise<Progress | null> {
   if (cloudState !== 'ok') return null;
   const { data, error } = await client().from('progress').select('data').eq('user_id', userId).maybeSingle();
-  if (error) { cloudState = 'error'; cloudMsg = error.message; return null; }
+  if (error) { cloudState = 'error'; cloudMsg = `[불러오기] ${error.message}${error.code ? ` (${error.code})` : ''}`; return null; }
   return (data?.data as Progress) ?? null;
 }
 
@@ -64,7 +65,7 @@ export async function flush() {
   if (!pending || cloudState !== 'ok') return;
   const p = pending; pending = null;
   const { error } = await client().from('progress').upsert({ user_id: userId, login_id: loginId, data: p, updated_at: new Date().toISOString() });
-  if (error) { cloudState = 'error'; cloudMsg = error.message; }
+  if (error) { cloudState = 'error'; cloudMsg = `[저장] ${error.message}${error.code ? ` (${error.code})` : ''}`; }
 }
 export async function cloudLogout() { try { await flush(); await client().auth.signOut(); } catch { /* 무시 */ } cloudState = 'off'; userId = ''; }
 window.addEventListener('pagehide', () => { void flush(); });
