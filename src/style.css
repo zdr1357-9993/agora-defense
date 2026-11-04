@@ -598,3 +598,10 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 #dock button { -webkit-tap-highlight-color: transparent; outline: none; }
 #dock button:focus:not(:active) { transform: none; }
 .tut-skip-all { align-self: center; font-size: 12px; }
+/* 오늘의 질문과 답 */
+.vn.qa .vn-box { background: #fff8dc; border-color: #c2410c; }
+.vn.qa .vn-name { color: #7c3aed; }
+.vn.qa .vn-face { display: none !important; }
+.vn.qa .vn-text { font-size: 14px; }
+.xp-msg { background: #e9f8ef; border: 2px solid var(--line); border-radius: 12px; padding: 6px; }
+.vn.over { background: rgba(20,12,6,.18); }

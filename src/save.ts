@@ -38,6 +38,10 @@ export interface Progress {
   storyCleared?: string[];
   /** 마지막 저장 시각(ms): 기기 저장과 서버 저장 중 최신을 고를 때 */
   savedAt?: number;
+  /** 카드 기억 경험치(0~1): 1이 차면 그 카드 +1장 */
+  cardXp?: Record<string, number>;
+  /** 튜토리얼 뒤 소크라테스의 안내를 봤는지 */
+  tourDone?: boolean;
   /** 오프닝을 봤는지 */
   prologueDone?: boolean;
   tabTut?: string[];

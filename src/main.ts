@@ -313,6 +313,14 @@ function endBattle() {
       if (game.wave > best) { progress.oneToolBest[game.oneTool] = game.wave; setTimeout(() => toast(`💗 원툴 신기록! ${game?.wave ?? ''}웨이브`), 300); }
     }
     const st = game.storyId ? STORY_MAP.get(game.storyId) : undefined;
+    // 클리어하면 그 스테이지 철학자의 기억 경험치가 쌓인다 (쉬움 20% · 보통 50% · 어려움 80% · 그 이상 100%)
+    let xpMsg = '';
+    if (game.over === 'win' && !game.oneTool) {
+      const target = st ? PHILOSOPHERS.find((p) => p.realName === st.memories[0])! : PHILOSOPHERS.find((p) => p.realName === (STAGE_STARS[game!.stage.id] ?? [])[0]) ?? PHIL.get(game.stage.counter)!;
+      const rate = XP_RATE[game.diff.id] ?? 0.2;
+      xpMsg = gainXp(target.id, rate);
+      if (!st) setTimeout(() => toast(xpMsg), 600);
+    }
     if (st && (game.over === 'win' || st.chapter === 0)) {
       const first = !(progress.storyCleared ?? []).includes(st.id);
       const capBefore = tierCap();
@@ -322,7 +330,8 @@ function endBattle() {
       if (first) progress.gems += 20;
       saveProgress(progress);
       const capAfter = tierCap();
-      setTimeout(() => playDialogue(st.outro, st, () => memoryReveal(ids, st, capAfter > capBefore ? capAfter : 0)), 200);
+      const lines: Line[] = [...st.outro, ...(st.qa ? [['💡 오늘의 질문', st.qa[0]], ['💬 답', st.qa[1]]] as Line[] : [])];
+      setTimeout(() => playDialogue(lines, st, () => memoryReveal(ids, st, capAfter > capBefore ? capAfter : 0, xpMsg)), 200);
     } else if (game.over === 'win') {
       if (!progress.cleared.includes(game.stage.id)) progress.cleared.push(game.stage.id);
       const k = clearKey(game.stage.id, game.diff.id);
@@ -1421,6 +1430,35 @@ setInterval(pageTutTick, 300);
 
 
 // =============== 📖 스토리 모드 ===============
+/** 난이도별 카드 기억 경험치 */
+const XP_RATE: Record<string, number> = { easy: 0.2, normal: 0.5, hard: 0.8, immortal: 1, challenge: 1 };
+function gainXp(id: string, rate: number): string {
+  const xp = (progress.cardXp ??= {});
+  xp[id] = (xp[id] ?? 0) + rate;
+  let got = 0;
+  while (xp[id] >= 1 - 1e-9) { xp[id] -= 1; got++; }
+  xp[id] = Math.round(xp[id] * 100) / 100;
+  if (got) { progress.cards[id] = (progress.cards[id] ?? 0) + got; if (!progress.seen.includes(id)) progress.seen.push(id); }
+  const name = PHIL.get(id)!.name;
+  return got ? `📈 ${name}의 기억이 또렷해졌다! 카드 +${got}장` : `📈 ${name}의 기억 +${Math.round(rate * 100)}% (${Math.round(xp[id] * 100)}%)`;
+}
+/** 시작 튜토리얼 뒤: 소크라테스가 화면을 하나씩 짚어 주며 이야기와 버튼을 설명 */
+function playTour() {
+  progress.tourDone = true; saveProgress(progress);
+  switchTab('stages');
+  playDialogue([
+    ['소크라테스', '자네에게 꼭 할 말이 있네. 델포이의 신탁이 이렇게 말했다더군.'],
+    ['내레이션', '"시대마다 도그마를 뿜는 자들이 나타나리라. 기억을 지닌 이방인이 그들을 하나씩 논파하리라."'],
+    ['나', '…기억을 지닌 이방인? 설마 저요?'],
+    ['소크라테스', '자네 말고 누가 있겠나. 이제부터 시대를 거슬러 사건들을 지나가야 하네. 이 목록이 그 여정일세.', '#stages'],
+    ['소크라테스', '각 사건에서 도그마를 논파하면 그 시대 사람들의 기억이 돌아오지. 다시 도전해도 그 사람의 기억이 조금씩 더 쌓인다네.', '.srow:not(.locked) .sgo'],
+    ['소크라테스', '머리가 굳으면 고민방으로 가게. 고민할수록 "고뇌"가 쌓이지. 가만히 둬도 조금씩 모인다네.', '[data-tab=room]'],
+    ['소크라테스', '모은 고뇌로 잊었던 기억을 떠올릴 수 있네. 뽑기에서 "기억 떠올리기"를 해 보게.', '[data-tab=gacha]'],
+    ['소크라테스', '되찾은 기억은 도감에 카드로 남는다네. 같은 기억이 쌓일수록 그 철학자는 강해지지.', '[data-tab=codex]'],
+    ['소크라테스', '누가 누구로 이어지는지는 조합표에 다 적혀 있네. 막히면 펼쳐 보게.', '#open-recipes'],
+    ['소크라테스', '자, 첫 사건일세. 밀레토스로 가 보게. 하늘의 해가 사라지고 있다는군.', '.srow:not(.locked):not(.cleared) .sgo'],
+  ], null, () => renderHome(), '고대', true);
+}
 /** 소환되는 흔함: 그리스 여섯 명 + 스토리에서 만난 동양의 셋 */
 function summonPool(st?: StoryStage): string[] {
   if (QA_MODE) return [];
@@ -1495,7 +1533,7 @@ function playDialogue(lines: Line[], st: StoryStage | null, done: () => void, er
   document.body.appendChild(ov);
   const face = ov.querySelector('.vn-face') as HTMLImageElement, nameEl = ov.querySelector('.vn-name')!, textEl = ov.querySelector('.vn-text')!;
   let i = -1, full = '', shown = 0, timer = 0;
-  const finish = () => { clearInterval(timer); ov.remove(); done(); };
+  const finish = () => { clearInterval(timer); ov.remove(); document.querySelectorAll('.tut-glow').forEach((e) => e.classList.remove('tut-glow')); done(); };
   const next = () => {
     i++;
     if (i >= lines.length) return finish();
@@ -1505,7 +1543,10 @@ function playDialogue(lines: Line[], st: StoryStage | null, done: () => void, er
     ov.classList.toggle('narr', who === '내레이션');
     face.style.display = p || who === '나' ? '' : 'none';
     if (p) face.src = portrait(p.id); else if (who === '나') face.src = meFace();
-    nameEl.textContent = who === '내레이션' ? '' : p ? p.name : '나';
+    nameEl.textContent = who === '내레이션' ? '' : p ? p.name : who;
+    document.querySelectorAll('.tut-glow').forEach((e) => e.classList.remove('tut-glow'));
+    if (lines[i][2]) document.querySelector(lines[i][2]!)?.classList.add('tut-glow');
+    ov.classList.toggle('qa', who.startsWith('💡') || who.startsWith('💬'));
     clearInterval(timer);
     timer = window.setInterval(() => { shown++; textEl.textContent = full.slice(0, shown); if (shown >= full.length) clearInterval(timer); }, 22);
   };
@@ -1528,15 +1569,16 @@ function meFace() {
 }
 
 /** 기억이 돌아오는 연출: 카드 공개 */
-function memoryReveal(ids: string[], st: StoryStage, newCap = 0) {
+function memoryReveal(ids: string[], st: StoryStage, newCap = 0, xpMsg = '') {
   const ov = document.createElement('div');
   ov.className = 'overlay memory';
   ov.innerHTML = `<div class="pop"><h2>🧠 기억이 돌아왔다</h2><p class="hint">${st.title}의 기억 · 카드 ${ids.length}장</p>
     <div class="mem-cards">${ids.map((id) => tcgCard(id)).join('')}</div>
+    ${xpMsg ? `<p class="xp-msg">${xpMsg}</p>` : ''}
     ${newCap ? `<p class="cap-up">✨ 기억이 돌아왔다! 이제 <b>${TIER_NAME[newCap]}</b>까지 조합할 수 있어요.</p>` : ''}
     ${st.unlock?.length ? `<p>🎟 이제 소환에서 <b>${st.unlock.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b>도 나와요!</p>` : ''}
     <button class="primary chunky gold close">계속</button></div>`;
-  ov.onclick = (e) => { if ((e.target as HTMLElement).classList.contains('close')) { ov.remove(); storyChapter = -1; renderHome(); } };
+  ov.onclick = (e) => { if ((e.target as HTMLElement).classList.contains('close')) { ov.remove(); storyChapter = -1; renderHome(); if (st.id === 'A5' && !progress.tourDone) setTimeout(playTour, 300); } };
   document.body.appendChild(ov);
   sfx.reveal(5);
 }
