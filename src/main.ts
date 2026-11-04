@@ -21,8 +21,8 @@ import { cardArt, sceneArt } from './tcg';
 import { STORY, STORY_MAP, CHAPTERS, START_POOL, type StoryStage, type Line } from './story';
 /** 이 등급 이상은 카드가 있어야 조합 가능 (6 = 거장, 예전 5성) */
 const LOCK_TIER = 6;
-/** 지름길 조합: 얕지만 그 철학자 카드 Lv.3 이상이어야 열린다 */
-const SHORTCUT_LV = 3;
+/** 지름길 조합: 얕지만 그 철학자 카드 Lv.5(11장) 이상이어야 열린다 */
+const SHORTCUT_LV = 5;
 const isShortcut = (r: { logic: string }) => r.logic.startsWith('지름길');
 /** 스토리 진행(장)에 따라 만들 수 있는 최고 등급: 1·2장 희귀, 3장 전설, 4장부터 근원 */
 function tierCap(prog = progress): number {
@@ -390,9 +390,9 @@ function updateUI() {
     if (g.over === 'win') sfx.win(); else sfx.lose();
     const newOnes = [...g.discovered].filter((id) => !progress.seen.includes(id));
     const s = g.stage;
-    const unlocks = g.over === 'win' ? STAGES.filter((x) => x.unlockAfter === s.id && !progress.cleared.includes(s.id)).map((x) => x.name) : [];
+    const unlocks = g.over === 'win' && !g.storyId ? STAGES.filter((x) => x.unlockAfter === s.id && !progress.cleared.includes(s.id)).map((x) => x.name) : [];
     alertBox(g.over === 'win'
-      ? `<h2>🏛 ${s.boss20} 논파!</h2><p>${s.name}을(를) 지켜 냈습니다.</p>${unlocks.length ? `<p>🔓 새 스테이지: <b>${unlocks.join(', ')}</b></p>` : ''}${newOnes.length ? `<p>📖 도감 등록 ${newOnes.length}명</p>` : ''}`
+      ? g.storyId ? `<h2>🏛 ${s.boss20} 논파!</h2><p><b>${s.name}</b>을(를) 지켜 냈어요.</p><p>🧠 나가기를 누르면 기억이 돌아와요.</p>` : `<h2>🏛 ${s.boss20} 논파!</h2><p>${s.name}을(를) 지켜 냈습니다.</p>${unlocks.length ? `<p>🔓 새 스테이지: <b>${unlocks.join(', ')}</b></p>` : ''}${newOnes.length ? `<p>📖 도감 등록 ${newOnes.length}명</p>` : ''}`
       : g.oneTool ? `<h2>💗 원툴 도전 종료</h2><p><b>${PHIL.get(g.oneTool)!.name}</b>와(과) 함께 <b>${g.wave}웨이브</b>까지 버텼어요!</p><p>최고 기록 ${Math.max(g.wave, progress.oneToolBest[g.oneTool] ?? 0)}웨이브</p>`
       : `<h2>💀 멘탈 붕괴</h2><p>${g.wave}웨이브에서 도그마에 잠식당했습니다.</p>${newOnes.length ? `<p>📖 그래도 도감에 ${newOnes.length}명 등록</p>` : ''}`);
   }
@@ -586,14 +586,16 @@ function draw() {
       ctx.font = `${cell * 0.32}px sans-serif`; ctx.textAlign = 'center';
       ctx.fillText('💤', cx + cell * 0.28, foot - cell * 0.9 + Math.sin(tick * 0.15) * 3);
     }
-    // 이름표
-    const nm = (progress.favorite === t.philId ? '💗' : '') + shortName(p.name);
-    const fs = Math.max(9, cell * 0.18);
-    ctx.font = `${fs}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const nw = ctx.measureText(nm).width + 8, ny = foot + fs * 0.35;
-    ctx.fillStyle = isSel ? '#ffd36b' : 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.roundRect(cx - nw / 2, ny - fs * 0.62, nw, fs * 1.24, fs * 0.6); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#3b2a1e'; ctx.fillText(nm, cx, ny + 0.5);
+    // 이름표: 흔함·안흔함은 화면이 복잡해지지 않게 선택했을 때만, 특별 이상은 항상
+    if (isSel || p.tier >= 3 || progress.favorite === t.philId) {
+      const nm = (progress.favorite === t.philId ? '💗' : '') + shortName(p.name);
+      const fs = Math.max(9, cell * 0.18);
+      ctx.font = `${fs}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const nw = ctx.measureText(nm).width + 8, ny = foot + fs * 0.35;
+      ctx.fillStyle = isSel ? '#ffd36b' : 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.roundRect(cx - nw / 2, ny - fs * 0.62, nw, fs * 1.24, fs * 0.6); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#3b2a1e'; ctx.fillText(nm, cx, ny + 0.5);
+    }
     // 등급 배지
     const bx = (t.cx + 0.2) * cellX, by = (t.cy + 0.2) * cell, br = cell * 0.13;
     ctx.fillStyle = TIER_AURA[p.tier]; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
@@ -779,8 +781,10 @@ function renderRoom() {
       <div class="room-stat"><span>고뇌</span><b id="room-gonoe">${Math.floor(progress.gonoe).toLocaleString()}</b></div>
       <div class="room-rates"><span>👆 탭당 <b>+${tapGain(progress)}</b></span><span>⏳ 초당 <b>+${rate.toFixed(1)}</b></span></div>
       ${idle ? `<p class="hint">자리를 비운 사이 고뇌 <b>+${idle.toLocaleString()}</b></p>` : ''}
+      <div class="room-owners">${owned.slice(0, 7).map((o) => `<button data-owner="${o.id}" class="${o.id === roomThinker ? 'on' : ''}"><img src="${portrait(o.id)}"></button>`).join('')}</div>
       <button id="tap-up" class="chunky blue">💭 고민의 깊이 Lv.${progress.tapLevel + 1} → ${progress.tapLevel + 2}<small>탭 +${tapGain(progress)}→+${tapGain(next)} · 초당 ${rate.toFixed(1)}→${idleRate(next, clearedStages()).toFixed(1)} · 🤔${cost.toLocaleString()}</small></button>
     </div>`;
+  for (const b of $('tab-room').querySelectorAll<HTMLButtonElement>('[data-owner]')) b.onclick = () => { roomThinker = b.dataset.owner!; progress.favorite = roomThinker; saveProgress(progress); sfx.click(); renderRoom(); }; // 고민방 주인 = 💗최애
   $('room-info').onclick = () => alertBox(`<h2>🤔 고민방</h2><p>철학자를 톡톡 두드리면 고뇌가 나와요.<br>가만히 둬도 쌓이고(최대 ${8}시간), 스테이지를 깰수록 더 빨리 쌓여요.</p><p><b>고민의 깊이</b>를 올리면 탭당 고뇌와 초당 고뇌가 함께 올라요.</p><p>고뇌는 🎴 카드·🧰 도구 뽑기에 써요. 고민방 주인은 도감에서 💗최애로 바꿀 수 있어요.</p>`);
   $('thinker').onclick = (ev) => {
     progress.gonoe += tapGain(progress);
@@ -908,8 +912,7 @@ function shakeEl(el: HTMLElement) { el.classList.remove('shake'); void el.offset
 
 // ---------- 상점 ----------
 function renderShop() {
-  $('tab-shop').innerHTML = `<h2>🛍 상점</h2>
-    <p class="hint">프로토타입이라 실제 결제 없이 바로 지급돼요. 가격과 구성은 출시 전 조정합니다.</p>
+  $('tab-shop').innerHTML = `<div class="tab-head"><h2>🛍 상점</h2><span class="proto-chip">시험판 · 실제 결제 없음</span></div>
     <div class="shop-grid">${SHOP.map((s) => {
       const sold = s.once && progress.purchases.includes(s.id);
       return `<div class="shop-item ${sold ? 'sold' : ''}">${s.tag ? `<i class="tag-hot">${s.tag}</i>` : ''}<div class="shop-icon">${s.icon}</div><b>${s.name}</b><small>${s.desc}</small>
@@ -1169,7 +1172,7 @@ $('open-rates').onclick = rateSheet;
 for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.onclick = () => { sfx.click(); switchTab(b.dataset.tab!); };
 for (const id of ['mute', 'mute-b']) { const b = document.getElementById(id); if (b) { b.textContent = isMuted() ? '🔇' : '🔊'; b.onclick = () => { const mu = toggleMute(); for (const x of ['mute', 'mute-b']) { const e = document.getElementById(x); if (e) e.textContent = mu ? '🔇' : '🔊'; } }; } }
 $('b-recipes').onclick = recipeSheet;
-$('tut-again').onclick = () => { progress.battleTutDone = false; progress.tabTut = []; pageTutStart(currentTab); saveProgress(progress); toast('🎓 화면마다, 그리고 다음 전투에서 튜토리얼이 다시 나와요'); };
+$('tut-again').onclick = () => { $('settings').classList.add('hidden'); progress.battleTutDone = false; progress.tabTut = []; pageTutStart(currentTab); saveProgress(progress); toast('🎓 화면마다, 그리고 다음 전투에서 튜토리얼이 다시 나와요'); };
 $('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); progress = loadProgress(); bootQA(); renderHome(); switchTab('stages'); } };
 function bootQA() { if (QA_MODE && !progress.purchases.includes('qa')) { progress.gonoe += QA_GONOE; progress.gems += QA_GEMS; progress.tickets += 5; progress.purchases.push('qa'); saveProgress(progress); } }
 
@@ -1526,3 +1529,8 @@ function playPrologue() {
   timers.push(window.setTimeout(end, 12600));
 }
 (window as unknown as { __g: () => Game | null }).__g = () => game; // 테스트용 훅
+
+// ---------- ⚙️ 설정 시트 ----------
+$('open-settings').onclick = () => { sfx.click(); $('settings').classList.remove('hidden'); };
+$('close-settings').onclick = () => $('settings').classList.add('hidden');
+$('settings').onclick = (e) => { if (e.target === $('settings')) $('settings').classList.add('hidden'); };

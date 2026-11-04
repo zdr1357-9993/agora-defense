@@ -14,26 +14,35 @@
     <section id="home" class="screen">
       <header class="hub-top">
         <h1 class="title"><span class="gold">AGORA</span> 철학사 랜덤 디펜스</h1>
-        <span class="top-right"><button id="mute" class="icon-btn">🔊</button><span id="wallet" class="wallet">🤔 0</span></span>
+        <span class="top-right"><span id="wallet" class="wallet">🤔 0</span><button id="open-settings" class="icon-btn" aria-label="설정">⚙️</button></span>
       </header>
-      <div class="acct-bar"><span id="who"></span><button id="logout" class="ghost small">로그아웃</button></div>
-      <div id="admin-bar" class="admin-bar hidden">👑 마스터
-        <button id="admin-gems">재화 지급</button><button id="admin-unlock">전부 클리어</button><button id="admin-cards">카드·도구 지급</button>
+      <!-- 설정 시트: 계정·소리·튜토리얼·초기화·(마스터 도구) -->
+      <div id="settings" class="settings hidden">
+        <div class="settings-card">
+          <div class="set-head"><b>⚙️ 설정</b><button id="close-settings" class="icon-btn">✕</button></div>
+          <div class="acct-bar"><span id="who"></span><button id="logout" class="ghost small">로그아웃</button></div>
+          <div class="set-grid">
+            <button id="mute" class="chunky blue">🔊</button>
+            <button id="tut-again" class="chunky mint">🎓 튜토리얼 다시 보기</button>
+            <button id="reset" class="ghost small">진행 초기화</button>
+          </div>
+          <div id="admin-bar" class="admin-bar hidden">👑 마스터
+            <button id="admin-gems">재화 지급</button><button id="admin-unlock">전부 클리어</button><button id="admin-cards">카드·도구 지급</button>
+          </div>
+        </div>
       </div>
       <div id="tab-stages" class="tab">
         <div id="stages"></div>
         <div class="home-tools">
           <button id="open-recipes" class="chunky mint">📜 조합표</button>
           <button id="open-rates" class="chunky blue">🎲 소환</button>
-          <button id="tut-again" class="ghost small">🎓 튜토리얼</button>
-          <button id="reset" class="ghost small">초기화</button>
         </div>
       </div>
       <div id="tab-room" class="tab hidden"></div>
       <div id="tab-gacha" class="tab hidden"></div>
       <div id="tab-shop" class="tab hidden"></div>
       <div id="tab-codex" class="tab hidden">
-        <h2>📖 도감 <small id="codex-count"></small> <button id="tcg-open" class="tcg-open">🃏 카드로 넘겨보기</button></h2>
+        <div class="tab-head"><h2>📖 도감 <small id="codex-count"></small></h2><button id="tcg-open" class="tcg-open">🃏 넘겨보기</button></div>
         <div id="codex-list"></div>
       </div>
       <nav id="tabs">
