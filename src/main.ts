@@ -259,7 +259,7 @@ function resize() {
   // 필드가 먼저: 상단·하단 버튼을 뺀 높이에서 아래 패널 최소 높이(104px)만 남기고 필드에 준다
   const battle = $('battle');
   const fixed = ['hud', 'cats', 'dock'].reduce((a, id) => a + $(id).offsetHeight, 0) + 8 * 4 + 16;
-  const H = Math.max(160, battle.clientHeight - fixed - 104);
+  const H = Math.max(160, battle.clientHeight - fixed - 128);
   if (!W || !battle.clientHeight) return;
   // 세로에 맞춰 칸 크기를 정하고, 가로는 화면 폭까지 넓힌다 (칸이 최대 1.5배까지 옆으로 길어짐)
   const c = Math.min(W / GRID, H / ROWS);
@@ -586,8 +586,8 @@ function draw() {
       ctx.font = `${cell * 0.32}px sans-serif`; ctx.textAlign = 'center';
       ctx.fillText('💤', cx + cell * 0.28, foot - cell * 0.9 + Math.sin(tick * 0.15) * 3);
     }
-    // 이름표: 흔함·안흔함은 화면이 복잡해지지 않게 선택했을 때만, 특별 이상은 항상
-    if (isSel || p.tier >= 3 || progress.favorite === t.philId) {
+    // 이름표 (모든 철학자 발밑)
+    {
       const nm = (progress.favorite === t.philId ? '💗' : '') + shortName(p.name);
       const fs = Math.max(9, cell * 0.18);
       ctx.font = `${fs}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

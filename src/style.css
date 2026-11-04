@@ -585,3 +585,9 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 .room-owners button { width: 44px; height: 44px; padding: 2px; border: 2px solid var(--line); border-radius: 12px; background: #fff; opacity: .6; cursor: pointer; }
 .room-owners button.on { opacity: 1; background: #ffe1ef; box-shadow: 0 3px 0 var(--line); }
 .room-owners img { width: 100%; height: 100%; image-rendering: pixelated; }
+/* 조합 목록이 패널 안에서 스크롤되도록 (그리드 칸이 내용만큼 늘어나 잘리던 문제) */
+#context { grid-template-rows: minmax(0, 1fr); }
+#context > #synth, #context > #info { min-height: 0; max-height: 100%; }
+.sy-row, .sy-head { flex-shrink: 0; }
+#context > #synth { overscroll-behavior: contain; }
+#context > #synth { flex-wrap: nowrap; }
