@@ -225,7 +225,9 @@ export class Game {
   /** 카드(기억)가 없어 아직 조합할 수 없는 결과 — 거장 이상은 뽑기로 카드를 얻어야 열린다 */
   locked = new Set<string>();
   availableRecipes(): Recipe[] { return this.oneTool ? [] : RECIPES.filter((r) => this.pickMaterials(r) !== null); }
-  isLocked(r: Recipe) { return this.locked.has(r.result); }
+  /** 조합식 단위 잠금 (지름길: 카드 레벨 부족) */
+  lockedRecipes = new Set<string>();
+  isLocked(r: Recipe) { return this.locked.has(r.result) || this.lockedRecipes.has(r.id); }
 
   private pickMaterials(r: Recipe): Tower[] | null {
     const used = new Set<Tower>();

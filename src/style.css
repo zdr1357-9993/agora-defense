@@ -531,3 +531,31 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 .vn.over .vn-bg { display: none; }
 .vn.over .vn-box { margin-bottom: 110px; }
 .sy-row .lk { margin-left: auto; font-size: 10px; color: #8a7560; font-family: inherit; }
+
+/* ---------- 조합 영역 v4: 결과가 크게, 재료는 아래 ---------- */
+#context { grid-template-columns: 1.4fr 1fr; }
+.sy-head { font-size: 14px; color: #3b2a1e; }
+.sy-row { gap: 8px; padding: 5px 8px 5px 5px; border-radius: 14px; min-height: 48px; }
+.sy-row .res { flex: none; width: 40px; height: 40px; display: grid; place-items: center; background: #fff; border: 2px solid var(--line); border-radius: 10px; }
+.sy-row .res img { width: 34px; height: 34px; }
+.sy-row .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sy-row .txt b { font-size: 15px; color: #3b2a1e; }
+.sy-row .mats { display: flex; align-items: center; gap: 1px; }
+.sy-row .mats i { opacity: 1; background: #fff6e0; border-radius: 6px; }
+.sy-row .mats i img { width: 20px; height: 20px; }
+.sy-row .mats em { font-style: normal; font-size: 10px; color: #a08b72; margin: 0 1px; }
+.sy-row .go { flex: none; background: #ff7aa8; color: #fff; border: 2px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 14px; box-shadow: 0 2px 0 var(--line); }
+.sy-row.ready { background: #fff1c2; border-width: 3px; box-shadow: 0 3px 0 var(--line); animation: readyGlow 1.6s ease-in-out infinite !important; }
+@keyframes readyGlow { 50% { background: #ffe08a; } }
+.sy-row.ready.locked { animation: none !important; background: #efefef; }
+.sy-row.ready.locked .go { display: none; }
+.sy-row .lk { font-size: 11px; white-space: nowrap; }
+.sy-row.near { min-height: 40px; }
+.sy-row.near .res { width: 32px; height: 32px; border-style: dashed; } .sy-row.near .res img { width: 26px; height: 26px; }
+.sy-row.near .txt b { font-size: 13px; color: #8a7560; }
+.sy-row .hint-miss { display: flex; align-items: center; gap: 2px; font-size: 11px; color: #a08b72; }
+.sy-row .hint-miss img { width: 18px; height: 18px; filter: grayscale(1) opacity(.7); }
+.sy-row .cnt { font-size: 12px; color: #c2410c; }
+.icard .ic-skill { font-size: 12px; line-height: 1.45; }
+.icard .ic-top b { font-size: 15px; }
+.cap-up { background: #fff1c2; border: 2px solid var(--line); border-radius: 12px; padding: 6px; }

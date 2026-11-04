@@ -46,12 +46,12 @@ const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 /** 카드 뽑기에 나올 수 있는 철학자 (스토리에서 열린 시대만). main에서 지정 */
 let cardFilter: (p: (typeof PHILOSOPHERS)[number]) => boolean = () => true;
 export function setCardFilter(f: typeof cardFilter) { cardFilter = f; }
-export function drawCard(minTier = 1): string {
+export function drawCard(minTier = 1, anyEra = false): string {
   const rates = CARD_RATES.filter((c) => c.tier >= minTier);
   let r = Math.random() * rates.reduce((a, c) => a + c.rate, 0), tier = rates[rates.length - 1].tier;
   for (const c of rates) { if (r < c.rate) { tier = c.tier; break; } r -= c.rate; }
   const all = PHILOSOPHERS.filter((p) => p.tier === tier && !p.hidden);
-  const ok = all.filter(cardFilter);
+  const ok = anyEra ? all : all.filter(cardFilter);
   return pick(ok.length ? ok : all).id;
 }
 export function drawTool(): string { return pick(ITEMS).id; }
@@ -81,7 +81,8 @@ export function pull(p: Progress, o: PullOption): string[] | null {
   for (let i = 0; i < o.times; i++) {
     if (o.kind === 'tool') { const id = drawTool(); p.items[id] = (p.items[id] ?? 0) + 1; got.push(id); continue; }
     const guarantee = (o.kind === 'master' && i === o.times - 1) || p.pity + 1 >= PITY_LIMIT;
-    const id = drawCard(guarantee ? MASTER_TIER : 1);
+    // 💎·🎫(유료) 뽑기는 시대 잠금 없이 어느 시대든 나온다
+    const id = drawCard(guarantee ? MASTER_TIER : 1, o.currency !== 'gonoe');
     const tier = PHILOSOPHERS.find((x) => x.id === id)!.tier;
     p.pity = tier >= MASTER_TIER ? 0 : p.pity + 1;
     p.cards[id] = (p.cards[id] ?? 0) + 1;

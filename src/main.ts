@@ -21,6 +21,24 @@ import { cardArt, sceneArt } from './tcg';
 import { STORY, STORY_MAP, CHAPTERS, START_POOL, type StoryStage, type Line } from './story';
 /** 이 등급 이상은 카드가 있어야 조합 가능 (6 = 거장, 예전 5성) */
 const LOCK_TIER = 6;
+/** 지름길 조합: 얕지만 그 철학자 카드 Lv.3 이상이어야 열린다 */
+const SHORTCUT_LV = 3;
+const isShortcut = (r: { logic: string }) => r.logic.startsWith('지름길');
+/** 스토리 진행(장)에 따라 만들 수 있는 최고 등급: 1·2장 희귀, 3장 전설, 4장부터 근원 */
+function tierCap(prog = progress): number {
+  if (QA_MODE) return 7;
+  const next = STORY.find((s) => !(prog.storyCleared ?? []).includes(s.id));
+  const ch = next ? next.chapter : 99;
+  return ch <= 2 ? 4 : ch === 3 ? 5 : 7;
+}
+/** 왜 잠겼는지 (조합 버튼에 표시) */
+function lockReason(r: { result: string; logic: string }): string {
+  const p = PHIL.get(r.result)!;
+  if (!progress.cards[p.id] && p.tier >= LOCK_TIER) return '🔒카드 필요';
+  if (!progress.cards[p.id] && p.tier > tierCap()) return '🔒기억 부족';
+  if (isShortcut(r)) return `🔒카드 Lv.${SHORTCUT_LV}`;
+  return '🔒';
+}
 const itemUrl = (id: string) => itemSprite(id).toDataURL();
 /** 착용 스킨이 반영된 도트 */
 const spriteFor = (id: string) => skinnedSprite(PHIL.get(id)!, progress?.skinOn?.[id]);
@@ -267,7 +285,12 @@ function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   if (story) game.storyId = story.id;
   if (!oneTool) game.summonPool = summonPool();
   // 거장 이상은 카드(기억)를 가진 철학자만 조합할 수 있다
-  if (!QA_MODE) game.locked = new Set(PHILOSOPHERS.filter((p) => p.tier >= LOCK_TIER && !p.hidden && !progress.cards[p.id]).map((p) => p.id));
+  if (!QA_MODE) {
+    // 잠금 규칙: ① 거장·근원은 카드 필요 ② 지금 시대의 상한보다 높은 등급은 카드가 있어야만 ③ 지름길 조합은 카드 Lv.3부터
+    const cap = tierCap();
+    game.locked = new Set(PHILOSOPHERS.filter((p) => !p.hidden && !progress.cards[p.id] && (p.tier >= LOCK_TIER || p.tier > cap)).map((p) => p.id));
+    game.lockedRecipes = new Set(RECIPES.filter((r) => isShortcut(r) && cardLevel(progress.cards[r.result] ?? 0) < SHORTCUT_LV).map((r) => r.id));
+  }
   // 마스터 계정은 전장에 들어갈 때 무조건 골드 10000
   if (me?.role === 'master') game.gold = 10000;
   selected = null;
@@ -290,12 +313,14 @@ function endBattle() {
     const st = game.storyId ? STORY_MAP.get(game.storyId) : undefined;
     if (st && game.over === 'win') {
       const first = !(progress.storyCleared ?? []).includes(st.id);
+      const capBefore = tierCap();
       progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), st.id])];
       const ids = st.memories.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.id);
       for (const id of ids) { progress.cards[id] = (progress.cards[id] ?? 0) + 1; if (!progress.seen.includes(id)) progress.seen.push(id); }
       if (first) progress.gems += 20;
       saveProgress(progress);
-      setTimeout(() => playDialogue(st.outro, st, () => memoryReveal(ids, st)), 200);
+      const capAfter = tierCap();
+      setTimeout(() => playDialogue(st.outro, st, () => memoryReveal(ids, st, capAfter > capBefore ? capAfter : 0)), 200);
     } else if (game.over === 'win') {
       if (!progress.cleared.includes(game.stage.id)) progress.cleared.push(game.stage.id);
       const k = clearKey(game.stage.id, game.diff.id);
@@ -380,18 +405,10 @@ function updateUI() {
     info.className = '';
     if (selected) {
       const p = PHIL.get(selected.philId)!;
-      const st = statsOf(p.id);
       const cost = g.upgradeCost(selected);
-      const hk = g.home(selected).kind;
-      const tags = [
-        `${TYPE_ICON[st.type]} ${st.type}`, `◎ ${st.range}칸`,
-        hk === 'star' ? `🏠 +${STAR_BONUS * 100}%` : hk === 'era' ? `🏠 +${ERA_BONUS * 100}%` : '',
-        p.id === g.stage.counter ? '⚔ 보스×3' : '', g.isBench(selected) ? '💤 대기 중' : '',
-      ].filter(Boolean);
       info.className = `icard t${p.tier}`;
       info.innerHTML = `<div class="ic-top"><img src="${portrait(p.id)}"><div><span class="tier-chip t${p.tier}">${TIER_NAME[p.tier]}</span>${selected.level ? ` <span class="tag lv">+${selected.level}</span>` : ''}<b>${p.name}</b></div></div>
-        <div class="ic-tags">${tags.map((t) => `<span>${t}</span>`).join('')}</div>
-        <div class="ic-skill"><b>✦ ${p.skill}</b> ${p.skillDesc}</div>${toolLine(g, selected)}
+        <div class="ic-skill"><b>✦ ${p.skill}</b><br>${p.skillDesc}</div>
         ${cost !== null ? `<button id="upgrade" class="up">⬆ 강화 ${cost}G</button>` : ''}`;
       const up = document.getElementById('upgrade');
       if (up) { (up as HTMLButtonElement).disabled = g.gold < cost!; up.onclick = () => { if (selected && g.upgrade(selected)) { lastInfoKey = ''; updateUI(); } }; }
@@ -432,7 +449,7 @@ function updateUI() {
       const known = QA_MODE || progress.seen.includes(res.id);
       const el = document.createElement('div');
       el.className = 'sy-row goal';
-      el.innerHTML = `<span class="mats">${r.materials.map((m, i) => `<i class="${own[i] ? 'have' : ''}">${face(m)}</i>`).join('')}</span><span class="arrow">💗</span>${face(res.id, known)}<b>${known ? shortName(res.name) : '???'}</b>`;
+      el.innerHTML = `<span class="res">${face(res.id, known)}</span><span class="txt"><b>💗 ${known ? shortName(res.name) : '???'}</b><span class="mats">${r.materials.map((m, i) => `<i class="${own[i] ? 'have' : ''}">${face(m)}</i>`).join('')}</span></span><span class="cnt">${own.filter(Boolean).length}/${own.length}</span>`;
       box.appendChild(el);
     }
     for (const r of recipes.slice(0, 8)) {
@@ -442,10 +459,10 @@ function updateUI() {
       const seen = progress.seen.includes(res.id) || QA_MODE;
       const lockedR = g.isLocked(r);
       b.className = `sy-row ready t${res.tier} ${ok && !lockedR ? '' : 'locked'}`;
-      b.innerHTML = `<span class="mats">${r.materials.map((m) => `<i>${face(m)}</i>`).join('')}${r.catalyst ? `<em>${CAT_ICON[r.catalyst]}</em>` : ''}</span><span class="arrow">➜</span>${face(res.id, seen || !res.hidden)}<b>${res.hidden && !seen ? '???' : shortName(res.name)}</b>`;
+      b.innerHTML = `<span class="res">${face(res.id, seen || !res.hidden)}</span><span class="txt"><b>${res.hidden && !seen ? '???' : shortName(res.name)}</b><span class="mats">${r.materials.map((m) => `<i>${face(m)}</i>`).join('<em>+</em>')}${r.catalyst ? `<em>+${CAT_ICON[r.catalyst]}</em>` : ''}</span></span><span class="go">조합</span>`;
       if (!ok || lockedR) b.disabled = true;
       if (lockedR) b.title = '카드가 있어야 조합할 수 있어요 (뽑기에서 얻기)';
-      if (lockedR) b.insertAdjacentHTML('beforeend', '<small class="lk">🔒카드 필요</small>');
+      if (lockedR) b.insertAdjacentHTML('beforeend', `<small class="lk">${lockReason(r)}</small>`);
       b.onclick = () => { selected = g.synthesize(r); updateUI(); };
       box.appendChild(b);
     }
@@ -455,7 +472,7 @@ function updateUI() {
       const seen = progress.seen.includes(res.id) || QA_MODE;
       const el = document.createElement('div');
       el.className = 'sy-row near';
-      el.innerHTML = `<span class="tip">💡</span><i class="miss">${face(miss)}</i><small>${shortName(PHIL.get(miss)!.name)}만 더</small><span class="arrow">➜</span>${face(res.id, seen)}<b>${seen ? shortName(res.name) : '???'}</b>`;
+      el.innerHTML = `<span class="res">${face(res.id, seen)}</span><span class="txt"><b>${seen ? shortName(res.name) : '???'}</b><span class="hint-miss">💡 <i class="miss">${face(miss)}</i>${shortName(PHIL.get(miss)!.name)}만 더</span></span>`;
       box.appendChild(el);
     }
   }
@@ -1405,6 +1422,7 @@ function renderStory(box: HTMLElement) {
       <div class="stage-info"><div>👑 보스 <b>${st.boss}</b> (${DIFF.get('easy')!.maxWave}웨이브)</div>
       <div>🧠 깨면 돌아오는 기억: <b>${st.memories.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b></div>
       ${st.unlock?.length ? `<div>🎟 깨면 소환에 새로 등장: <b>${st.unlock.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b></div>` : ''}
+      <div>🔓 지금 조합할 수 있는 등급: <b>${TIER_NAME[tierCap()]}</b>까지 (1·2장 희귀 · 3장 전설 · 4장부터 근원). 카드를 가진 철학자는 예외!</div>
       <div>🔒 거장·근원은 카드(기억)가 있어야 전투에서 조합할 수 있어요. 🧠 기억 떠올리기에서 얻어요.</div></div>`);
     box.appendChild(row);
   }
@@ -1460,11 +1478,12 @@ function meFace() {
 }
 
 /** 기억이 돌아오는 연출: 카드 공개 */
-function memoryReveal(ids: string[], st: StoryStage) {
+function memoryReveal(ids: string[], st: StoryStage, newCap = 0) {
   const ov = document.createElement('div');
   ov.className = 'overlay memory';
   ov.innerHTML = `<div class="pop"><h2>🧠 기억이 돌아왔다</h2><p class="hint">${st.title}의 기억 · 카드 ${ids.length}장</p>
     <div class="mem-cards">${ids.map((id) => tcgCard(id)).join('')}</div>
+    ${newCap ? `<p class="cap-up">✨ 기억이 돌아왔다! 이제 <b>${TIER_NAME[newCap]}</b>까지 조합할 수 있어요.</p>` : ''}
     ${st.unlock?.length ? `<p>🎟 이제 소환에서 <b>${st.unlock.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b>도 나와요!</p>` : ''}
     <button class="primary chunky gold close">계속</button></div>`;
   ov.onclick = (e) => { if ((e.target as HTMLElement).classList.contains('close')) { ov.remove(); storyChapter = 0; renderHome(); } };
