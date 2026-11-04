@@ -591,3 +591,5 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 .sy-row, .sy-head { flex-shrink: 0; }
 #context > #synth { overscroll-behavior: contain; }
 #context > #synth { flex-wrap: nowrap; }
+.cloud-state { font-size: 12px; border-radius: 10px; padding: 4px 8px; background: #eee; }
+.cloud-state.ok { background: #dff7ea; } .cloud-state.error, .cloud-state.confirm { background: #ffe3e3; }

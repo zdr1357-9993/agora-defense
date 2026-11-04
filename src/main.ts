@@ -10,7 +10,8 @@ import {
 import { philosopherSprite, skinnedSprite, SKINS, monsterSprite, itemSprite, TIER_AURA } from './sprites';
 import { SKILLS } from './skills';
 import { sfx, isMuted, toggleMute } from './sfx';
-import { setAccount, hasSave, loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, awakenLevel, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL, AWAKEN_MAX, AWAKEN_EVERY } from './save';
+import { cloudLogin, cloudLoad, cloudSave, flush as cloudFlush, cloudLogout, cloudState, cloudMsg } from './cloud';
+import { setSaveHook, adoptProgress, setAccount, hasSave, loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, awakenLevel, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL, AWAKEN_MAX, AWAKEN_EVERY } from './save';
 import { LINES, UNLOCK_LEVELS } from './lines';
 import { setCardFilter, settleIdle, idleRate, tapGain, tapUpgradeCost, battleReward, pull, canAfford, PULLS, SHOP, buy, CUR_ICON, PITY_LIMIT, FIRST_CLEAR_GEMS, CARD_RATES, QA_GONOE, QA_GEMS, IDLE_PER_SEC, type PullOption } from './meta';
 import { ITEMS } from './items';
@@ -1197,6 +1198,7 @@ function enter(acc: Account) {
   setAccount(acc.id);
   setQA(acc.role === 'master' || new URLSearchParams(location.search).get('qa') === '1');
   const isNew = !hasSave();
+  freshDevice = isNew;
   progress = loadProgress();
   if (isNew && acc.role === 'veteran') { seedVeteran(progress); saveProgress(progress); }
   bootQA();
@@ -1225,8 +1227,33 @@ $<HTMLFormElement>('login-form').onsubmit = async (e) => {
   if (!acc) { $('login-err').textContent = '아이디 또는 비밀번호가 맞지 않아요'; shakeEl($('login-card')); return; }
   sfx.reveal(5);
   enter(acc);
+  void syncCloud(acc.id, $<HTMLInputElement>('login-pw').value);
 };
-$('logout').onclick = () => { if (window.confirm('로그아웃할까요?')) { rememberLogin(null); showLogin(); } };
+
+// ---------- ☁️ 서버 저장 동기화 ----------
+let freshDevice = false; // 이 기기에 저장이 없던 상태로 들어왔는지
+setSaveHook((p) => cloudSave(p));
+async function syncCloud(id: string, pw: string) {
+  const ok = await cloudLogin(id, pw);
+  if (ok) {
+    const remote = await cloudLoad();
+    // 서버 쪽이 더 최신이거나, 이 기기가 처음이면 서버 것을 쓴다
+    if (remote && (freshDevice || (remote.savedAt ?? 0) > (progress.savedAt ?? 0))) {
+      progress = adoptProgress(remote);
+      spriteUrl.clear(); renderHome(); refreshWallet();
+      toast('☁️ 서버에 저장된 진행을 불러왔어요');
+    } else { cloudSave(progress); void cloudFlush(); }
+  }
+  cloudBadge();
+}
+function cloudBadge() {
+  const el = document.getElementById('cloud-state');
+  if (!el) return;
+  el.textContent = cloudState === 'ok' ? '☁️ 서버 저장 켜짐' : cloudState === 'confirm' ? '☁️ 설정 필요: ' + cloudMsg : cloudState === 'error' ? '☁️ 서버 연결 실패 (이 기기에만 저장 중)' : '☁️ 서버 저장 꺼짐';
+  el.className = `cloud-state ${cloudState}`;
+  el.title = cloudMsg;
+}
+$('logout').onclick = () => { if (window.confirm('로그아웃할까요?')) { void cloudLogout(); cloudBadge(); $('settings').classList.add('hidden'); rememberLogin(null); showLogin(); } };
 $('admin-gems').onclick = () => { progress.gems += 10000; progress.gonoe += 100000; progress.tickets += 10; saveProgress(progress); refreshWallet(); toast('👑 재화 지급 완료'); };
 $('admin-unlock').onclick = () => { for (const s of STAGES) for (const d of DIFFICULTIES) { const k = clearKey(s.id, d.id); if (!progress.cleared.includes(k)) progress.cleared.push(k); } for (const s of STAGES) if (!progress.cleared.includes(s.id)) progress.cleared.push(s.id); saveProgress(progress); renderHome(); toast('👑 전 스테이지·난이도 클리어 처리'); };
 $('admin-cards').onclick = () => { for (const p of PHILOSOPHERS) { progress.cards[p.id] = (progress.cards[p.id] ?? 0) + 16; if (!progress.seen.includes(p.id)) progress.seen.push(p.id); } for (const it of ITEMS) progress.items[it.id] = (progress.items[it.id] ?? 0) + 1; saveProgress(progress); toast('👑 모든 카드 +16장 · 도구 전부 지급'); };

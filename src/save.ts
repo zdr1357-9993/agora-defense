@@ -36,6 +36,8 @@ export interface Progress {
   idv2?: boolean;
   /** 스토리(쉬움) 클리어한 스테이지 ID */
   storyCleared?: string[];
+  /** 마지막 저장 시각(ms): 기기 저장과 서버 저장 중 최신을 고를 때 */
+  savedAt?: number;
   /** 오프닝을 봤는지 */
   prologueDone?: boolean;
   tabTut?: string[];
@@ -81,8 +83,19 @@ export function loadProgress(): Progress {
   return fresh();
 }
 
+/** 저장할 때마다 불리는 훅 (서버 저장 연결용) */
+let onSave: ((p: Progress) => void) | null = null;
+export function setSaveHook(f: (p: Progress) => void) { onSave = f; }
 export function saveProgress(p: Progress) {
+  p.savedAt = Date.now();
   try { localStorage.setItem(KEY_OF(), JSON.stringify(p)); } catch { /* 무시 */ }
+  onSave?.(p);
+}
+/** 서버에서 받은 진행 상황을 이 기기 저장에 덮어쓴다 */
+export function adoptProgress(remote: Progress): Progress {
+  const p = { ...loadProgress(), ...remote };
+  try { localStorage.setItem(KEY_OF(), JSON.stringify(p)); } catch { /* 무시 */ }
+  return p;
 }
 
 export function resetProgress() {
