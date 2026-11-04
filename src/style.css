@@ -605,3 +605,4 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 .vn.qa .vn-text { font-size: 14px; }
 .xp-msg { background: #e9f8ef; border: 2px solid var(--line); border-radius: 12px; padding: 6px; }
 .vn.over { background: rgba(20,12,6,.18); }
+.set-grid #replay-start { grid-column: 1 / -1; font-size: 14px; }

@@ -1478,9 +1478,11 @@ function openEras(): Set<string> {
 setCardFilter((p) => openEras().has(p.era));
 const storyOpen = (st: StoryStage) => { const i = STORY.indexOf(st); return QA_MODE || i === 0 || (progress.storyCleared ?? []).includes(STORY[i - 1].id); };
 let storyChapter = -1;
+/** 설정에서 '처음부터 튜토리얼'을 눌렀을 때 (이미 1장을 진행한 계정도 튜토리얼을 다시 열어 둔다) */
+let replayTutorial = false;
 function renderStory(box: HTMLElement) {
   // 시작 튜토리얼이 생기기 전에 이미 1장을 진행한 계정은 튜토리얼을 마친 것으로 본다
-  if ((progress.storyCleared ?? []).some((id) => STORY_MAP.get(id)?.chapter) && !(progress.storyCleared ?? []).includes('A5')) {
+  if (!replayTutorial && (progress.storyCleared ?? []).some((id) => STORY_MAP.get(id)?.chapter) && !(progress.storyCleared ?? []).includes('A5')) {
     progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), 'A1', 'A2', 'A3', 'A4', 'A5'])]; saveProgress(progress);
   }
   const done = progress.storyCleared ?? [];
@@ -1623,3 +1625,17 @@ function playPrologue() {
 $('open-settings').onclick = () => { sfx.click(); $('settings').classList.remove('hidden'); cloudBadge(); if (me && lastPw && cloudState !== 'ok') void syncCloud(me.id, lastPw); };
 $('close-settings').onclick = () => $('settings').classList.add('hidden');
 $('settings').onclick = (e) => { if (e.target === $('settings')) $('settings').classList.add('hidden'); };
+
+// 처음부터 튜토리얼: 오프닝 → 아고라 광장 5단계 → 소크라테스 안내를 다시 진행 (카드·재화 등 다른 진행은 그대로)
+$('replay-start').onclick = () => {
+  if (!window.confirm('오프닝부터 시작 튜토리얼을 다시 진행할까요?\n카드·재화·스토리 기록은 그대로 남아요.')) return;
+  $('settings').classList.add('hidden');
+  const tut = STORY.filter((x) => x.chapter === 0).map((x) => x.id);
+  progress.storyCleared = (progress.storyCleared ?? []).filter((id) => !tut.includes(id));
+  progress.prologueDone = false; progress.tourDone = false; progress.battleTutDone = false; progress.tabTut = [];
+  replayTutorial = true;
+  saveProgress(progress);
+  storyChapter = 0; diffId = 'easy';
+  switchTab('stages');
+  playPrologue();
+};
