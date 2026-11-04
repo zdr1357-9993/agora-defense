@@ -594,3 +594,7 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 .cloud-state { font-size: 12px; border-radius: 10px; padding: 4px 8px; background: #eee; }
 .cloud-state.ok { background: #dff7ea; } .cloud-state.error, .cloud-state.confirm { background: #ffe3e3; }
 .cloud-state { white-space: pre-wrap; word-break: break-all; }
+/* 소환 버튼이 눌린 채로 보이지 않게 (모바일 포커스·탭 하이라이트 제거) */
+#dock button { -webkit-tap-highlight-color: transparent; outline: none; }
+#dock button:focus:not(:active) { transform: none; }
+.tut-skip-all { align-self: center; font-size: 12px; }

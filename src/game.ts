@@ -21,7 +21,7 @@ export const HP_GROWTH = 1.12;
 /** 소환 비용 (고정) */
 export const SUMMON_COST = 40;
 /** 골드로 소환할 때마다 오르는 비용 */
-export const SUMMON_STEP = 1;
+export const SUMMON_STEP = 2;
 /** 보스를 잡으면 받는 무료 소환권 / 5·15·25…웨이브 광장 집회 보너스 */
 export const BOSS_TICKETS = 3, RALLY_TICKETS = 1;
 
@@ -90,7 +90,9 @@ export class Game {
   noticeTime = 0;
 
   diff: Difficulty;
-  get maxWave() { return this.oneTool ? 999 : this.diff.maxWave; }
+  /** 짧은 판(시작 튜토리얼)일 때 웨이브 수 */
+  waveCap?: number;
+  get maxWave() { return this.oneTool ? 999 : this.waveCap ?? this.diff.maxWave; }
 
   /** 최애 원툴 도전: 최애 1명 + 1성만, 합성·연성 불가, 무한 웨이브 */
   oneTool?: string;
@@ -164,8 +166,10 @@ export class Game {
     return this.place(pick(pool));
   }
 
+  /** 판매 금액: 기본 소환비의 35% × 등급마다 2.2배 */
+  sellValue(t: Tower) { return Math.round(SUMMON_COST * 0.35 * 2.2 ** (PHIL.get(t.philId)!.tier - 1)); }
   sell(t: Tower) {
-    this.gold += Math.round(SUMMON_COST * 0.35 * 2.2 ** (PHIL.get(t.philId)!.tier - 1));
+    this.gold += this.sellValue(t);
     this.towers = this.towers.filter((x) => x !== t);
   }
 
@@ -260,7 +264,7 @@ export class Game {
   randomCatalyst() { return pick(CATALYST_IDS); }
   gainCatalyst(id: string) { this.catalysts[id]++; this.drops.push(id); }
 
-  isBossWave() { return this.wave > 0 && this.wave % BOSS_EVERY === 0; }
+  isBossWave() { return this.wave > 0 && (this.wave % BOSS_EVERY === 0 || (!!this.waveCap && this.wave === this.waveCap)); }
 
   /** 웨이브 구성: 끝자리 2·7 떼, 3·8 빠름, 4·9 단단함 */
   waveKind(): EnemyKind {

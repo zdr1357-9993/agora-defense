@@ -284,7 +284,8 @@ function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
     tool: (id) => { const t = progress.loadout[id]; return t && progress.items[t] ? t : undefined; },
   }, story ? 'easy' : oneTool ? 'normal' : diffId, oneTool);
   if (story) game.storyId = story.id;
-  if (!oneTool) game.summonPool = summonPool();
+  if (!oneTool) game.summonPool = summonPool(story);
+  if (story?.waves) game.waveCap = story.waves;
   // 거장 이상은 카드(기억)를 가진 철학자만 조합할 수 있다
   if (!QA_MODE) {
     // 잠금 규칙: ① 거장·근원은 카드 필요 ② 지금 시대의 상한보다 높은 등급은 카드가 있어야만 ③ 지름길 조합은 카드 Lv.3부터
@@ -312,7 +313,7 @@ function endBattle() {
       if (game.wave > best) { progress.oneToolBest[game.oneTool] = game.wave; setTimeout(() => toast(`💗 원툴 신기록! ${game?.wave ?? ''}웨이브`), 300); }
     }
     const st = game.storyId ? STORY_MAP.get(game.storyId) : undefined;
-    if (st && game.over === 'win') {
+    if (st && (game.over === 'win' || st.chapter === 0)) {
       const first = !(progress.storyCleared ?? []).includes(st.id);
       const capBefore = tierCap();
       progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), st.id])];
@@ -355,7 +356,7 @@ canvas.addEventListener('pointerdown', (ev) => {
   updateUI();
 });
 
-$('summon').onclick = () => { if (game?.summon()) sfx.summon(); updateUI(); };
+$('summon').onclick = () => { if (game?.summon()) sfx.summon(); selected = null; $('summon').blur(); updateUI(); };
 $('sell').onclick = () => { if (game && selected) { game.sell(selected); selected = null; updateUI(); } };
 // 웨이브 시작 / (판이 끝났으면) 나가기 — 버튼 하나, 상태로 판단
 $('start').onclick = () => {
@@ -382,6 +383,7 @@ function updateUI() {
   $('cost').textContent = g.tickets ? `🎟${g.tickets} 무료` : `${g.summonCost}G`;
   $<HTMLButtonElement>('summon').disabled = !g.canSummon() || !!g.over;
   $<HTMLButtonElement>('sell').disabled = !selected;
+  $('sell').innerHTML = selected ? `판매 <small>(+${g.sellValue(selected)}G)</small>` : '판매';
   const start = $<HTMLButtonElement>('start');
   start.textContent = g.over ? '나가기' : g.countdown > 0 ? `다음 웨이브 ${Math.ceil(g.countdown)}` : '웨이브 시작';
   start.disabled = !g.over && (g.running || g.countdown > 0);
@@ -395,6 +397,7 @@ function updateUI() {
     alertBox(g.over === 'win'
       ? g.storyId ? `<h2>🏛 ${s.boss20} 논파!</h2><p><b>${s.name}</b>을(를) 지켜 냈어요.</p><p>🧠 나가기를 누르면 기억이 돌아와요.</p>` : `<h2>🏛 ${s.boss20} 논파!</h2><p>${s.name}을(를) 지켜 냈습니다.</p>${unlocks.length ? `<p>🔓 새 스테이지: <b>${unlocks.join(', ')}</b></p>` : ''}${newOnes.length ? `<p>📖 도감 등록 ${newOnes.length}명</p>` : ''}`
       : g.oneTool ? `<h2>💗 원툴 도전 종료</h2><p><b>${PHIL.get(g.oneTool)!.name}</b>와(과) 함께 <b>${g.wave}웨이브</b>까지 버텼어요!</p><p>최고 기록 ${Math.max(g.wave, progress.oneToolBest[g.oneTool] ?? 0)}웨이브</p>`
+      : g.storyId && STORY_MAP.get(g.storyId)?.chapter === 0 ? `<h2>💪 좋은 연습이었어요</h2><p>시작 튜토리얼은 져도 괜찮아요. 나가기를 누르면 다음 단계가 열려요.</p>`
       : `<h2>💀 멘탈 붕괴</h2><p>${g.wave}웨이브에서 도그마에 잠식당했습니다.</p>${newOnes.length ? `<p>📖 그래도 도감에 ${newOnes.length}명 등록</p>` : ''}`);
   }
 
@@ -464,7 +467,7 @@ function updateUI() {
       if (!ok || lockedR) b.disabled = true;
       if (lockedR) b.title = '카드가 있어야 조합할 수 있어요 (뽑기에서 얻기)';
       if (lockedR) b.insertAdjacentHTML('beforeend', `<small class="lk">${lockReason(r)}</small>`);
-      b.onclick = () => { selected = g.synthesize(r); updateUI(); };
+      b.onclick = () => { g.synthesize(r); selected = null; updateUI(); }; // 조합 후 선택 상태로 두지 않음
       box.appendChild(b);
     }
     for (const r of near) {
@@ -552,8 +555,9 @@ function draw() {
     for (const [x, y] of g.emptyCells()) { ctx.beginPath(); ctx.arc((x + 0.5) * cellX, (y + 0.62) * cell, cell * 0.16, 0, Math.PI * 2); ctx.fill(); }
   }
 
-  // ---- 오라 철학자: 주변 8칸에 은은한 빛 ----
+  // ---- 오라 철학자: 선택했을 때만 영향 범위를 보여준다 (항상 그리면 배경이 겹쳐 보임) ----
   for (const t of g.towers) {
+    if (t !== selected) continue;
     const s = SKILLS[PHIL.get(t.philId)!.realName];
     if (!s || (s.kind !== 'auraAtk' && s.kind !== 'auraSpeed' && s.kind !== 'globalSlow')) continue;
     const pulse = 0.5 + 0.5 * Math.sin(tick * 0.06 + t.uid);
@@ -1418,8 +1422,10 @@ setInterval(pageTutTick, 300);
 
 // =============== 📖 스토리 모드 ===============
 /** 소환되는 흔함: 그리스 여섯 명 + 스토리에서 만난 동양의 셋 */
-function summonPool(): string[] {
+function summonPool(st?: StoryStage): string[] {
   if (QA_MODE) return [];
+  const toIds = (names: Set<string>) => PHILOSOPHERS.filter((p) => p.tier === 1 && names.has(p.realName)).map((p) => p.id);
+  if (st?.pool) return toIds(new Set(st.pool)); // 시작 튜토리얼은 판마다 정해진 철학자만
   const names = new Set(START_POOL);
   for (const st of STORY) if ((progress.storyCleared ?? []).includes(st.id)) for (const n of st.unlock ?? []) names.add(n);
   return PHILOSOPHERS.filter((p) => p.tier === 1 && names.has(p.realName)).map((p) => p.id);
@@ -1433,14 +1439,18 @@ function openEras(): Set<string> {
 }
 setCardFilter((p) => openEras().has(p.era));
 const storyOpen = (st: StoryStage) => { const i = STORY.indexOf(st); return QA_MODE || i === 0 || (progress.storyCleared ?? []).includes(STORY[i - 1].id); };
-let storyChapter = 0;
+let storyChapter = -1;
 function renderStory(box: HTMLElement) {
+  // 시작 튜토리얼이 생기기 전에 이미 1장을 진행한 계정은 튜토리얼을 마친 것으로 본다
+  if ((progress.storyCleared ?? []).some((id) => STORY_MAP.get(id)?.chapter) && !(progress.storyCleared ?? []).includes('A5')) {
+    progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), 'A1', 'A2', 'A3', 'A4', 'A5'])]; saveProgress(progress);
+  }
   const done = progress.storyCleared ?? [];
-  if (!storyChapter) storyChapter = (STORY.find((s) => !done.includes(s.id)) ?? STORY[STORY.length - 1]).chapter;
-  const ch = CHAPTERS[storyChapter - 1];
+  if (storyChapter < 0) storyChapter = (STORY.find((s) => !done.includes(s.id)) ?? STORY[STORY.length - 1]).chapter;
+  const ch = CHAPTERS.find((c) => c.n === storyChapter)!;
   const head = document.createElement('div');
   head.className = 'chapter-head';
-  head.innerHTML = `<button class="ch-prev" ${storyChapter <= 1 ? 'disabled' : ''}>◀</button><div><small>제${ch.n}장</small><b>${ch.icon} ${ch.title}</b></div><button class="ch-next" ${storyChapter >= CHAPTERS.length || !STORY.some((s) => s.chapter === storyChapter + 1 && storyOpen(s)) ? 'disabled' : ''}>▶</button>`;
+  head.innerHTML = `<button class="ch-prev" ${storyChapter <= 0 ? 'disabled' : ''}>◀</button><div><small>${ch.n ? `제${ch.n}장` : '시작 튜토리얼'}</small><b>${ch.icon} ${ch.title}</b></div><button class="ch-next" ${storyChapter >= CHAPTERS.length - 1 || !STORY.some((s) => s.chapter === storyChapter + 1 && storyOpen(s)) ? 'disabled' : ''}>▶</button>`;
   (head.querySelector('.ch-prev') as HTMLButtonElement).onclick = () => { storyChapter--; renderHome(); };
   (head.querySelector('.ch-next') as HTMLButtonElement).onclick = () => { storyChapter++; renderHome(); };
   box.appendChild(head);
@@ -1459,6 +1469,13 @@ function renderStory(box: HTMLElement) {
       <div>🔒 거장·근원은 카드(기억)가 있어야 전투에서 조합할 수 있어요. 🧠 기억 떠올리기에서 얻어요.</div></div>`);
     box.appendChild(row);
   }
+  if (storyChapter === 0 && !STORY.filter((x) => x.chapter === 0).every((x) => done.includes(x.id))) {
+    const skip = document.createElement('button');
+    skip.className = 'ghost small tut-skip-all';
+    skip.textContent = '튜토리얼 건너뛰기 → 1장으로';
+    skip.onclick = () => { if (!window.confirm('시작 튜토리얼을 건너뛸까요? 고대 철학자 여섯 명이 바로 열려요.')) return; progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), ...STORY.filter((x) => x.chapter === 0).map((x) => x.id)])]; saveProgress(progress); storyChapter = -1; renderHome(); };
+    box.appendChild(skip);
+  }
   const total = STORY.length, n = done.length;
   const prog = document.createElement('p');
   prog.className = 'hint story-prog';
@@ -1470,7 +1487,7 @@ function renderStory(box: HTMLElement) {
 function playDialogue(lines: Line[], st: StoryStage | null, done: () => void, era?: string, overBattle = false) {
   const ov = document.createElement('div');
   ov.className = `vn ${overBattle ? 'over' : ''}`;
-  const bgEra = era ?? (st ? CHAPTERS[st.chapter - 1].era : '고대');
+  const bgEra = era ?? (st ? CHAPTERS.find((c) => c.n === st.chapter)!.era : '고대');
   ov.innerHTML = `<div class="vn-bg" style="background-image:url(${sceneArt(bgEra)})"></div>
     ${st ? `<div class="vn-title"><small>${st.when}</small><b>${st.title}</b></div>` : ''}
     <div class="vn-box"><img class="vn-face"><div class="vn-body"><b class="vn-name"></b><p class="vn-text"></p></div><span class="vn-next">▼</span></div>
@@ -1519,7 +1536,7 @@ function memoryReveal(ids: string[], st: StoryStage, newCap = 0) {
     ${newCap ? `<p class="cap-up">✨ 기억이 돌아왔다! 이제 <b>${TIER_NAME[newCap]}</b>까지 조합할 수 있어요.</p>` : ''}
     ${st.unlock?.length ? `<p>🎟 이제 소환에서 <b>${st.unlock.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b>도 나와요!</p>` : ''}
     <button class="primary chunky gold close">계속</button></div>`;
-  ov.onclick = (e) => { if ((e.target as HTMLElement).classList.contains('close')) { ov.remove(); storyChapter = 0; renderHome(); } };
+  ov.onclick = (e) => { if ((e.target as HTMLElement).classList.contains('close')) { ov.remove(); storyChapter = -1; renderHome(); } };
   document.body.appendChild(ov);
   sfx.reveal(5);
 }
@@ -1536,7 +1553,7 @@ function playPrologue() {
   const text = ov.querySelector('.pr-text')!;
   const say = (t: string) => { text.classList.remove('show'); void (text as HTMLElement).offsetWidth; text.textContent = t; text.classList.add('show'); };
   const steps: [number, () => void][] = [
-    [300, () => say('…시험 기간. 철학사 책을 베고 깜빡 잠이 들었다.')],
+    [300, () => say('…퇴근하고 소파에서 철학책을 펼쳤다. 몇 장 넘기다 책을 베고 깜빡 잠이 들었다.')],
     [2600, () => say('누군가 웅성거리는 소리. 햇볕이 따갑다.')],
     [4800, () => { say(''); ov.classList.add('blink1'); }],
     [5900, () => ov.classList.add('open')],
@@ -1552,7 +1569,7 @@ function playPrologue() {
       ['소크라테스', '도그마들일세. 생각 없이 믿기만 하게 만드는 것들이지. 자넨 처음 보는 얼굴이군.'],
       ['나', '(머릿속에 공부했던 철학자들이 떠오른다. 떠올리면… 그들이 나타난다?)'],
       ['소크라테스', '자네 머릿속에 든 걸 하나씩 꺼내 보게. 기억을 되찾을수록 강해질 걸세.'],
-      ['내레이션', '고뇌를 모아 기억(카드)을 떠올리고, 철학자들을 불러 도그마를 논파하자. 이야기는 기원전 585년, 밀레토스에서 시작된다.'],
+      ['내레이션', '먼저 이 광장에서 기억을 떠올리는 연습부터 해 보자. 「아고라 광장」 다섯 단계를 지나면 진짜 이야기가 시작된다.'],
     ], null, () => { renderHome(); }, '고대');
   };
   (ov.querySelector('.vn-skip') as HTMLElement).onclick = end;
