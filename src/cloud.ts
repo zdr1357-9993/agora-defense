@@ -22,11 +22,12 @@ let userId = '';
 let loginId = '';
 
 /** 로그인. 서버에 계정이 없으면 같은 아이디/비밀번호로 만든다 (게임 계정 확인은 이미 끝난 뒤에 호출) */
-export async function cloudLogin(id: string, pw: string): Promise<boolean> {
+/** create=false면 로그인만 (회원가입한 일반 계정), true면 없을 때 만든다 (미리 정한 계정·새 가입) */
+export async function cloudLogin(id: string, pw: string, create = true): Promise<boolean> {
   try {
     const c = client();
     let { data, error } = await c.auth.signInWithPassword({ email: email(id), password: pass(pw) });
-    if (error && /invalid login/i.test(error.message)) {
+    if (error && /invalid login/i.test(error.message) && create) {
       const r = await c.auth.signUp({ email: email(id), password: pass(pw) });
       if (r.error) throw r.error;
       if (!r.data.session) { cloudState = 'confirm'; cloudMsg = 'Supabase에서 이메일 확인(Confirm email)을 꺼 주세요'; return false; }
@@ -69,3 +70,17 @@ export async function flush() {
 }
 export async function cloudLogout() { try { await flush(); await client().auth.signOut(); } catch { /* 무시 */ } cloudState = 'off'; userId = ''; }
 window.addEventListener('pagehide', () => { void flush(); });
+
+/** 새 아이디로 가입: 이미 있으면 false와 이유 */
+export async function cloudSignUp(id: string, pw: string): Promise<{ ok: boolean; msg: string }> {
+  try {
+    const c = client();
+    const tryIn = await c.auth.signInWithPassword({ email: email(id), password: pass(pw) });
+    if (!tryIn.error) { userId = tryIn.data.user!.id; loginId = id; cloudState = 'ok'; return { ok: true, msg: '이미 있는 계정이라 그대로 로그인했어요' }; }
+    const r = await c.auth.signUp({ email: email(id), password: pass(pw) });
+    if (r.error) return { ok: false, msg: /registered|already/i.test(r.error.message) ? '이미 쓰고 있는 아이디예요' : r.error.message };
+    if (!r.data.session) return { ok: false, msg: '서버 설정에서 이메일 확인(Confirm email)을 꺼 주세요' };
+    userId = r.data.user!.id; loginId = id; cloudState = 'ok';
+    return { ok: true, msg: '' };
+  } catch (e) { return { ok: false, msg: (e as Error).message }; }
+}

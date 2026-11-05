@@ -606,3 +606,52 @@ input { -webkit-user-select: text; user-select: text; font-size: 16px; }
 .xp-msg { background: #e9f8ef; border: 2px solid var(--line); border-radius: 12px; padding: 6px; }
 .vn.over { background: rgba(20,12,6,.18); }
 .set-grid #replay-start { grid-column: 1 / -1; font-size: 14px; }
+
+/* ---------- 결과 화면 ---------- */
+.result .pop { text-align: center; }
+.res-reward { background: #fff1c2; border: 2px solid var(--line); border-radius: 12px; padding: 8px; margin: 8px 0; font-size: 15px; }
+.res-double { width: 100%; margin-bottom: 8px; }
+.res-btns { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+.res-btns .chunky:only-child { grid-column: 1 / -1; }
+.raid-dmg { font-family: 'Jua'; font-size: 34px; color: #c2410c; margin: 4px 0; }
+/* 광고(시험판) */
+.ad-mock { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.85); display: grid; place-items: center; }
+.ad-box { background: #fff; border-radius: 18px; padding: 24px; width: min(86vw, 340px); text-align: center; display: flex; flex-direction: column; gap: 6px; }
+.ad-box b { font-family: 'Jua'; font-size: 20px; } .ad-count { font-family: 'Jua'; font-size: 40px; color: #c2410c; margin: 0; }
+/* 홈: 오늘의 할 일 · 레이드 */
+.live-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.live-btn { position: relative; font-family: 'Jua'; font-size: 15px; padding: 8px; border: 3px solid var(--line); border-radius: 14px; box-shadow: 0 3px 0 var(--line); cursor: pointer; background: #ffe1ef; }
+.live-btn.raid { background: #ffd6a5; } .live-btn small { font-size: 12px; }
+.dot { position: absolute; top: -8px; right: -6px; min-width: 20px; height: 20px; border-radius: 999px; background: #ef4444; color: #fff; font-style: normal; font-size: 12px; line-height: 20px; border: 2px solid #fff; }
+#tabs button { position: relative; }
+#tabs button.badge-on::after { content: ''; position: absolute; top: 4px; right: 18%; width: 10px; height: 10px; border-radius: 50%; background: #ef4444; border: 2px solid #fff; }
+/* 오늘의 할 일 패널 */
+.missions-ov .pop { max-height: 90dvh; overflow-y: auto; text-align: left; }
+.attend { background: #fffaf0; border: 2px solid var(--line); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.att-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.att-row span { font-size: 10px; text-align: center; background: #fff; border: 2px solid #e8d8bd; border-radius: 8px; padding: 3px 1px; line-height: 1.3; }
+.att-row span small { display: block; color: #8a7560; }
+.att-row span.got { background: #dff7ea; opacity: .7; } .att-row span.today { border-color: #c2410c; background: #fff1c2; }
+.pass-box { margin: 8px 0; background: #ffeef6; border: 2px solid var(--line); border-radius: 12px; padding: 8px; font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.pass-box.off { background: #f4f4f4; }
+.pass-box .chunky { padding: 4px 10px; font-size: 13px; flex: none; }
+.m-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.m-row { display: flex; align-items: center; gap: 8px; background: #fff; border: 2px solid var(--line); border-radius: 12px; padding: 6px 8px; }
+.m-row > div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.m-row b { font-size: 13px; } .m-row small { font-size: 11px; color: #8a7560; }
+.m-row .bar { display: block; height: 6px; background: #eee; border-radius: 999px; overflow: hidden; } .m-row .bar i { display: block; height: 100%; background: #5fc6a0; }
+.m-row .chunky { padding: 4px 10px; font-size: 13px; }
+.m-row.ready { background: #fff6d6; } .m-row.got { opacity: .55; }
+.m-row.all { background: #ffeef6; }
+/* 상점 */
+.shop-sec { margin: 10px 2px 4px; font-size: 15px; font-family: 'Jua'; font-weight: 400; }
+.shop-item.big { grid-column: 1 / -1; background: linear-gradient(135deg, #fff1c2, #ffe1ef); }
+.tag-on { position: absolute; top: -9px; right: 8px; font-style: normal; font-size: 10px; background: #5fc6a0; color: #fff; border: 2px solid var(--line); border-radius: 999px; padding: 0 6px; }
+.shop-item { position: relative; }
+.skin-shop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.skin-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border: 2px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; font-family: inherit; }
+.skin-card img { width: 52px; height: 52px; image-rendering: pixelated; }
+.skin-card b { font-size: 11px; } .skin-card small { font-size: 9.5px; color: #8a7560; } .skin-card em { font-style: normal; font-size: 11px; color: #c2410c; }
+.skin-card.r-2 { background: #f0fff4; } .skin-card.r-3 { background: linear-gradient(160deg, #fff6d6, #f3e8ff); }
+.skin-card.on { box-shadow: 0 0 0 3px #ff7aa8; }
+#room-ad { width: 100%; font-size: 14px; } #room-ad small { font-size: 11px; }

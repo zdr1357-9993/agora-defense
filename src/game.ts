@@ -90,6 +90,10 @@ export class Game {
   noticeTime = 0;
 
   diff: Difficulty;
+  /** 보스 레이드: 거대한 보스 하나에 제한 시간 동안 준 피해로 겨룬다 */
+  raid?: { hp: number; time: number; name: string };
+  raidDamage = 0;
+  raidLeft = 0;
   /** 짧은 판(시작 튜토리얼)일 때 웨이브 수 */
   waveCap?: number;
   get maxWave() { return this.oneTool ? 999 : this.waveCap ?? this.diff.maxWave; }
@@ -274,6 +278,7 @@ export class Game {
   }
 
   startWave() {
+    if (this.raid) { this.startRaid(); return; }
     if (this.running || this.over || this.wave >= this.maxWave) return;
     this.wave++;
     this.refreshLayout();
@@ -284,6 +289,14 @@ export class Game {
     const n = 10 + this.wave;
     this.toSpawn = k === 'boss' ? 1 : k === 'swarm' ? Math.round(n * 1.6) : k === 'tank' ? Math.round(n * 0.5) : n;
     this.spawnTimer = 0;
+  }
+
+  private startRaid() {
+    if (this.running || this.over || !this.raid) return;
+    this.wave = 1; this.running = true; this.countdown = -1; this.toSpawn = 0;
+    this.raidLeft = this.raid.time;
+    this.fx.push({ type: 'boss', name: this.raid.name });
+    this.enemies.push({ uid: uidSeq++, boss: true, kind: 'boss', hp: this.raid.hp, maxHp: this.raid.hp, dist: 0, speed: 0.9, path: 0, reward: 0, name: this.raid.name, skillT: 4 });
   }
 
   private spawn() {
@@ -336,6 +349,7 @@ export class Game {
   private damage(e: Enemy, dmg: number) {
     if (e.shieldT && e.shieldT > 0) return 0;
     const d = dmg * (e.vulnT && e.vulnT > 0 ? 1 + (e.vulnV ?? 0) : 1);
+    if (this.raid && e.boss) this.raidDamage += Math.min(d, Math.max(0, e.hp));
     e.hp -= d;
     return d;
   }
@@ -385,6 +399,7 @@ export class Game {
 
   update(dt: number) {
     if (this.over) return;
+    if (this.raid && this.running) { this.raidLeft -= dt; if (this.raidLeft <= 0 || !this.enemies.length) { this.raidLeft = Math.max(0, this.raidLeft); this.running = false; this.over = 'win'; return; } }
     if (this.countdown > 0) { this.countdown -= dt; if (this.countdown <= 0) this.startWave(); }
 
     if (this.running && this.toSpawn > 0) {
@@ -407,7 +422,8 @@ export class Game {
       const L = pathLength(this.layout.paths[e.path % this.layout.paths.length]);
       const before = Math.floor(e.dist / L);
       e.dist += e.speed * (1 - slow) * dt;
-      if (this.layout.loop) { if (Math.floor(e.dist / L) > before) this.lives -= e.boss ? 5 : 1; }
+      if (this.raid) { /* 레이드 보스는 멘탈을 깎지 않고 계속 돈다 */ }
+      else if (this.layout.loop) { if (Math.floor(e.dist / L) > before) this.lives -= e.boss ? 5 : 1; }
       else if (e.dist >= L) { this.lives -= e.boss ? 5 : 1; escaped.push(e); }
     }
     for (const e of escaped) e.dist = 0;
@@ -469,7 +485,7 @@ export class Game {
     }
     this.enemies = this.enemies.filter((e) => e.hp > 0);
 
-    if (this.running && this.toSpawn === 0 && this.enemies.length === 0) {
+    if (!this.raid && this.running && this.toSpawn === 0 && this.enemies.length === 0) {
       this.running = false;
       this.gold += 40 + this.wave * 3;
       if (this.isBossWave()) this.giveTickets(BOSS_TICKETS, '👑 보스 논파 보상');

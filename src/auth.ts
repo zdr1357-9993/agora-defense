@@ -35,7 +35,7 @@ export function lastLogin(): Account | null {
 export function seedVeteran(p: Progress) {
   p.cleared = ['S1', 'S2', 'S3', 'S1:easy', 'S1:normal', 'S1:hard', 'S2:easy', 'S2:normal', 'S3:easy'];
   p.firstClears = [...p.cleared.filter((x) => x.includes(':'))];
-  p.gonoe = 4200; p.gems = 650; p.tickets = 1; p.tapLevel = 6; p.tutorialDone = true; p.battleTutDone = true; p.tabTut = ['stages', 'room', 'gacha', 'codex', 'shop'];
+  p.gonoe = 4200; p.gems = 650; p.tickets = 1; p.tapLevel = 6; p.tutorialDone = true; p.battleTutDone = true; p.prologueDone = true; p.tourDone = true; p.storyCleared = ['A1', 'A2', 'A3', 'A4', 'A5', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8']; p.tabTut = ['stages', 'room', 'gacha', 'codex', 'shop'];
   p.cards = {
     T101: 9, T103: 6, T102: 7, T207: 12, T301: 10, T107: 5, T402: 5, T308: 6, T405: 4, T408: 3, T211: 4, T309: 2, T311: 3, T411: 3,
     T410: 2, T501: 4, T510: 2, T502: 1, T508: 2, T312: 1, T505: 2, T509: 1, T504: 2, T503: 1, T413: 1, T601: 1, T607: 1, T701: 1,

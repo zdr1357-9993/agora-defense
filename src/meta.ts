@@ -2,6 +2,7 @@
 import { PHILOSOPHERS } from './data';
 import { ITEMS } from './items';
 import type { Progress } from './save';
+import { grantSub, passOn } from './live';
 
 export const QA_GONOE = 100000;
 export const QA_GEMS = 10000;
@@ -9,12 +10,12 @@ export const QA_GEMS = 10000;
 // ---------- 고민방 ----------
 export const IDLE_PER_SEC = 0.5;
 export const IDLE_CAP_HOURS = 8;
-export const tapGain = (p: Progress) => 1 + p.tapLevel;
+export const tapGain = (p: Progress) => (1 + p.tapLevel) * (passOn(p) ? 2 : 1);
 export const tapUpgradeCost = (p: Progress) => Math.round(50 * 1.6 ** p.tapLevel);
 
 /** 지난번 계산 이후 쌓인 방치 고뇌를 정산하고 얼마 들어왔는지 돌려줌 */
 /** 가만히 둘 때 초당 고뇌: 스테이지 클리어 + 고민의 깊이(레벨당 +25%) */
-export const idleRate = (p: Progress, clearedStages: number) => IDLE_PER_SEC * (1 + clearedStages * 0.5) * (1 + 0.25 * p.tapLevel);
+export const idleRate = (p: Progress, clearedStages: number) => IDLE_PER_SEC * (1 + clearedStages * 0.5) * (1 + 0.25 * p.tapLevel) * (passOn(p) ? 2 : 1);
 export function settleIdle(p: Progress, clearedStages: number, now = Date.now()) {
   const sec = Math.min((now - p.idleAt) / 1000, IDLE_CAP_HOURS * 3600);
   const gain = Math.floor(sec * idleRate(p, clearedStages));
@@ -93,8 +94,11 @@ export function pull(p: Progress, o: PullOption): string[] | null {
 }
 
 // ---------- 상점 (프로토타입: 실제 결제 없이 지급) ----------
-export interface ShopItem { id: string; name: string; price: string; desc: string; gems?: number; tickets?: number; gonoe?: number; costGems?: number; once?: boolean; tag?: string; icon: string }
+export interface ShopItem { id: string; name: string; price: string; desc: string; gems?: number; tickets?: number; gonoe?: number; costGems?: number; once?: boolean; tag?: string; icon: string; sub?: 'adfree30' | 'adfreeLife' | 'pass30'; big?: boolean }
 export const SHOP: ShopItem[] = [
+  { id: 'pass30', icon: '📜', name: '철학자 구독 패스 (30일)', price: '₩5,900', desc: '즉시 💎300 · 매일 💎50 + 🤔2,000 · 광고 제거 · 고민방 고뇌 2배', gems: 300, sub: 'pass30', tag: '추천', big: true },
+  { id: 'adfree30', icon: '🚫', name: '광고 제거 30일', price: '₩3,300', desc: '광고 없이 바로 보상', sub: 'adfree30' },
+  { id: 'adfreeLife', icon: '♾️', name: '광고 평생 제거', price: '₩12,000', desc: '영원히 광고 없이', sub: 'adfreeLife', once: true, tag: '평생' },
   { id: 'starter', icon: '🎁', name: '아고라 입문 패키지', price: '₩4,900', desc: '💎 300 + 🎫 거장 초대장 1장', gems: 300, tickets: 1, once: true, tag: '1회 한정' },
   { id: 'gem60', icon: '💎', name: '지혜석 한 줌', price: '₩1,200', desc: '💎 60', gems: 60 },
   { id: 'gem330', icon: '💰', name: '지혜석 주머니', price: '₩5,900', desc: '💎 300 + 보너스 30', gems: 330, tag: '인기' },
@@ -110,6 +114,7 @@ export function buy(p: Progress, item: ShopItem): boolean {
   p.gems += item.gems ?? 0;
   p.tickets += item.tickets ?? 0;
   p.gonoe += item.gonoe ?? 0;
+  if (item.sub) grantSub(p, item.sub);
   p.purchases.push(item.id);
   return true;
 }

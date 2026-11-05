@@ -260,10 +260,14 @@ export function itemSprite(id: string): HTMLCanvasElement {
 }
 
 // ---------- 스킨: 기본 도트 위에 테마 색을 입히고 장신구를 얹는다 ----------
-export const SKINS: Record<string, { name: string; icon: string; color: [number, number, number] }> = {
-  sakura: { name: '벚꽃 산책', icon: '🌸', color: [255, 158, 203] },
-  night: { name: '한밤의 사색', icon: '🌙', color: [99, 102, 241] },
-  gold: { name: '황금 아고라', icon: '✨', color: [255, 200, 60] },
+/** 스킨: 색 + 장신구 + 전투 효과(탄환 색, 주변 반짝이). rank가 높을수록 화려하고 비싸다 */
+export const SKINS: Record<string, { name: string; icon: string; color: [number, number, number]; price: number; rank: 1 | 2 | 3; bullet: string; sparkle: string; fxName: string }> = {
+  sakura: { name: '벚꽃 산책', icon: '🌸', color: [255, 158, 203], price: 120, rank: 1, bullet: '#ffb3d1', sparkle: '#ff9ecb', fxName: '분홍 꽃잎 탄환' },
+  night: { name: '한밤의 사색', icon: '🌙', color: [99, 102, 241], price: 120, rank: 1, bullet: '#a5b4fc', sparkle: '#c7d2fe', fxName: '별빛 탄환' },
+  scholar: { name: '서재의 학자', icon: '📚', color: [146, 94, 54], price: 200, rank: 2, bullet: '#fde68a', sparkle: '#fbbf24', fxName: '책장 넘기는 반짝임' },
+  laurel: { name: '월계관의 현자', icon: '🌿', color: [74, 160, 92], price: 200, rank: 2, bullet: '#bbf7d0', sparkle: '#4ade80', fxName: '월계수 잎 오라' },
+  gold: { name: '황금 아고라', icon: '✨', color: [255, 200, 60], price: 300, rank: 3, bullet: 'gold', sparkle: '#fde047', fxName: '황금 탄환 + 후광' },
+  cosmos: { name: '우주의 사유', icon: '🌌', color: [139, 92, 246], price: 400, rank: 3, bullet: 'rainbow', sparkle: '#e879f9', fxName: '무지개 탄환 + 별무리' },
 };
 const skinCache = new Map<string, HTMLCanvasElement>();
 export function skinnedSprite(p: Philosopher, skin?: string): HTMLCanvasElement {
@@ -292,6 +296,9 @@ export function skinnedSprite(p: Philosopher, skin?: string): HTMLCanvasElement 
   const px = (x: number, y: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x * 2, y * 2, w * 2, h * 2); };
   if (skin === 'sakura') { for (const x of [8, 11, 14, 17]) { px(x, 2, 2, 2, '#ff9ecb'); px(x + 0.5, 2.5, 1, 1, '#fff1f7'); } }
   if (skin === 'night') { px(19, 0, 4, 4, '#fde68a'); px(20, 0, 3, 3, '#6366f1'); px(3, 3, 1, 1, '#fff'); px(1, 8, 1, 1, '#fff'); }
+  if (skin === 'scholar') { px(8, 7, 4, 3, '#1c1917'); px(12, 7, 4, 3, '#1c1917'); px(9, 8, 2, 1, '#e0f2fe'); px(13, 8, 2, 1, '#e0f2fe'); px(18, 13, 5, 6, '#7c2d12'); px(19, 14, 3, 4, '#fef3c7'); }
+  if (skin === 'laurel') { for (const x of [7, 9, 11, 13, 15, 17]) px(x, 3, 2, 1, '#22c55e'); px(7, 4, 1, 1, '#16a34a'); px(17, 4, 1, 1, '#16a34a'); }
+  if (skin === 'cosmos') { px(19, 0, 3, 3, '#e879f9'); px(2, 2, 1, 1, '#fde047'); px(21, 8, 1, 1, '#67e8f9'); px(1, 12, 1, 1, '#fff'); px(7, 1, 10, 2, '#8b5cf6'); px(11, 0, 2, 1, '#fde047'); }
   if (skin === 'gold') { px(8, 1, 10, 2, '#fbbf24'); px(8, 0, 2, 1, '#fbbf24'); px(12, 0, 2, 1, '#fbbf24'); px(16, 0, 2, 1, '#fbbf24'); px(12, 1, 2, 1, '#ef4444'); }
   skinCache.set(key, c);
   return c;
