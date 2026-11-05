@@ -1510,7 +1510,7 @@ function gainXp(id: string, rate: number): string {
 }
 /** 시작 튜토리얼 뒤: 소크라테스가 화면을 하나씩 짚어 주며 이야기와 버튼을 설명 */
 function playTour() {
-  progress.tourDone = true; saveProgress(progress);
+  progress.tourDone = true; progress.tabTut = [...new Set([...(progress.tabTut ?? []), 'stages'])]; saveProgress(progress); // 홈 안내는 소크라테스가 했으니 홈 말풍선은 생략
   switchTab('stages');
   playDialogue([
     ['소크라테스', '자네에게 꼭 할 말이 있네. 델포이의 신탁이 이렇게 말했다더군.'],
