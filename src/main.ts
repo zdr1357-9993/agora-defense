@@ -288,6 +288,7 @@ new ResizeObserver(resize).observe($('battle'));
 
 function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   if (story) { const base = STAGES.find((x) => x.id === story.base)!; s = { ...base, name: story.title, boss10: story.boss, boss20: story.boss, story: story.when }; }
+  spawnAt.clear();
   game = new Game(s, {
     cardMult: (id) => cardMult(progress.cards[id] ?? 0),
     awaken: (id) => awakenLevel(progress.cards[id] ?? 0),
@@ -610,7 +611,13 @@ function draw() {
     if (isSel) { ctx.fillStyle = 'rgba(251,191,36,.55)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
     const hk = g.home(t).kind;
     if (hk) { ctx.fillStyle = hk === 'star' ? 'rgba(255,211,107,.75)' : 'rgba(167,236,210,.6)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.15, 0, 0, Math.PI * 2); ctx.fill(); }
+    if (!spawnAt.has(t.uid)) spawnAt.set(t.uid, tick);
+    const age = tick - spawnAt.get(t.uid)!;
+    const pedS = Math.min(1, age / 8), drop = age < 22 ? Math.max(0, 1 - (age - 6) / 14) : 0;
+    if (pedS < 1) { ctx.save(); ctx.translate(cx, foot); ctx.scale(pedS, pedS); ctx.translate(-cx, -foot); }
     drawPedestal(cx, foot, p, t.uid);
+    if (pedS < 1) ctx.restore();
+    if (age < 22 && age > 12) { ctx.strokeStyle = `rgba(255,255,255,${(22 - age) / 10})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, foot, cell * (0.3 + (age - 12) * 0.03), cell * (0.1 + (age - 12) * 0.01), 0, 0, Math.PI * 2); ctx.stroke(); }
     if (p.tier >= 7) {
       ctx.save(); ctx.globalAlpha = 0.35 + 0.2 * Math.sin(tick * 0.08);
       ctx.fillStyle = `hsl(${(tick * 2) % 360},90%,60%)`;
@@ -627,7 +634,11 @@ function draw() {
     const sz = cell * (p.tier >= 6 ? 1.08 : 0.96);
     const rc = recoil.get(t.uid) ?? 0;
     const sx = sz * (1 + rc * 0.12), sy = sz * (1 - rc * 0.1);
-    ctx.drawImage(spriteFor(p.id), cx - sx / 2, foot - sy * 0.97 + bob, sx, sy);
+    ctx.save();
+    ctx.globalAlpha = age < 6 ? 0 : 1;
+    ctx.translate(cx, foot); ctx.rotate(-rc * 0.22); ctx.translate(-cx, -foot);
+    ctx.drawImage(spriteFor(p.id), cx - sx / 2, foot - sy * 0.97 + bob - drop * cell * 0.7, sx, sy);
+    ctx.restore();
     if ((t.stunT ?? 0) > 0) {
       ctx.font = `${cell * 0.32}px sans-serif`; ctx.textAlign = 'center';
       ctx.fillText('💤', cx + cell * 0.28, foot - cell * 0.9 + Math.sin(tick * 0.15) * 3);
@@ -743,6 +754,7 @@ function draw() {
 // 스테이지별 필드 테마
 // ---------- 시대별 화풍 배경 (고대 항아리 · 동양 수묵 · 중세 필사본 · 근대 동판화 · 현대 바우하우스) ----------
 const backdropCache = new Map<string, HTMLCanvasElement>();
+const spawnAt = new Map<number, number>();
 function eraBackdrop(era: string, w: number, h: number): HTMLCanvasElement {
   const dpr = window.devicePixelRatio || 1, key = `${era}|${Math.round(w)}|${Math.round(h)}|${dpr}`;
   const hit = backdropCache.get(key); if (hit) return hit;
@@ -825,11 +837,23 @@ function drawPedestal(cx: number, foot: number, p: { tier: number; era: string }
     gr.addColorStop(0, hexA(TIER_AURA[p.tier], a + (p.tier >= 5 ? 0.15 : 0))); gr.addColorStop(1, hexA(TIER_AURA[p.tier], 0));
     ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, foot - cell * 0.42, cell * 0.62, 0, Math.PI * 2); ctx.fill();
   }
+  if (p.tier >= 7) { // 근원: 금테 두른 대리석 기둥 받침
+    const ch = cell * 0.16;
+    ctx.fillStyle = 'rgba(42,24,16,.2)'; ctx.beginPath(); ctx.ellipse(cx, foot + ch + rh * 0.6, rw * 1.1, rh, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#d9d4cc'; ctx.beginPath(); ctx.ellipse(cx, foot + ch, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f5f2ec'; ctx.fillRect(cx - rw, foot, rw * 2, ch);
+    ctx.fillStyle = 'rgba(160,150,140,.35)'; for (let k = -2; k <= 2; k++) ctx.fillRect(cx + k * rw * 0.38 - 1, foot + 2, 2, ch - 2);
+    ctx.fillStyle = '#fbbf24'; ctx.fillRect(cx - rw, foot + ch - 3, rw * 2, 3);
+    ctx.fillStyle = '#fffdf8'; ctx.beginPath(); ctx.ellipse(cx, foot, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = `hsla(${(tick * 2) % 360},90%,65%,.8)`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx, foot, rw * 0.75, rh * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
+  } else {
   ctx.fillStyle = 'rgba(42,24,16,.18)'; ctx.beginPath(); ctx.ellipse(cx, foot + rh * 0.9, rw * 1.05, rh * 0.9, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = side; ctx.beginPath(); ctx.ellipse(cx, foot + rh * 0.45, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = top; ctx.beginPath(); ctx.ellipse(cx, foot, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
   if (deco) { ctx.strokeStyle = deco; ctx.lineWidth = 1.2; ctx.setLineDash([1.5, 3]); ctx.beginPath(); ctx.ellipse(cx, foot, rw * 0.78, rh * 0.62, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
   if (p.era === '동양') { ctx.fillStyle = '#c8323a'; ctx.fillRect(cx + rw * 0.55, foot - rh * 0.2, cell * 0.06, cell * 0.06); }
+  }
   if (p.tier >= 4) { // 반짝이
     const n = p.tier >= 6 ? 3 : 2;
     for (let k = 0; k < n; k++) {
@@ -1784,6 +1808,7 @@ function playPrologue() {
   timers.push(window.setTimeout(end, 12600));
 }
 (window as unknown as { __g: () => Game | null }).__g = () => game; // 테스트용 훅
+(window as unknown as { __phil: unknown }).__phil = PHIL;
 (window as unknown as { __start: (era: string) => void }).__start = (era) => startBattle(STAGES.find((x) => x.era === era) ?? STAGES[0]);
 
 // ---------- ⚙️ 설정 시트 ----------
