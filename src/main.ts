@@ -540,13 +540,10 @@ function draw() {
 
   // ---- 바닥: 스테이지별 질감 (칸 테두리 없이 하나의 필드처럼) ----
   const th = THEME[g.stage.era] ?? THEME['고대'];
-  ctx.fillStyle = th.ground; ctx.fillRect(0, 0, w, fh);
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, fh); ctx.clip();
-  for (let i = 0; i < 140; i++) {
-    const rx = hash(i * 7.1) * w, ry = hash(i * 3.3 + 1) * fh, r = 1 + hash(i) * 2.5;
-    ctx.fillStyle = i % 3 ? th.speck : th.speck2;
-    ctx.beginPath(); ctx.arc(rx, ry, r, 0, Math.PI * 2); ctx.fill();
-  }
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(eraBackdrop(g.stage.era, w, fh), 0, 0, w, fh);
+  ctx.imageSmoothingEnabled = false;
   // ---- 길: 굽이치는 두꺼운 길 + 테두리 ----
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   for (const [color, width] of [[th.roadEdge, 0.9], [th.road, 0.72]] as const) {
@@ -613,7 +610,7 @@ function draw() {
     if (isSel) { ctx.fillStyle = 'rgba(251,191,36,.55)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
     const hk = g.home(t).kind;
     if (hk) { ctx.fillStyle = hk === 'star' ? 'rgba(255,211,107,.75)' : 'rgba(167,236,210,.6)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.15, 0, 0, Math.PI * 2); ctx.fill(); }
-    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.3, cell * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    drawPedestal(cx, foot, p, t.uid);
     if (p.tier >= 7) {
       ctx.save(); ctx.globalAlpha = 0.35 + 0.2 * Math.sin(tick * 0.08);
       ctx.fillStyle = `hsl(${(tick * 2) % 360},90%,60%)`;
@@ -640,7 +637,7 @@ function draw() {
       const nm = (progress.favorite === t.philId ? '💗' : '') + shortName(p.name);
       const fs = Math.max(9, cell * 0.18);
       ctx.font = `${fs}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const nw = ctx.measureText(nm).width + 8, ny = foot + fs * 0.35;
+      const nw = ctx.measureText(nm).width + 8, ny = foot + fs * 0.35 + cell * 0.07;
       ctx.fillStyle = isSel ? '#ffd36b' : 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.roundRect(cx - nw / 2, ny - fs * 0.62, nw, fs * 1.24, fs * 0.6); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#3b2a1e'; ctx.fillText(nm, cx, ny + 0.5);
@@ -744,11 +741,112 @@ function draw() {
 }
 
 // 스테이지별 필드 테마
+// ---------- 시대별 화풍 배경 (고대 항아리 · 동양 수묵 · 중세 필사본 · 근대 동판화 · 현대 바우하우스) ----------
+const backdropCache = new Map<string, HTMLCanvasElement>();
+function eraBackdrop(era: string, w: number, h: number): HTMLCanvasElement {
+  const dpr = window.devicePixelRatio || 1, key = `${era}|${Math.round(w)}|${Math.round(h)}|${dpr}`;
+  const hit = backdropCache.get(key); if (hit) return hit;
+  const c = document.createElement('canvas'); c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const x = c.getContext('2d')!; x.scale(dpr, dpr);
+  const u = Math.min(w, h) / 7; // 한 칸 크기
+  const grad = (a: string, b: string) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, a); gr.addColorStop(1, b); x.fillStyle = gr; x.fillRect(0, 0, w, h); };
+  const band = (y: number, col: string) => { // 미앤더(그리스 뇌문) 띠
+    x.strokeStyle = col; x.lineWidth = Math.max(1.5, u * 0.05); x.lineJoin = 'miter';
+    const s = u * 0.34;
+    for (let i = -1; i * s < w + s; i++) {
+      const bx = i * s, by = y;
+      x.beginPath(); x.moveTo(bx, by + s * 0.8); x.lineTo(bx + s * 0.85, by + s * 0.8); x.lineTo(bx + s * 0.85, by + s * 0.1);
+      x.lineTo(bx + s * 0.25, by + s * 0.1); x.lineTo(bx + s * 0.25, by + s * 0.55); x.lineTo(bx + s * 0.6, by + s * 0.55); x.lineTo(bx + s * 0.6, by + s * 0.35); x.stroke();
+    }
+  };
+  if (era === '동양') {
+    grad('#f8f5ea', '#ece7d6');
+    // 먹 번진 먼 산
+    x.save(); x.filter = `blur(${u * 0.12}px)`;
+    for (const [alpha, base, amp, seed] of [[0.18, h * 0.32, h * 0.2, 1], [0.12, h * 0.55, h * 0.14, 5], [0.08, h * 0.85, h * 0.1, 9]] as const) {
+      x.fillStyle = `rgba(44,51,48,${alpha})`; x.beginPath(); x.moveTo(0, h);
+      for (let i = 0; i <= 24; i++) { const px = (i / 24) * w; x.lineTo(px, base - Math.abs(Math.sin(i * 0.7 + seed)) * amp * (0.5 + hash(i + seed) * 0.6)); }
+      x.lineTo(w, h); x.fill();
+    }
+    x.restore();
+    x.fillStyle = 'rgba(229,72,77,.55)'; x.beginPath(); x.arc(w * 0.76, h * 0.24, u * 0.42, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#c8323a'; x.beginPath(); x.roundRect(w - u * 1.55, h - u * 1.55, u * 0.42, u * 0.42, u * 0.06); x.fill();
+    x.fillStyle = '#fff'; x.font = `${u * 0.3}px serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('智', w - u * 1.34, h - u * 1.33);
+  } else if (era === '중세') {
+    grad('#f3e8cf', '#e6d6b2');
+    // 장미창 (스테인드글라스)
+    const rx = w / 2, ry = h / 2, R = u * 1.25;
+    const cols = ['rgba(37,99,235,.16)', 'rgba(220,38,38,.14)', 'rgba(234,179,8,.16)', 'rgba(22,163,74,.13)'];
+    for (let i = 0; i < 12; i++) { x.fillStyle = cols[i % 4]; x.beginPath(); x.moveTo(rx, ry); x.arc(rx, ry, R, (i / 12) * Math.PI * 2, ((i + 1) / 12) * Math.PI * 2); x.fill(); }
+    x.strokeStyle = 'rgba(120,80,30,.35)'; x.lineWidth = 2; x.beginPath(); x.arc(rx, ry, R, 0, Math.PI * 2); x.stroke(); x.beginPath(); x.arc(rx, ry, R * 0.4, 0, Math.PI * 2); x.stroke();
+    // 금박 이중 테두리
+    x.strokeStyle = 'rgba(202,138,4,.7)'; x.lineWidth = 3; x.strokeRect(u * 1.08, u * 1.08, w - u * 2.16, h - u * 2.16);
+    x.lineWidth = 1; x.strokeRect(u * 1.18, u * 1.18, w - u * 2.36, h - u * 2.36);
+  } else if (era === '근대') {
+    grad('#f1e8d6', '#e2d4b8');
+    // 동판화 해칭
+    x.strokeStyle = 'rgba(110,80,40,.07)'; x.lineWidth = 1;
+    for (let i = -h; i < w; i += 6) { x.beginPath(); x.moveTo(i, h); x.lineTo(i + h, 0); x.stroke(); }
+    // 나침반 장미
+    const cx = w * 0.74, cy = h * 0.26, R = u * 0.5;
+    x.strokeStyle = 'rgba(90,60,30,.35)'; x.lineWidth = 1.2; x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.stroke();
+    x.fillStyle = 'rgba(90,60,30,.3)';
+    for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2; x.beginPath(); x.moveTo(cx + Math.cos(a) * R * 1.2, cy + Math.sin(a) * R * 1.2); x.lineTo(cx + Math.cos(a + 0.4) * R * 0.25, cy + Math.sin(a + 0.4) * R * 0.25); x.lineTo(cx + Math.cos(a - 0.4) * R * 0.25, cy + Math.sin(a - 0.4) * R * 0.25); x.fill(); }
+    x.strokeStyle = 'rgba(90,60,30,.4)'; x.lineWidth = 2; x.strokeRect(u * 1.08, u * 1.08, w - u * 2.16, h - u * 2.16);
+  } else if (era === '현대') {
+    grad('#eef0f6', '#dfe3ee');
+    const shapes: [string, number, number, number][] = [['rgba(239,68,68,.13)', 0.18, 0.2, 0.9], ['rgba(37,99,235,.12)', 0.8, 0.75, 1.1], ['rgba(250,204,21,.18)', 0.75, 0.18, 0.6]];
+    for (const [col, fx, fy, r] of shapes) { x.fillStyle = col; x.beginPath(); x.arc(w * fx, h * fy, u * r, 0, Math.PI * 2); x.fill(); }
+    x.fillStyle = 'rgba(24,24,27,.07)'; x.fillRect(w * 0.08, h * 0.62, u * 1.6, u * 0.5); x.fillRect(w * 0.6, h * 0.08, u * 0.18, u * 2);
+  } else { // 고대: 테라코타 + 흑색상 미앤더
+    grad('#f8d9b4', '#efbf8e');
+    x.fillStyle = 'rgba(255,227,154,.55)'; x.beginPath(); x.arc(w * 0.74, h * 0.26, u * 0.45, 0, Math.PI * 2); x.fill();
+    x.fillStyle = 'rgba(201,111,60,.12)';
+    for (let i = 0; i < 60; i++) { x.beginPath(); x.arc(hash(i * 7.1) * w, hash(i * 3.3 + 1) * h, 1 + hash(i) * 2.2, 0, Math.PI * 2); x.fill(); }
+    x.save(); x.beginPath(); x.rect(u * 1.05, 0, w - u * 2.1, h); x.clip();
+    x.fillStyle = 'rgba(217,119,63,.35)'; x.fillRect(0, u * 1.05, w, u * 0.42); x.fillRect(0, h - u * 1.47, w, u * 0.42);
+    band(u * 1.09, 'rgba(42,24,16,.5)'); band(h - u * 1.43, 'rgba(42,24,16,.5)'); x.restore();
+  }
+  backdropCache.set(key, c);
+  return c;
+}
+
+/** 철학자 받침대: 시대별 원판 + 등급 후광 + 반짝이 (도트 자체는 그대로) */
+const PEDESTAL: Record<string, [string, string, string | null]> = {
+  고대: ['#e8925a', '#c96f3c', '#2a1810'], 동양: ['#f4f0e2', '#cfcab8', null], 중세: ['#eadcb8', '#b8954a', '#ca8a04'],
+  근대: ['#e9dcc2', '#b9a77f', null], 현대: ['#e4e7ee', '#a9b1bf', null],
+};
+function drawPedestal(cx: number, foot: number, p: { tier: number; era: string }, uid: number) {
+  const [top, side, deco] = PEDESTAL[p.era] ?? PEDESTAL['고대'];
+  const rw = cell * 0.44, rh = cell * 0.13;
+  if (p.tier >= 3) { // 등급 후광
+    const gr = ctx.createRadialGradient(cx, foot - cell * 0.42, 0, cx, foot - cell * 0.42, cell * 0.62);
+    const a = 0.22 + 0.08 * Math.sin(tick * 0.06 + uid);
+    gr.addColorStop(0, hexA(TIER_AURA[p.tier], a + (p.tier >= 5 ? 0.15 : 0))); gr.addColorStop(1, hexA(TIER_AURA[p.tier], 0));
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, foot - cell * 0.42, cell * 0.62, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(42,24,16,.18)'; ctx.beginPath(); ctx.ellipse(cx, foot + rh * 0.9, rw * 1.05, rh * 0.9, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = side; ctx.beginPath(); ctx.ellipse(cx, foot + rh * 0.45, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = top; ctx.beginPath(); ctx.ellipse(cx, foot, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
+  if (deco) { ctx.strokeStyle = deco; ctx.lineWidth = 1.2; ctx.setLineDash([1.5, 3]); ctx.beginPath(); ctx.ellipse(cx, foot, rw * 0.78, rh * 0.62, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+  if (p.era === '동양') { ctx.fillStyle = '#c8323a'; ctx.fillRect(cx + rw * 0.55, foot - rh * 0.2, cell * 0.06, cell * 0.06); }
+  if (p.tier >= 4) { // 반짝이
+    const n = p.tier >= 6 ? 3 : 2;
+    for (let k = 0; k < n; k++) {
+      const ph = (tick * 0.04 + k * 2.1 + uid) % (Math.PI * 2), al = Math.max(0, Math.sin(ph));
+      const sx = cx + Math.cos(k * 2.4 + uid) * cell * 0.4, sy = foot - cell * (0.5 + 0.25 * Math.sin(k * 1.7 + uid));
+      ctx.globalAlpha = al; ctx.fillStyle = p.tier >= 7 ? '#fff' : TIER_AURA[p.tier];
+      const s = cell * 0.05; ctx.fillRect(sx - s / 2, sy - s * 1.5, s, s * 3); ctx.fillRect(sx - s * 1.5, sy - s / 2, s * 3, s); ctx.globalAlpha = 1;
+    }
+  }
+}
+function hexA(hex: string, a: number) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+
 const THEME: Record<string, { ground: string; speck: string; speck2: string; road: string; roadEdge: string; roadLine: string; decor: string[] }> = {
   고대: { ground: '#f6ead2', speck: '#ecdcbc', speck2: '#fff6e4', road: '#fff3d6', roadEdge: '#b88a4f', roadLine: 'rgba(255,255,255,.5)', decor: ['column', 'olive', 'amphora'] },
-  중세: { ground: '#d9cdea', speck: '#cbbde0', speck2: '#e6dcf3', road: '#f3eadb', roadEdge: '#8b7aa8', roadLine: 'rgba(139,122,168,.6)', decor: ['candle', 'stone', 'banner'] },
-  동양: { ground: '#cdeeb5', speck: '#bde4a1', speck2: '#ddf5c9', road: '#fff7e2', roadEdge: '#9cbf7a', roadLine: 'rgba(255,255,255,.45)', decor: ['bamboo', 'pine', 'lantern'] },
-  근대: { ground: '#d4dde8', speck: '#c5d0dd', speck2: '#e2e9f1', road: '#fdf6e9', roadEdge: '#7b8ea6', roadLine: 'rgba(123,142,166,.7)', decor: ['gear', 'lamp', 'crate'] },
+  중세: { ground: '#d9cdea', speck: '#cbbde0', speck2: '#e6dcf3', road: '#fbf5e6', roadEdge: '#a08458', roadLine: 'rgba(139,122,168,.6)', decor: ['candle', 'stone', 'banner'] },
+  동양: { ground: '#cdeeb5', speck: '#bde4a1', speck2: '#ddf5c9', road: '#fffdf6', roadEdge: '#9aa096', roadLine: 'rgba(255,255,255,.45)', decor: ['bamboo', 'pine', 'lantern'] },
+  근대: { ground: '#d4dde8', speck: '#c5d0dd', speck2: '#e2e9f1', road: '#fdf8ee', roadEdge: '#9a8462', roadLine: 'rgba(123,142,166,.7)', decor: ['gear', 'lamp', 'crate'] },
   현대: { ground: '#e9d8ff', speck: '#dcc6ff', speck2: '#f3e9ff', road: '#fff0fa', roadEdge: '#b388ff', roadLine: 'rgba(236,72,153,.6)', decor: ['letter', 'crystal', 'screen'] },
 };
 const hash = (n: number) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
@@ -1686,6 +1784,7 @@ function playPrologue() {
   timers.push(window.setTimeout(end, 12600));
 }
 (window as unknown as { __g: () => Game | null }).__g = () => game; // 테스트용 훅
+(window as unknown as { __start: (era: string) => void }).__start = (era) => startBattle(STAGES.find((x) => x.era === era) ?? STAGES[0]);
 
 // ---------- ⚙️ 설정 시트 ----------
 $('open-settings').onclick = () => { sfx.click(); $('settings').classList.remove('hidden'); cloudBadge(); if (me && lastPw && cloudState !== 'ok') void syncCloud(me.id, lastPw); };
