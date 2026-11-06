@@ -8,7 +8,7 @@ export const QA_GONOE = 100000;
 export const QA_GEMS = 10000;
 
 // ---------- 고민방 ----------
-export const IDLE_PER_SEC = 0.5;
+export const IDLE_PER_SEC = 0.25; // 2026-11 방치 절반 (8시간 ≈ 7천)
 export const IDLE_CAP_HOURS = 8;
 export const tapGain = (p: Progress) => (1 + p.tapLevel) * (passOn(p) ? 2 : 1);
 export const tapUpgradeCost = (p: Progress) => Math.round(50 * 1.6 ** p.tapLevel);
@@ -29,7 +29,7 @@ export const battleReward = (wave: number, win: boolean) => wave * 15 + (win ? 3
 export const FIRST_CLEAR_GEMS = [30, 50, 80, 120, 200];
 
 // ---------- 뽑기 ----------
-export const CARD_COST = 100, CARD_COST_10 = 900;
+export const CARD_COST = 200, CARD_COST_10 = 1800;
 export const TOOL_COST = 150, TOOL_COST_10 = 1350;
 
 /** 철학자 카드 등급 확률 (히든 제외) */

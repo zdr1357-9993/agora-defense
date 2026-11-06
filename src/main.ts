@@ -7,14 +7,15 @@ import { ITEM, isOwner, ITEM_BONUS } from './items';
 import {
   homage, statsOf, TYPE_ICON, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, CAT_NAME, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, UPGRADE, type Stage,
 } from './data';
-import { philosopherSprite, skinnedSprite, SKINS, monsterSprite, itemSprite, TIER_AURA } from './sprites';
+import { philosopherSprite, skinnedSprite, SKINS, monsterSprite, monsterSprite2, itemSprite, TIER_AURA } from './sprites';
 import { SKILLS } from './skills';
 import { sfx, isMuted, toggleMute } from './sfx';
 import { daily, bump, MISSIONS, ALL_CLEAR, ATTEND, claimable, claimMission, missionDone, rewardText, canAttend, attend, attendStreak, adFree, adFreeLabel, passOn, passDaysLeft, claimPass, PASS_DAILY, adsLeft, useAd, give, RAID_PER_DAY } from './live';
 import { cloudSignUp, cloudLogin, cloudLoad, cloudSave, flush as cloudFlush, cloudLogout, cloudState, cloudMsg } from './cloud';
 import { setSaveHook, adoptProgress, setAccount, hasSave, loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, awakenLevel, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL, AWAKEN_MAX, AWAKEN_EVERY } from './save';
 import { LINES, UNLOCK_LEVELS } from './lines';
-import { setCardFilter, settleIdle, idleRate, tapGain, tapUpgradeCost, battleReward, pull, canAfford, PULLS, SHOP, buy, CUR_ICON, PITY_LIMIT, FIRST_CLEAR_GEMS, CARD_RATES, QA_GONOE, QA_GEMS, IDLE_PER_SEC, type PullOption } from './meta';
+import { setCardFilter, settleIdle, idleRate, tapGain, tapUpgradeCost, battleReward, pull, canAfford, PULLS, SHOP, buy, CUR_ICON, PITY_LIMIT, FIRST_CLEAR_GEMS, CARD_RATES, QA_GONOE, QA_GEMS, IDLE_PER_SEC, CARD_COST, type PullOption } from './meta';
+const STORY_WAVES = 20; // 스토리 한 판 ≈ 8분 (보스 10·20웨이브)
 import { ITEMS } from './items';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -44,6 +45,8 @@ function lockReason(r: { result: string; logic: string }): string {
 const itemUrl = (id: string) => itemSprite(id).toDataURL();
 /** 착용 스킨이 반영된 도트 */
 const spriteFor = (id: string) => skinnedSprite(PHIL.get(id)!, progress?.skinOn?.[id]);
+const monUrl = new Map<string, string>();
+const monsterUrl = (era: string, k: 'normal' | 'fast' | 'tank' | 'swarm' | 'boss') => { const key = era + k; if (!monUrl.has(key)) monUrl.set(key, monsterSprite2(era, k).toDataURL()); return monUrl.get(key)!; };
 const portrait = (id: string) => {
   const key = id + (progress?.skinOn?.[id] ?? '');
   if (!spriteUrl.has(key)) spriteUrl.set(key, spriteFor(id).toDataURL());
@@ -157,7 +160,7 @@ function renderCodex() {
     const n = progress.cards[p.id] ?? 0, lv = cardLevel(n);
     const d = document.createElement('div');
     d.className = `card t${p.tier} ${known ? '' : 'unknown'} ${n ? 'owned' : ''}`;
-    d.innerHTML = `${progress.favorite === p.id ? '<span class="fav">💗</span>' : ''}${lv ? `<span class="lv ${awakenLevel(n) ? 'aw' : ''}">${awakenLevel(n) ? '✦' + awakenLevel(n) : 'Lv.' + lv}</span>` : ''}<img src="${portrait(p.id)}"><b>${known ? shortName(p.name) : '???'}</b>`;
+    d.innerHTML = `${progress.favorite === p.id ? '<span class="fav">💗</span>' : ''}${lv ? `<span class="lv ${awakenLevel(n) ? 'aw' : ''}">${awakenLevel(n) ? '✦' + awakenLevel(n) : 'Lv.' + lv}</span>` : ''}<img src="${pedArt(p.id)}"><b>${known ? shortName(p.name) : '???'}</b>`;
     if (known) d.onclick = () => openTcg(p.id);
     grid.appendChild(d);
   }
@@ -289,6 +292,7 @@ new ResizeObserver(resize).observe($('battle'));
 function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   if (story) { const base = STAGES.find((x) => x.id === story.base)!; s = { ...base, name: story.title, boss10: story.boss, boss20: story.boss, story: story.when }; }
   spawnAt.clear();
+  eraWipe(s.era, story ? story.title : s.name, story ? story.when : '');
   game = new Game(s, {
     cardMult: (id) => cardMult(progress.cards[id] ?? 0),
     awaken: (id) => awakenLevel(progress.cards[id] ?? 0),
@@ -296,7 +300,7 @@ function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   }, story ? 'easy' : oneTool ? 'normal' : diffId, oneTool);
   if (story) game.storyId = story.id;
   if (!oneTool) game.summonPool = summonPool(story);
-  if (story?.waves) game.waveCap = story.waves;
+  if (story) game.waveCap = story.waves ?? STORY_WAVES;
   // 거장 이상은 카드(기억)를 가진 철학자만 조합할 수 있다
   if (!QA_MODE) {
     // 잠금 규칙: ① 거장·근원은 카드 필요 ② 지금 시대의 상한보다 높은 등급은 카드가 있어야만 ③ 지름길 조합은 카드 Lv.3부터
@@ -441,7 +445,7 @@ function updateUI() {
 
   // 정보창
   const info = $('info');
-  const infoKey = `${selected?.uid}|${selected?.philId}|${selected?.level}|${g.towers.length}|${selected?.cy}|${selected && g.upgradeCost(selected) !== null ? g.gold >= g.upgradeCost(selected)! : ''}`;
+  const infoKey = `${g.wave}|${g.running}|${selected?.uid}|${selected?.philId}|${selected?.level}|${g.towers.length}|${selected?.cy}|${selected && g.upgradeCost(selected) !== null ? g.gold >= g.upgradeCost(selected)! : ''}`;
   if (infoKey !== lastInfoKey) {
     lastInfoKey = infoKey;
     info.className = '';
@@ -456,7 +460,11 @@ function updateUI() {
       if (up) { (up as HTMLButtonElement).disabled = g.gold < cost!; up.onclick = () => { if (selected && g.upgrade(selected)) { lastInfoKey = ''; updateUI(); } }; }
     } else {
       info.className = 'icard empty';
-      info.innerHTML = `<div class="ic-hint">👆 철학자를 눌러 보세요</div><div class="ic-tags"><span>🪑 ${g.fielded().length}/25</span><span>💤 ${BENCH - g.benchSlots().length}/${BENCH}</span></div><small>선택한 뒤 빈 칸을 누르면 옮겨요</small>`;
+      const nk = g.waveKind(), nkName = { normal: g.stage.enemyEarly, fast: '빠른 도그마', tank: '단단한 도그마', swarm: '도그마 떼', boss: g.bossName() }[nk];
+      const nkTip = { normal: '기본 무리', fast: '느리게 만드는 철학자가 좋아요', tank: '한 방이 센 철학자가 좋아요', swarm: '범위 공격이 좋아요', boss: '강화를 미리 해 두세요' }[nk];
+      info.innerHTML = `<div class="ic-next"><div class="ic-mon"><img src="${monsterUrl(g.stage.era, nk)}"></div><div><small>${g.running ? '지금' : '다음'} · ${g.running ? g.wave : g.wave + 1}웨이브</small><b>${nkName}</b><em>${nkTip}</em></div></div>
+        <div class="ic-meters"><div><span>필드</span><i style="--v:${g.fielded().length / 25}"></i><b>${g.fielded().length}/25</b></div><div><span>대기석</span><i style="--v:${(BENCH - g.benchSlots().length) / BENCH}"></i><b>${BENCH - g.benchSlots().length}/${BENCH}</b></div></div>
+        <small class="ic-tip">철학자를 탭하면 스킬·강화 · 빈 칸을 누르면 옮겨요</small>`;
     }
   }
 
@@ -680,7 +688,10 @@ function draw() {
     ctx.beginPath(); ctx.ellipse(x, y + sz * 0.42, sz * 0.32, sz * 0.13, 0, 0, Math.PI * 2); ctx.fill();
     const ksz = e.kind === 'tank' ? 1.25 : e.kind === 'swarm' ? 0.7 : e.kind === 'fast' ? 0.85 : 1;
     const esz = sz * ksz;
-    ctx.drawImage(monsterSprite(g.stage.era, e.boss ? 'boss' : g.wave < 10 ? 'early' : 'late'), x - esz / 2, y - esz / 2 - walk, esz, esz);
+    const hf = hitFlash.get(e.uid) ?? 0;
+    const squash = 1 + hf * 0.12;
+    ctx.drawImage(monsterSprite2(g.stage.era, e.boss ? 'boss' : e.kind, g.wave >= 15), x - (esz * squash) / 2, y - esz / 2 - walk + esz * (1 - 1 / squash), esz * squash, esz / squash);
+    if (hf > 0.05) { ctx.save(); ctx.globalAlpha = hf * 0.7; ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(whiteSprite(monsterSprite2(g.stage.era, e.boss ? 'boss' : e.kind, g.wave >= 15)), x - (esz * squash) / 2, y - esz / 2 - walk + esz * (1 - 1 / squash), esz * squash, esz / squash); ctx.restore(); }
     if ((e.shieldT ?? 0) > 0) { ctx.strokeStyle = 'rgba(255,211,107,.9)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - walk, esz * 0.6, 0, Math.PI * 2); ctx.stroke(); }
     if ((e.slowT ?? 0) > 0) { ctx.fillStyle = 'rgba(169,216,255,.35)'; ctx.beginPath(); ctx.arc(x, y - walk, esz * 0.45, 0, Math.PI * 2); ctx.fill(); }
     if ((e.stunT ?? 0) > 0) { ctx.font = `${cell * 0.25}px sans-serif`; ctx.fillText('💫', x, y - esz / 2 - walk); }
@@ -828,41 +839,75 @@ const PEDESTAL: Record<string, [string, string, string | null]> = {
   고대: ['#e8925a', '#c96f3c', '#2a1810'], 동양: ['#f4f0e2', '#cfcab8', null], 중세: ['#eadcb8', '#b8954a', '#ca8a04'],
   근대: ['#e9dcc2', '#b9a77f', null], 현대: ['#e4e7ee', '#a9b1bf', null],
 };
-function drawPedestal(cx: number, foot: number, p: { tier: number; era: string }, uid: number) {
+function drawPedestal(cx: number, foot: number, p: { tier: number; era: string }, uid: number, X: CanvasRenderingContext2D = ctx, C: number = cell) {
   const [top, side, deco] = PEDESTAL[p.era] ?? PEDESTAL['고대'];
-  const rw = cell * 0.44, rh = cell * 0.13;
+  const rw = C * 0.44, rh = C * 0.13;
   if (p.tier >= 3) { // 등급 후광
-    const gr = ctx.createRadialGradient(cx, foot - cell * 0.42, 0, cx, foot - cell * 0.42, cell * 0.62);
+    const gr = X.createRadialGradient(cx, foot - C * 0.42, 0, cx, foot - C * 0.42, C * 0.62);
     const a = 0.22 + 0.08 * Math.sin(tick * 0.06 + uid);
     gr.addColorStop(0, hexA(TIER_AURA[p.tier], a + (p.tier >= 5 ? 0.15 : 0))); gr.addColorStop(1, hexA(TIER_AURA[p.tier], 0));
-    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, foot - cell * 0.42, cell * 0.62, 0, Math.PI * 2); ctx.fill();
+    X.fillStyle = gr; X.beginPath(); X.arc(cx, foot - C * 0.42, C * 0.62, 0, Math.PI * 2); X.fill();
   }
   if (p.tier >= 7) { // 근원: 금테 두른 대리석 기둥 받침
-    const ch = cell * 0.16;
-    ctx.fillStyle = 'rgba(42,24,16,.2)'; ctx.beginPath(); ctx.ellipse(cx, foot + ch + rh * 0.6, rw * 1.1, rh, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#d9d4cc'; ctx.beginPath(); ctx.ellipse(cx, foot + ch, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#f5f2ec'; ctx.fillRect(cx - rw, foot, rw * 2, ch);
-    ctx.fillStyle = 'rgba(160,150,140,.35)'; for (let k = -2; k <= 2; k++) ctx.fillRect(cx + k * rw * 0.38 - 1, foot + 2, 2, ch - 2);
-    ctx.fillStyle = '#fbbf24'; ctx.fillRect(cx - rw, foot + ch - 3, rw * 2, 3);
-    ctx.fillStyle = '#fffdf8'; ctx.beginPath(); ctx.ellipse(cx, foot, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.stroke();
-    ctx.strokeStyle = `hsla(${(tick * 2) % 360},90%,65%,.8)`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(cx, foot, rw * 0.75, rh * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
+    const ch = C * 0.16;
+    X.fillStyle = 'rgba(42,24,16,.2)'; X.beginPath(); X.ellipse(cx, foot + ch + rh * 0.6, rw * 1.1, rh, 0, 0, Math.PI * 2); X.fill();
+    X.fillStyle = '#d9d4cc'; X.beginPath(); X.ellipse(cx, foot + ch, rw, rh, 0, 0, Math.PI * 2); X.fill();
+    X.fillStyle = '#f5f2ec'; X.fillRect(cx - rw, foot, rw * 2, ch);
+    X.fillStyle = 'rgba(160,150,140,.35)'; for (let k = -2; k <= 2; k++) X.fillRect(cx + k * rw * 0.38 - 1, foot + 2, 2, ch - 2);
+    X.fillStyle = '#fbbf24'; X.fillRect(cx - rw, foot + ch - 3, rw * 2, 3);
+    X.fillStyle = '#fffdf8'; X.beginPath(); X.ellipse(cx, foot, rw, rh, 0, 0, Math.PI * 2); X.fill();
+    X.strokeStyle = '#f59e0b'; X.lineWidth = 2; X.stroke();
+    X.strokeStyle = `hsla(${(tick * 2) % 360},90%,65%,.8)`; X.lineWidth = 1.5; X.beginPath(); X.ellipse(cx, foot, rw * 0.75, rh * 0.6, 0, 0, Math.PI * 2); X.stroke();
   } else {
-  ctx.fillStyle = 'rgba(42,24,16,.18)'; ctx.beginPath(); ctx.ellipse(cx, foot + rh * 0.9, rw * 1.05, rh * 0.9, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = side; ctx.beginPath(); ctx.ellipse(cx, foot + rh * 0.45, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = top; ctx.beginPath(); ctx.ellipse(cx, foot, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
-  if (deco) { ctx.strokeStyle = deco; ctx.lineWidth = 1.2; ctx.setLineDash([1.5, 3]); ctx.beginPath(); ctx.ellipse(cx, foot, rw * 0.78, rh * 0.62, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
-  if (p.era === '동양') { ctx.fillStyle = '#c8323a'; ctx.fillRect(cx + rw * 0.55, foot - rh * 0.2, cell * 0.06, cell * 0.06); }
+  X.fillStyle = 'rgba(42,24,16,.18)'; X.beginPath(); X.ellipse(cx, foot + rh * 0.9, rw * 1.05, rh * 0.9, 0, 0, Math.PI * 2); X.fill();
+  X.fillStyle = side; X.beginPath(); X.ellipse(cx, foot + rh * 0.45, rw, rh, 0, 0, Math.PI * 2); X.fill();
+  X.fillStyle = top; X.beginPath(); X.ellipse(cx, foot, rw, rh, 0, 0, Math.PI * 2); X.fill();
+  if (deco) { X.strokeStyle = deco; X.lineWidth = 1.2; X.setLineDash([1.5, 3]); X.beginPath(); X.ellipse(cx, foot, rw * 0.78, rh * 0.62, 0, 0, Math.PI * 2); X.stroke(); X.setLineDash([]); }
+  if (p.era === '동양') { X.fillStyle = '#c8323a'; X.fillRect(cx + rw * 0.55, foot - rh * 0.2, C * 0.06, C * 0.06); }
   }
   if (p.tier >= 4) { // 반짝이
     const n = p.tier >= 6 ? 3 : 2;
     for (let k = 0; k < n; k++) {
       const ph = (tick * 0.04 + k * 2.1 + uid) % (Math.PI * 2), al = Math.max(0, Math.sin(ph));
-      const sx = cx + Math.cos(k * 2.4 + uid) * cell * 0.4, sy = foot - cell * (0.5 + 0.25 * Math.sin(k * 1.7 + uid));
-      ctx.globalAlpha = al; ctx.fillStyle = p.tier >= 7 ? '#fff' : TIER_AURA[p.tier];
-      const s = cell * 0.05; ctx.fillRect(sx - s / 2, sy - s * 1.5, s, s * 3); ctx.fillRect(sx - s * 1.5, sy - s / 2, s * 3, s); ctx.globalAlpha = 1;
+      const sx = cx + Math.cos(k * 2.4 + uid) * C * 0.4, sy = foot - C * (0.5 + 0.25 * Math.sin(k * 1.7 + uid));
+      X.globalAlpha = al; X.fillStyle = p.tier >= 7 ? '#fff' : TIER_AURA[p.tier];
+      const s = C * 0.05; X.fillRect(sx - s / 2, sy - s * 1.5, s, s * 3); X.fillRect(sx - s * 1.5, sy - s / 2, s * 3, s); X.globalAlpha = 1;
     }
   }
+}
+
+/** 고민방용 큰 초상: 시대 배경 위 받침대 + 후광 + 도트 */
+const heroCache = new Map<string, string>();
+function heroPortrait(id: string): string {
+  const key = id + (progress?.skinOn?.[id] ?? '');
+  const hit = heroCache.get(key); if (hit) return hit;
+  const p = PHIL.get(id)!, W = 220, H = 230, C = 150;
+  const c = document.createElement('canvas'); c.width = W * 2; c.height = H * 2;
+  const X = c.getContext('2d')!; X.scale(2, 2); X.imageSmoothingEnabled = false;
+  const foot = H - 40;
+  drawPedestal(W / 2, foot, p, 1, X, C);
+  const sz = C * 1.05;
+  X.drawImage(spriteFor(id), W / 2 - sz / 2, foot - sz * 0.97, sz, sz);
+  const url = c.toDataURL(); heroCache.set(key, url); return url;
+}
+/** 카드용 작은 초상: 받침대 + 후광 + 도트 */
+function pedArt(id: string): string {
+  const key = 'c' + id + (progress?.skinOn?.[id] ?? '');
+  const hit = heroCache.get(key); if (hit) return hit;
+  const p = PHIL.get(id)!, W = 100, H = 100, C = 70;
+  const c = document.createElement('canvas'); c.width = W * 2; c.height = H * 2;
+  const X = c.getContext('2d')!; X.scale(2, 2); X.imageSmoothingEnabled = false;
+  const foot = H - 18;
+  drawPedestal(W / 2, foot, p, 1, X, C);
+  const sz = C * 1.02; X.drawImage(spriteFor(id), W / 2 - sz / 2, foot - sz * 0.97, sz, sz);
+  const url = c.toDataURL(); heroCache.set(key, url); return url;
+}
+function eraSky(era: string): string {
+  const k = 'sky' + era; const hit = heroCache.get(k); if (hit) return hit;
+  const big = eraBackdrop(era, 560, 560), dpr = big.width / 560;
+  const c = document.createElement('canvas'); c.width = 420 * dpr; c.height = 280 * dpr;
+  c.getContext('2d')!.drawImage(big, 70 * dpr, 40 * dpr, 420 * dpr, 280 * dpr, 0, 0, c.width, c.height);
+  const url = c.toDataURL(); heroCache.set(k, url); return url;
 }
 function hexA(hex: string, a: number) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 
@@ -949,8 +994,8 @@ function renderRoom() {
   $('tab-room').innerHTML = `
     <div class="room">
       <div class="room-head"><h2>🤔 고민방</h2><button class="info-btn" id="room-info">i</button></div>
-      <div class="room-sky"><div class="room-bubble">“${p.quote}”</div>
-        <button id="thinker" class="thinker"><img src="${portrait(p.id)}"></button>
+      <div class="room-sky" style="background-image:url(${eraSky(p.era)})"><div class="room-bubble">“${p.quote}”</div>
+        <button id="thinker" class="thinker t${p.tier}"><img src="${heroPortrait(p.id)}"></button>
         <div class="room-floor"></div></div>
       <div class="room-stat"><span>고뇌</span><b id="room-gonoe">${Math.floor(progress.gonoe).toLocaleString()}</b></div>
       <div class="room-rates"><span>👆 탭당 <b>+${tapGain(progress)}</b></span><span>⏳ 초당 <b>+${rate.toFixed(1)}</b></span></div>
@@ -991,7 +1036,7 @@ function renderGacha() {
   $('tab-gacha').innerHTML = `
     <div class="gacha-box master-box">
       <div class="gb-head"><h2>✨ 거장 초대</h2><button class="info-btn" data-ginfo="m">i</button></div>
-      <div class="banner-art">${PHILOSOPHERS.filter((p) => p.tier === 7 && !p.hidden).map((p) => `<img src="${portrait(p.id)}">`).join('')}</div>
+      <div class="banner-art">${PHILOSOPHERS.filter((p) => p.tier === 7 && !p.hidden).map((p) => `<img src="${pedArt(p.id)}">`).join('')}</div>
       <div class="row">${pullBtn('m10', 'gold')}${pullBtn('m1', 'pink')}</div>
     </div>
     <div class="gacha-box card-box">
@@ -1052,7 +1097,7 @@ function gachaShow(o: PullOption, got: string[], before: Record<string, number>)
       const now = cardLevel(counted[id]);
       const tag = prev === 0 ? '<i class="new">NEW</i>' : now > prev ? `<i class="lvup">Lv.${now}!</i>` : '';
       el.className = `gcard t${tier} ${tier >= 6 ? 'legend' : ''} ${tier >= 7 ? 'mythic' : ''}`;
-      el.innerHTML = `${tag}<img src="${portrait(id)}"><b>${p.name}</b><small>${TIER_NAME[tier]}</small>`;
+      el.innerHTML = `${tag}<img src="${pedArt(id)}"><b>${p.name}</b><small>${TIER_NAME[tier]}</small>`;
       if (tier >= 6) { burst(ov, tier - 1); shakeEl(ov); }
     }
     sfx.reveal(tier - 1);
@@ -1169,7 +1214,10 @@ function rateSheet() {
 // ---------- 타격감 연출 ----------
 interface Shape { kind: string; x: number; y: number; tx?: number; ty?: number; r?: number; life: number; max: number }
 const shapes: Shape[] = [];
-interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; text?: string; star?: boolean }
+interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; text?: string; star?: boolean; sq?: boolean; rot?: number; g?: number }
+const hitFlash = new Map<number, number>();
+const BOSS_BAND: Record<string, [string, string, string]> = { 고대: ['#7a3318', '#d9773f', 'rgba(255,211,107,.7)'], 중세: ['#4c1d1d', '#991b1b', 'rgba(251,191,36,.7)'], 동양: ['#1c1917', '#3f3f46', 'rgba(229,72,77,.7)'], 근대: ['#1e293b', '#1e3a8a', 'rgba(147,197,253,.7)'], 현대: ['#3b0764', '#7e22ce', 'rgba(34,211,238,.7)'] };
+const ERA_SHARD: Record<string, string[]> = { 고대: ['#e8925a', '#2a1810', '#fff3d6', '#f5c04a'], 중세: ['#ca8a04', '#7f1d1d', '#fde68a', '#94a3b8'], 동양: ['#1c1917', '#c8323a', '#f6f2e4', '#6b7280'], 근대: ['#b45309', '#64748b', '#fde68a', '#e2d4b8'], 현대: ['#a855f7', '#22d3ee', '#f43f5e', '#fde047'] };
 const particles: Particle[] = [];
 const recoil = new Map<number, number>();
 let shake = 0;
@@ -1195,10 +1243,13 @@ function consumeFx(g: Game) {
     }
     if (f.type === 'shot') recoil.set(f.uid, 1);
     else if (f.type === 'hit') {
+      if (f.uid !== undefined) hitFlash.set(f.uid, 1);
       for (let i = 0; i < (f.big ? 7 : 3); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-2.5, 2.5), vy: rnd(-3, -0.5), life: 0.35, max: 0.35, color: f.big ? '#ffd36b' : '#ffffff', size: rnd(0.04, 0.08), star: f.big });
       particles.push({ x: f.x + rnd(-0.15, 0.15), y: f.y - 0.3, vx: 0, vy: -1.2, life: 0.7, max: 0.7, color: f.big ? '#ff7a59' : '#3b2a1e', size: f.big ? 0.32 : 0.24, text: fmt(f.dmg) });
     } else if (f.type === 'kill') {
-      for (let i = 0; i < (f.boss ? 40 : 12); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-3, 3), vy: rnd(-3.5, 1), life: 0.6, max: 0.6, color: PASTEL[i % PASTEL.length], size: rnd(0.06, 0.13) });
+      const shard = ERA_SHARD[g.stage.era] ?? PASTEL;
+      for (let i = 0; i < (f.boss ? 44 : 14); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-3.2, 3.2), vy: rnd(-4, 0.5), life: 0.7, max: 0.7, color: shard[i % shard.length], size: rnd(0.05, 0.12), sq: true, rot: rnd(0, 6), g: 7 });
+      shapes.push({ kind: 'pop', x: f.x, y: f.y, r: f.boss ? 1.6 : 0.6, life: 0.3, max: 0.3 });
       particles.push({ x: f.x, y: f.y - 0.2, vx: 0, vy: -0.8, life: 0.9, max: 0.9, color: '#e3a72f', size: 0.28, text: `+${f.gold}G` });
       if (f.boss) { shake = 0.6; banner = { text: '🎉 논파 성공!', t: 1.8 }; }
     } else if (f.type === 'morph') {
@@ -1221,12 +1272,20 @@ function updateFx(dt: number) {
   for (const s of shapes) s.life -= dt;
   for (let i = shapes.length - 1; i >= 0; i--) if (shapes[i].life <= 0) shapes.splice(i, 1);
   for (const [k, v] of recoil) { const n = v - dt * 6; if (n <= 0) recoil.delete(k); else recoil.set(k, n); }
+  for (const [k, v] of hitFlash) { const n = v - dt * 9; if (n <= 0) hitFlash.delete(k); else hitFlash.set(k, n); }
   if (shake > 0) shake = Math.max(0, shake - dt);
   for (const [k, v] of speeches) { v.t -= dt; if (v.t <= 0) speeches.delete(k); }
   if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
   if (bossIntro) { bossIntro.t -= dt; if (bossIntro.t <= 0) bossIntro = null; }
 }
 
+const whiteCache = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
+function whiteSprite(src: HTMLCanvasElement) {
+  const hit = whiteCache.get(src); if (hit) return hit;
+  const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+  const x = c.getContext('2d')!; x.drawImage(src, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  whiteCache.set(src, c); return c;
+}
 function drawStar(x: number, y: number, r: number) {
   ctx.beginPath();
   for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
@@ -1238,6 +1297,8 @@ function drawShapes() {
     const k = 1 - s.life / s.max, a = s.life / s.max, X = s.x * cellX, Y = s.y * cell;
     ctx.save(); ctx.globalAlpha = a;
     switch (s.kind) {
+      case 'pop': // 처치 순간 흰 링
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 4 * a + 1; ctx.beginPath(); ctx.arc(X, Y, (s.r ?? 0.6) * cell * (0.2 + k * 0.8), 0, Math.PI * 2); ctx.stroke(); break;
       case 'splash': // 원형 폭발
         ctx.fillStyle = 'rgba(255,179,107,.35)'; ctx.strokeStyle = '#ff9f43'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(X, Y, (s.r ?? 1) * cell * (0.3 + k * 0.7), 0, Math.PI * 2); ctx.fill(); ctx.stroke(); break;
@@ -1282,7 +1343,8 @@ function drawFx(w: number, fh: number) {
       ctx.fillStyle = p.color; ctx.fillText(p.text, p.x * cellX, p.y * cell);
     } else {
       ctx.fillStyle = p.color;
-      if (p.star) drawStar(p.x * cellX, p.y * cell, p.size * cell);
+      if (p.sq) { ctx.save(); ctx.translate(p.x * cellX, p.y * cell); ctx.rotate((p.rot ?? 0) + (1 - a) * 6); const z = p.size * cell; ctx.fillRect(-z / 2, -z / 2, z, z * 0.7); ctx.restore(); }
+      else if (p.star) drawStar(p.x * cellX, p.y * cell, p.size * cell);
       else { ctx.beginPath(); ctx.arc(p.x * cellX, p.y * cell, p.size * cell, 0, Math.PI * 2); ctx.fill(); }
     }
   }
@@ -1305,18 +1367,26 @@ function drawFx(w: number, fh: number) {
   }
   // 보스 등장 컷인
   if (bossIntro) {
-    const T = 2.6 - bossIntro.t, slide = Math.min(1, T * 4), out = Math.min(1, bossIntro.t * 3);
+    const T = 2.6 - bossIntro.t, slide = 1 - Math.pow(1 - Math.min(1, T * 3.2), 3), out = Math.min(1, bossIntro.t * 3);
+    const era = game!.stage.era, [c1, c2, c3] = BOSS_BAND[era] ?? BOSS_BAND['고대'];
     ctx.save(); ctx.globalAlpha = out;
-    ctx.fillStyle = 'rgba(59,42,30,.55)'; ctx.fillRect(0, 0, w, fh);
-    const bandY = fh * 0.36, bandH = cell * 2.2;
-    ctx.fillStyle = '#ff8f8f'; ctx.fillRect(0, bandY, w, bandH);
-    ctx.fillStyle = '#ffb3c7'; ctx.fillRect(0, bandY + 6, w, bandH - 12);
-    for (let i = 0; i < 8; i++) { ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(((T * 600 + i * 90) % (w + 80)) - 80, bandY + 10 + (i % 3) * 18, 50, 4); }
-    const ix = -cell * 2 + slide * (cell * 2.6);
-    ctx.drawImage(monsterSprite(game!.stage.era, 'boss'), ix, bandY - cell * 0.4, cell * 2.6, cell * 2.6);
-    ctx.fillStyle = '#3b2a1e'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.font = `${cell * 0.3}px "Jua", sans-serif`; ctx.fillText('WARNING · 도그마 출현', w - slide * (w - cell * 3.1), bandY + cell * 0.6);
-    ctx.font = `${cell * 0.55}px "Jua", sans-serif`; ctx.fillText(bossIntro.name, w - slide * (w - cell * 3.1), bandY + cell * 1.35);
+    ctx.fillStyle = 'rgba(30,20,14,.6)'; ctx.fillRect(0, 0, w, fh);
+    if (T < 0.15) { ctx.fillStyle = `rgba(255,255,255,${1 - T / 0.15})`; ctx.fillRect(0, 0, w, fh); }
+    const bandY = fh * 0.34, bandH = cell * 2.3;
+    ctx.save(); ctx.translate(w / 2, bandY + bandH / 2); ctx.rotate(-0.06); ctx.translate(-w / 2, -(bandY + bandH / 2));
+    ctx.fillStyle = c1; ctx.fillRect(-20, bandY - 6, w + 40, bandH + 12);
+    ctx.fillStyle = c2; ctx.fillRect(-20, bandY, w + 40, bandH);
+    for (let i = 0; i < 10; i++) { ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(((T * 700 + i * 80) % (w + 120)) - 100, bandY + 8 + (i % 4) * (bandH / 4.5), 60 + (i % 3) * 20, 3); }
+    ctx.restore();
+    const bs = cell * 2.9, ix = -bs + slide * (bs + cell * 0.25), iy = bandY - cell * 0.55 + Math.sin(T * 9) * 2;
+    const glow = ctx.createRadialGradient(ix + bs / 2, iy + bs / 2, 0, ix + bs / 2, iy + bs / 2, bs * 0.7);
+    glow.addColorStop(0, c3); glow.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = glow; ctx.fillRect(ix - bs * 0.2, iy - bs * 0.2, bs * 1.4, bs * 1.4);
+    ctx.drawImage(monsterSprite2(era, 'boss'), ix, iy, bs, bs);
+    const tx = w - slide * (w - cell * 3.3);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    ctx.font = `${cell * 0.28}px "Jua", sans-serif`; ctx.fillStyle = '#fff'; ctx.fillText('WARNING · 도그마의 왕 출현', tx, bandY + cell * 0.55);
+    ctx.font = `${cell * 0.58}px "Jua", sans-serif`; ctx.lineWidth = 6; ctx.strokeStyle = c1; ctx.strokeText(bossIntro.name, tx, bandY + cell * 1.35);
+    ctx.fillStyle = '#fff'; ctx.fillText(bossIntro.name, tx, bandY + cell * 1.35);
     ctx.restore();
   }
   if (banner) {
@@ -1690,7 +1760,7 @@ function renderStory(box: HTMLElement) {
     row.innerHTML = `<button class="sgo" ${open ? '' : 'disabled'}><img src="${portrait(face.id)}"><span class="sname">${open ? st.title : '🔒 ???'}</span>${cleared ? '<span class="badge">CLEAR</span>' : ''}</button><button class="sinfo" ${open ? '' : 'disabled'}>i</button>`;
     (row.querySelector('.sgo') as HTMLButtonElement).onclick = () => startStory(st);
     (row.querySelector('.sinfo') as HTMLButtonElement).onclick = () => alertBox(`<h2>${st.title}</h2><p class="hint">${st.when}</p>
-      <div class="stage-info"><div>👑 보스 <b>${st.boss}</b> (${DIFF.get('easy')!.maxWave}웨이브)</div>
+      <div class="stage-info"><div>👑 보스 <b>${st.boss}</b> (${st.waves ?? STORY_WAVES}웨이브)</div>
       <div>🧠 깨면 돌아오는 기억: <b>${st.memories.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b></div>
       ${st.unlock?.length ? `<div>🎟 깨면 소환에 새로 등장: <b>${st.unlock.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b></div>` : ''}
       <div>🔓 지금 조합할 수 있는 등급: <b>${TIER_NAME[tierCap()]}</b>까지 (1·2장 희귀 · 3장 전설 · 4장부터 근원). 카드를 가진 철학자는 예외!</div>
@@ -1832,6 +1902,18 @@ $('replay-start').onclick = () => {
 
 
 // =============== 결과 화면: 보상 · 📺2배 · ▶다음 (한 판 더 하게 만드는 동선) ===============
+/** 시대 전환 연출: 시대 화풍이 종이처럼 쓸고 지나가며 이름이 뜬다 */
+const ERA_LABEL: Record<string, string> = { 고대: '고대 · 그리스', 중세: '중세 · 신앙의 시대', 동양: '동양 · 백가쟁명', 근대: '근대 · 이성의 시대', 현대: '현대 · 언어와 실존' };
+let lastEra = '';
+function eraWipe(era: string, title: string, when: string) {
+  const changed = era !== lastEra; lastEra = era;
+  const ov = document.createElement('div');
+  ov.className = `era-wipe ${changed ? 'big' : ''} era-${era}`;
+  ov.innerHTML = `<div class="ew-art" style="background-image:url(${eraSky(era)})"></div><div class="ew-text">${changed ? `<small>${ERA_LABEL[era] ?? era}</small>` : ''}<b>${title}</b>${when ? `<em>${when}</em>` : ''}</div>`;
+  document.body.appendChild(ov);
+  setTimeout(() => ov.remove(), changed ? 2100 : 1500);
+}
+
 function resultPanel(g: Game, html: string) {
   const base: { gonoe?: number; gems?: number } = g.raid ? raidReward(g.raidDamage) : { gonoe: Math.round(battleReward(g.wave, g.over === 'win') * g.diff.reward) };
   const win = g.over === 'win';
@@ -1839,7 +1921,11 @@ function resultPanel(g: Game, html: string) {
   const nextLabel = g.raid ? '' : story ? (win || story.chapter === 0 ? '▶ 다음 이야기' : '↻ 다시 도전') : g.oneTool ? '' : win ? '▶ 다음 스테이지' : '↻ 다시 도전';
   const ov = document.createElement('div');
   ov.className = 'overlay result';
-  ov.innerHTML = `<div class="pop">${html}
+  const mvp = [...g.towers].sort((a, b) => PHIL.get(b.philId)!.tier - PHIL.get(a.philId)!.tier)[0];
+  const hero = mvp ? `<div class="res-hero ${win ? 'win' : 'lose'}" style="background-image:url(${eraSky(g.stage.era)})">
+      ${win ? '<i class="cf"></i><i class="cf"></i><i class="cf"></i><i class="cf"></i><i class="cf"></i><i class="cf"></i>' : ''}
+      <img src="${heroPortrait(mvp.philId)}" alt=""><span class="res-ribbon">${win ? '논파 성공' : g.raid ? '레이드 종료' : '다음엔 꼭'}</span><span class="res-mvp">MVP · ${shortName(PHIL.get(mvp.philId)!.name)}</span></div>` : '';
+  ov.innerHTML = `<div class="pop">${hero}${html}
     <div class="res-reward">🎁 보상 <b>${rewardText(base)}</b></div>
     <button class="chunky pink res-double">${adFree(progress) ? '✨ 보상 2배 받기 (광고 제거)' : `📺 광고 보고 보상 2배 (오늘 ${adsLeft(progress)}회)`}</button>
     <div class="res-btns"><button class="chunky blue res-home">🏠 홈</button>${nextLabel ? `<button class="chunky gold res-next">${nextLabel}</button>` : ''}</div>
@@ -1925,7 +2011,7 @@ const claimPassOk = () => passOn(progress) && claimable(progress) >= 0 && (progr
 function refreshBadges() {
   const set = (tab: string, on: boolean) => document.querySelector(`#tabs [data-tab=${tab}]`)?.classList.toggle('badge-on', on);
   set('stages', claimable(progress) > 0);
-  set('gacha', progress.gonoe >= 100);
+  set('gacha', progress.gonoe >= CARD_COST);
   set('room', progress.gonoe >= tapUpgradeCost(progress));
 }
 setInterval(() => { if (me) refreshBadges(); }, 1500);

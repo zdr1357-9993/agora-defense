@@ -43,7 +43,7 @@ export interface Enemy {
 }
 /** 화면 연출용 이벤트 (게임 규칙에는 영향 없음) */
 export type FxEvent =
-  | { type: 'hit'; x: number; y: number; dmg: number; big: boolean }
+  | { type: 'hit'; x: number; y: number; dmg: number; big: boolean; uid?: number }
   | { type: 'kill'; x: number; y: number; gold: number; boss: boolean }
   | { type: 'shot'; uid: number }
   | { type: 'morph'; x: number; y: number; tier: number }
@@ -357,7 +357,7 @@ export class Game {
   private onHit(e: Enemy, dmg: number, skill: Skill | undefined, src: Tower | undefined) {
     const dealt = this.damage(e, dmg);
     const [ex, ey] = this.enemyPos(e);
-    this.fx.push({ type: 'hit', x: ex, y: ey, dmg: dealt, big: dmg > 150 });
+    this.fx.push({ type: 'hit', x: ex, y: ey, dmg: dealt, big: dmg > 150, uid: e.uid });
     if (!skill) return;
     const fx = (kind: string, extra: Partial<{ tx: number; ty: number; r: number }> = {}) => this.fx.push({ type: 'skill', kind, x: ex, y: ey, ...extra });
     if (skill.kind === 'slow') fx('slow');
