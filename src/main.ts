@@ -272,8 +272,9 @@ function resize() {
   const W = wrap.clientWidth;
   // 필드가 먼저: 상단·하단 버튼을 뺀 높이에서 아래 패널 최소 높이(104px)만 남기고 필드에 준다
   const battle = $('battle');
-  const fixed = ['hud', 'cats', 'actions', 'dock'].reduce((a, id) => a + $(id).offsetHeight, 0) + 8 * 5 + 16;
-  const H = Math.max(160, battle.clientHeight - fixed - 86);
+  const gap = parseFloat(getComputedStyle(battle).rowGap) || 8, pad = parseFloat(getComputedStyle(battle).paddingTop) + parseFloat(getComputedStyle(battle).paddingBottom);
+  const fixed = ['hud', 'cats', 'selbar', 'actions', 'dock'].reduce((a, id) => a + $(id).offsetHeight, 0) + gap * 5 + pad;
+  const H = Math.max(150, battle.clientHeight - fixed);
   if (!W || !battle.clientHeight) return;
   // 세로에 맞춰 칸 크기를 정하고, 가로는 화면 폭까지 넓힌다 (칸이 최대 1.5배까지 옆으로 길어짐)
   const c = Math.min(W / GRID, H / ROWS);
@@ -287,6 +288,12 @@ function resize() {
   cellX = width / GRID;
 }
 window.addEventListener('resize', resize);
+// 기기마다 실제 보이는 높이 (iOS 사파리 주소창·안드로이드 내비 바 반영)
+function setAppHeight() { const h = window.visualViewport?.height ?? window.innerHeight; document.documentElement.style.setProperty('--app-h', `${Math.round(h)}px`); }
+setAppHeight();
+window.visualViewport?.addEventListener('resize', setAppHeight);
+window.addEventListener('resize', setAppHeight);
+window.addEventListener('orientationchange', () => setTimeout(() => { setAppHeight(); resize(); }, 250));
 new ResizeObserver(resize).observe($('battle'));
 
 function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
@@ -1166,36 +1173,68 @@ function renderShop() {
 }
 
 // ---------- 조합표 · 확률표 ----------
-function recipeSheet() {
+function recipeSheet(filter: 'all' | 'ready' | 'liked' = 'all') {
   const g = game;
   const liked = new Set(progress.likedRecipes ?? []);
-  const rows = RECIPES.filter((r) => !PHIL.get(r.result)!.hidden || progress.seen.includes(r.result))
-    .sort((a, b) => Number(liked.has(b.id)) - Number(liked.has(a.id)) || PHIL.get(a.result)!.tier - PHIL.get(b.result)!.tier);
+  const canNow = (r: Recipe) => !!g && g.ownedMaterials(r).every(Boolean) && g.hasCatalyst(r) && !g.isLocked(r);
+  const all = RECIPES.filter((r) => !PHIL.get(r.result)!.hidden || progress.seen.includes(r.result) || QA_MODE);
+  const rows = all.filter((r) => filter === 'all' || (filter === 'ready' ? canNow(r) : liked.has(r.id)))
+    .sort((a, b) => Number(canNow(b)) - Number(canNow(a)) || Number(liked.has(b.id)) - Number(liked.has(a.id)) || PHIL.get(a.result)!.tier - PHIL.get(b.result)!.tier);
+  const face = (id: string, on: boolean, unknown = false) => `<span class="rf t${PHIL.get(id)!.tier} ${on ? 'on' : ''} ${unknown ? 'unk' : ''}"><img src="${portrait(id)}" alt=""><small>${unknown ? '???' : shortName(PHIL.get(id)!.name)}</small></span>`;
   const html = rows.map((r) => {
-    const res = PHIL.get(r.result)!;
-    const owned = g ? g.ownedMaterials(r) : r.materials.map(() => false);
-    const mats = r.materials.map((m, i) => {
-      const p = PHIL.get(m)!;
-      return `<span class="mat t${p.tier} ${owned[i] ? 'have' : ''}"><img src="${portrait(m)}">${p.name}<i>${TIER_NAME[p.tier]}</i></span>`;
-    }).join('<b class="plus">+</b>');
-    const cat = r.catalyst ? `<b class="plus">+</b><span class="mat cat ${g && g.catalysts[r.catalyst] ? 'have' : ''}">${CAT_ICON[r.catalyst]}</span>` : '';
-    const ready = g && owned.every(Boolean) && g.hasCatalyst(r);
-    const known = QA_MODE || progress.seen.includes(res.id);
-    return `<div class="rrow ${ready ? 'ready' : ''} ${liked.has(r.id) ? 'liked' : ''}"><button class="like" data-like="${r.id}">${liked.has(r.id) ? '💗' : '🤍'}</button><div class="res t${res.tier} ${known ? '' : 'unknown'}"><img src="${portrait(res.id)}"><b>${known ? res.name : '??? (처음 연성하면 공개)'}</b><i>${'★'.repeat(res.tier)}</i></div>
-      <div class="mats">${mats}${cat}</div><small>${r.logic}</small></div>`;
-  }).join('');
-  alertBox(`<h2>📜 조합표</h2><p class="hint">초록 테두리 = 지금 전장에 있는 재료 · 🤍를 누르면 목표 조합으로 저장돼 전투 중 계속 보여요</p><div class="rlist">${html}</div>`);
-  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-like]')) b.onclick = (e) => {
-    e.stopPropagation();
-    const id = b.dataset.like!;
-    const list = new Set(progress.likedRecipes ?? []);
-    if (list.has(id)) list.delete(id); else list.add(id);
-    progress.likedRecipes = [...list];
-    saveProgress(progress);
-    document.querySelector('.overlay')?.remove();
-    lastSynthKey = '';
-    recipeSheet();
+    const own = g ? g.ownedMaterials(r) : r.materials.map(() => false);
+    const known = QA_MODE || progress.seen.includes(r.result) || !PHIL.get(r.result)!.hidden;
+    const cat = r.catalyst ? `<b>+</b><span class="rf cat ${g && g.catalysts[r.catalyst] ? 'on' : ''}"><i>${CAT_ICON[r.catalyst]}</i><small>촉매</small></span>` : '';
+    return `<div class="req ${canNow(r) ? 'ready' : ''}" data-id="${r.id}">${liked.has(r.id) ? '<em class="hrt">💗</em>' : ''}
+      ${r.materials.map((m, i) => face(m, own[i])).join('<b>+</b>')}${cat}<b class="eq">=</b>${face(r.result, true, !known)}
+      <button class="req-i" data-info="${r.id}" aria-label="상세">i</button></div>`;
+  }).join('') || `<p class="hint" style="text-align:center">${filter === 'ready' ? '지금 바로 할 수 있는 조합이 없어요' : '💗 표시한 조합이 없어요'}</p>`;
+  document.querySelector('.overlay.recipes')?.remove();
+  const o = document.createElement('div');
+  o.className = 'overlay recipes';
+  o.innerHTML = `<div class="pop rsheet"><div class="rs-head"><h2>📜 조합표</h2><button class="rs-x" aria-label="닫기">✕</button></div>
+    <div class="rs-tabs">${(['all', 'ready', 'liked'] as const).map((f) => `<button data-f="${f}" class="${f === filter ? 'on' : ''}">${{ all: `전체 ${all.length}`, ready: `지금 가능 ${all.filter(canNow).length}`, liked: `💗 목표 ${liked.size}` }[f]}</button>`).join('')}</div>
+    <p class="hint rs-hint">진한 얼굴 = 지금 필드에 있는 재료 · <b>i</b> 를 누르면 자세히</p>
+    <div class="rs-list">${html}</div></div>`;
+  o.onclick = (e) => {
+    const el = e.target as HTMLElement;
+    if (el === o || el.closest('.rs-x')) { o.remove(); return; }
+    const f = el.closest('[data-f]') as HTMLElement | null; if (f) { recipeSheet(f.dataset.f as 'all'); return; }
+    const info = el.closest('[data-info]') as HTMLElement | null;
+    const row = el.closest('.req') as HTMLElement | null;
+    const id = info?.dataset.info ?? row?.dataset.id;
+    if (id) recipeDetail(RECIPES.find((r) => r.id === id)!, filter);
   };
+  document.body.appendChild(o);
+}
+
+function recipeDetail(r: Recipe, back: 'all' | 'ready' | 'liked') {
+  const g = game, res = PHIL.get(r.result)!;
+  const known = QA_MODE || progress.seen.includes(res.id) || !res.hidden;
+  const own = g ? g.ownedMaterials(r) : r.materials.map(() => false);
+  const ready = !!g && own.every(Boolean) && g.hasCatalyst(r) && !g.isLocked(r);
+  const liked = (progress.likedRecipes ?? []).includes(r.id);
+  const o = document.createElement('div');
+  o.className = 'overlay rdetail';
+  o.innerHTML = `<div class="pop rd-pop t${res.tier}">
+    <div class="rd-hero"><img src="${pedArt(res.id)}" alt="" class="${known ? '' : 'unk'}"><div><span class="tier-chip t${res.tier}">${TIER_NAME[res.tier]}</span><h2>${known ? res.name : '??? (처음 조합하면 공개)'}</h2>${known ? `<p class="rd-skill"><b>✦ ${res.skill}</b> ${res.skillDesc}</p>` : ''}</div></div>
+    <div class="rd-mats">${r.materials.map((m, i) => { const p = PHIL.get(m)!; return `<div class="${own[i] ? 'have' : ''}"><img src="${portrait(m)}" alt=""><b>${p.name}</b><small>${TIER_NAME[p.tier]} · ${own[i] ? '필드에 있음 ✓' : '없음'}</small></div>`; }).join('')}
+      ${r.catalyst ? `<div class="${g && g.catalysts[r.catalyst] ? 'have' : ''}"><i>${CAT_ICON[r.catalyst]}</i><b>촉매 ${CAT_NAME[r.catalyst]}</b><small>보유 ${g ? g.catalysts[r.catalyst] : 0}</small></div>` : ''}</div>
+    ${r.logic ? `<p class="rd-logic">💬 ${r.logic}</p>` : ''}
+    ${g && g.isLocked(r) ? `<p class="hint">🔒 ${lockReason(r)}</p>` : ''}
+    <div class="rd-btns"><button class="chunky rd-like">${liked ? '💔 목표 해제' : '💗 목표로 저장'}</button>${ready ? '<button class="chunky gold rd-go">⚗ 지금 조합</button>' : '<button class="chunky blue rd-back">← 목록</button>'}</div></div>`;
+  o.onclick = (e) => {
+    const el = e.target as HTMLElement;
+    if (el === o || el.closest('.rd-back')) { o.remove(); return; }
+    if (el.closest('.rd-like')) {
+      const list = new Set(progress.likedRecipes ?? []);
+      if (list.has(r.id)) list.delete(r.id); else list.add(r.id);
+      progress.likedRecipes = [...list]; saveProgress(progress); lastSynthKey = '';
+      o.remove(); recipeSheet(back); return;
+    }
+    if (el.closest('.rd-go')) { o.remove(); document.querySelector('.overlay.recipes')?.remove(); doMerge(r); }
+  };
+  document.body.appendChild(o);
 }
 
 function rateSheet() {
@@ -1442,11 +1481,11 @@ document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault());
 
 // ---------- 시작 ----------
-$('open-recipes').onclick = recipeSheet;
+$('open-recipes').onclick = () => recipeSheet();
 $('open-rates').onclick = rateSheet;
 for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.onclick = () => { sfx.click(); switchTab(b.dataset.tab!); };
 for (const id of ['mute', 'mute-b']) { const b = document.getElementById(id); if (b) { b.textContent = isMuted() ? '🔇' : '🔊'; b.onclick = () => { const mu = toggleMute(); for (const x of ['mute', 'mute-b']) { const e = document.getElementById(x); if (e) e.textContent = mu ? '🔇' : '🔊'; } }; } }
-$('b-recipes').onclick = recipeSheet;
+$('b-recipes').onclick = () => recipeSheet();
 $('tut-again').onclick = () => { $('settings').classList.add('hidden'); progress.battleTutDone = false; progress.tabTut = []; pageTutStart(currentTab); saveProgress(progress); toast('🎓 화면마다, 그리고 다음 전투에서 튜토리얼이 다시 나와요'); };
 $('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); progress = loadProgress(); bootQA(); renderHome(); switchTab('stages'); } };
 function bootQA() { if (QA_MODE && !progress.purchases.includes('qa')) { progress.gonoe += QA_GONOE; progress.gems += QA_GEMS; progress.tickets += 5; progress.purchases.push('qa'); saveProgress(progress); } }
