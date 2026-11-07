@@ -884,3 +884,58 @@ button.ghost { border: 2px dashed #d8c3ae; box-shadow: none; }
 .rd-mats b { font-family: 'Jua'; font-weight: 400; font-size: 15px; } .rd-mats small { font-size: 11px; color: #7c6a5b; }
 .rd-logic { margin: 0; padding: 8px 10px; border-radius: 12px; background: #fff7e6; font-size: 12.5px; line-height: 1.5; }
 .rd-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* ================= 스토리 여정 (아래에서 위로 한 단계씩) ================= */
+#tab-stages:has(.journey) { min-height: 0; flex: 1 1 auto; }
+#tab-stages:has(.journey) .home-tools { display: none; }
+#stages:has(.journey) { flex: 1 1 auto; min-height: 0; gap: 8px; }
+.journey { position: relative; flex: 1 1 auto; min-height: 220px; overflow-y: auto; border-radius: 26px; overscroll-behavior: contain; scrollbar-width: none;
+  box-shadow: inset 0 0 0 4px #fffaf3, 0 8px 20px var(--clay-drop); background: #f6dcc4; }
+.journey::-webkit-scrollbar { display: none; }
+.jch { position: relative; padding: 14px 0 6px; background: var(--sky) center / cover; }
+.jch::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,250,243,.25), rgba(255,250,243,.55)); pointer-events: none; }
+.jch.locked { filter: saturate(.35) brightness(.97); }
+.jch > * { position: relative; }
+.j-title { display: flex; flex-direction: column; align-items: center; margin: 8px auto 6px; width: fit-content; padding: 6px 22px; border-radius: 16px; background: #3b2a1e; color: #fff;
+  box-shadow: 0 6px 14px rgba(60,30,10,.25); }
+.j-title small { font-size: 11px; opacity: .8; } .j-title b { font-family: 'Jua'; font-weight: 400; font-size: 18px; }
+.j-path { position: relative; display: flex; flex-direction: column; gap: 22px; padding: 10px 0; }
+.j-path::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 70%; transform: translateX(-50%);
+  background: repeating-linear-gradient(180deg, rgba(160,112,90,.55) 0 6px, transparent 6px 14px) center / 4px 100% no-repeat; }
+.jnode { position: relative; display: flex; flex-direction: column; align-items: center; width: 120px; margin: 0 auto; cursor: pointer; }
+.jnode.l { transform: translateX(-70px); } .jnode.r { transform: translateX(70px); }
+.j-dot { width: 64px; height: 64px; border-radius: 50%; padding: 0; display: grid; place-items: center; position: relative; background: #fffaf3; border: 4px solid #fff; }
+.j-dot img { width: 48px; height: 48px; image-rendering: pixelated; }
+.jnode.done .j-dot { background: #ffe7a3; }
+.jnode.open .j-dot { background: #fff; }
+.jnode.now .j-dot { width: 76px; height: 76px; background: linear-gradient(180deg, #ffb3c7, #ff8fb1); animation: jPulse 1.2s infinite; }
+@keyframes jPulse { 50% { box-shadow: 0 0 0 10px rgba(255,143,177,.3), 0 6px 14px var(--clay-drop); } }
+.jnode.lock .j-dot { background: #e6dccf; opacity: .85; }
+.j-lock { font-style: normal; font-size: 22px; } .j-star { position: absolute; top: -6px; right: -6px; font-style: normal; color: #f5a623; font-size: 18px; text-shadow: 0 1px 0 #fff, 0 0 4px #fff; }
+.j-name { margin-top: 4px; font-family: 'Jua'; font-size: 13px; background: #fffaf3; border-radius: 99px; padding: 1px 10px; white-space: nowrap; box-shadow: 0 2px 6px var(--clay-drop); max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.j-num { font-size: 10px; color: #7c6a5b; }
+.jnode.lock .j-name { color: #a99582; }
+.j-me { position: absolute; left: calc(100% - 6px); top: -8px; display: flex; align-items: flex-end; gap: 0; animation: bob 1.4s infinite ease-in-out; pointer-events: none; }
+.jnode.r .j-me { left: auto; right: calc(100% - 6px); }
+.j-me img { width: 36px; height: 36px; image-rendering: pixelated; }
+.j-hero { width: 18px; height: 24px; border-radius: 9px 9px 6px 6px; background: #a9d8ff; border: 2px solid #3b2a1e; position: relative; margin-left: -4px; }
+.j-hero::before { content: ''; position: absolute; top: -12px; left: 0; width: 14px; height: 14px; border-radius: 50%; background: #ffe0bd; border: 2px solid #3b2a1e; }
+.j-me em { position: absolute; top: -18px; left: 8px; font-style: normal; font-family: 'Jua'; font-size: 11px; color: #fff; background: #ff5f8f; border-radius: 99px; padding: 0 7px; white-space: nowrap; }
+.j-reward { display: flex; justify-content: center; margin: 4px 0 10px; }
+.j-bubble { position: relative; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 22px; background: #fffaf3; box-shadow: 0 6px 14px var(--clay-drop); }
+.j-bubble::after { content: ''; position: absolute; bottom: -9px; left: 50%; margin-left: -9px; border: 9px solid transparent; border-top-color: #fffaf3; border-bottom: 0; }
+.j-bubble b { font-family: 'Jua'; font-weight: 400; font-size: 16px; }
+.j-bubble span { display: flex; } .j-bubble span img { width: 30px; height: 30px; image-rendering: pixelated; margin-left: -6px; filter: grayscale(1) opacity(.55); }
+.j-reward.got .j-bubble span img { filter: none; }
+.j-bubble small { font-size: 11px; color: #7c6a5b; }
+.j-bar { flex: none; display: flex; flex-direction: column; gap: 6px; }
+.j-prog { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #7c6a5b; }
+.j-prog i { flex: 1; height: 8px; border-radius: 99px; background: #f1e2cf; position: relative; overflow: hidden; }
+.j-prog i::after { content: ''; position: absolute; inset: 0; width: calc(var(--v) * 100%); background: linear-gradient(90deg, #ffd27a, #ff8fb1); border-radius: 99px; }
+.j-go { display: flex; flex-direction: column; align-items: center; padding: 8px 10px; border-radius: 24px; min-height: 64px; }
+.j-go small { font-size: 12px; opacity: .75; } .j-go b { font-family: 'Jua'; font-weight: 400; font-size: 22px; }
+.j-info h2 { margin: 0; font-family: 'Jua'; font-weight: 400; }
+.j-path::before { display: none; }
+.j-road { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 1; }
+.jch > .j-path, .jch > .j-title, .jch > .j-reward { z-index: 2; }
+.jch::before { z-index: 0; }

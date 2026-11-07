@@ -1755,12 +1755,12 @@ function playTour() {
     ['내레이션', '"시대마다 도그마를 뿜는 자들이 나타나리라. 기억을 지닌 이방인이 그들을 하나씩 논파하리라."'],
     ['나', '…기억을 지닌 이방인? 설마 저요?'],
     ['소크라테스', '자네 말고 누가 있겠나. 이제부터 시대를 거슬러 사건들을 지나가야 하네. 이 목록이 그 여정일세.', '#stages'],
-    ['소크라테스', '각 사건에서 도그마를 논파하면 그 시대 사람들의 기억이 돌아오지. 다시 도전해도 그 사람의 기억이 조금씩 더 쌓인다네.', '.srow:not(.locked) .sgo'],
+    ['소크라테스', '각 사건에서 도그마를 논파하면 그 시대 사람들의 기억이 돌아오지. 다시 도전해도 그 사람의 기억이 조금씩 더 쌓인다네.', '.jnode.done, .jnode.now'],
     ['소크라테스', '머리가 굳으면 고민방으로 가게. 고민할수록 "고뇌"가 쌓이지. 가만히 둬도 조금씩 모인다네.', '[data-tab=room]'],
     ['소크라테스', '모은 고뇌로 잊었던 기억을 떠올릴 수 있네. 뽑기에서 "기억 떠올리기"를 해 보게.', '[data-tab=gacha]'],
     ['소크라테스', '되찾은 기억은 도감에 카드로 남는다네. 같은 기억이 쌓일수록 그 철학자는 강해지지.', '[data-tab=codex]'],
     ['소크라테스', '누가 누구로 이어지는지는 조합표에 다 적혀 있네. 막히면 펼쳐 보게.', '#open-recipes'],
-    ['소크라테스', '자, 첫 사건일세. 밀레토스로 가 보게. 하늘의 해가 사라지고 있다는군.', '.srow:not(.locked):not(.cleared) .sgo'],
+    ['소크라테스', '자, 첫 사건일세. 밀레토스로 가 보게. 하늘의 해가 사라지고 있다는군.', '#j-go'],
   ], null, () => renderHome(), '고대', true);
 }
 /** 소환되는 흔함: 그리스 여섯 명 + 스토리에서 만난 동양의 셋 */
@@ -1790,41 +1790,81 @@ function renderStory(box: HTMLElement) {
     progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), 'A1', 'A2', 'A3', 'A4', 'A5'])]; saveProgress(progress);
   }
   const done = progress.storyCleared ?? [];
-  if (storyChapter < 0) storyChapter = (STORY.find((s) => !done.includes(s.id)) ?? STORY[STORY.length - 1]).chapter;
-  const ch = CHAPTERS.find((c) => c.n === storyChapter)!;
-  const head = document.createElement('div');
-  head.className = 'chapter-head';
-  head.innerHTML = `<button class="ch-prev" ${storyChapter <= 0 ? 'disabled' : ''}>◀</button><div><small>${ch.n ? `제${ch.n}장` : '시작 튜토리얼'}</small><b>${ch.icon} ${ch.title}</b></div><button class="ch-next" ${storyChapter >= CHAPTERS.length - 1 || !STORY.some((s) => s.chapter === storyChapter + 1 && storyOpen(s)) ? 'disabled' : ''}>▶</button>`;
-  (head.querySelector('.ch-prev') as HTMLButtonElement).onclick = () => { storyChapter--; renderHome(); };
-  (head.querySelector('.ch-next') as HTMLButtonElement).onclick = () => { storyChapter++; renderHome(); };
-  box.appendChild(head);
-  for (const st of STORY.filter((x) => x.chapter === storyChapter)) {
-    const row = document.createElement('div');
-    const open = storyOpen(st), cleared = done.includes(st.id);
-    row.className = `srow ${open ? '' : 'locked'} ${cleared ? 'cleared' : ''}`;
-    const face = PHILOSOPHERS.find((p) => p.realName === st.memories[0])!;
-    row.innerHTML = `<button class="sgo" ${open ? '' : 'disabled'}><img src="${portrait(face.id)}"><span class="sname">${open ? st.title : '🔒 ???'}</span>${cleared ? '<span class="badge">CLEAR</span>' : ''}</button><button class="sinfo" ${open ? '' : 'disabled'}>i</button>`;
-    (row.querySelector('.sgo') as HTMLButtonElement).onclick = () => startStory(st);
-    (row.querySelector('.sinfo') as HTMLButtonElement).onclick = () => alertBox(`<h2>${st.title}</h2><p class="hint">${st.when}</p>
-      <div class="stage-info"><div>👑 보스 <b>${st.boss}</b> (${st.waves ?? STORY_WAVES}웨이브)</div>
-      <div>🧠 깨면 돌아오는 기억: <b>${st.memories.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b></div>
-      ${st.unlock?.length ? `<div>🎟 깨면 소환에 새로 등장: <b>${st.unlock.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b></div>` : ''}
-      <div>🔓 지금 조합할 수 있는 등급: <b>${TIER_NAME[tierCap()]}</b>까지 (1·2장 희귀 · 3장 전설 · 4장부터 근원). 카드를 가진 철학자는 예외!</div>
-      <div>🔒 거장·근원은 카드(기억)가 있어야 전투에서 조합할 수 있어요. 🧠 기억 떠올리기에서 얻어요.</div></div>`);
-    box.appendChild(row);
+  const next = STORY.find((x) => !done.includes(x.id) && storyOpen(x)) ?? null;
+  const wrap = document.createElement('div');
+  wrap.className = 'journey';
+  // 아래에서 위로 올라가는 여정: 장마다 시대 배경 구역, 단계마다 길 위의 노드
+  let html = '', k = 0;
+  const chHtml: string[] = [];
+  for (const ch of CHAPTERS) {
+    const sts = STORY.filter((x) => x.chapter === ch.n);
+    const chDone = sts.every((x) => done.includes(x.id));
+    const chOpen = sts.some((x) => storyOpen(x));
+    const mem = [...new Set(sts.flatMap((x) => x.memories))].slice(0, 4);
+    const nodeList: string[] = [];
+    sts.forEach((st, i) => {
+      const open = storyOpen(st), cleared = done.includes(st.id), now = next?.id === st.id;
+      const face = PHILOSOPHERS.find((p) => p.realName === st.memories[0])!;
+      const side = ['c', 'r', 'c', 'l'][(k++) % 4];
+      nodeList.unshift(`<div class="jnode ${side} ${cleared ? 'done' : now ? 'now' : open ? 'open' : 'lock'}" data-st="${st.id}">
+        ${now ? `<div class="j-me"><img src="${portrait(face.id)}" alt=""><span class="j-hero"></span><em>여기!</em></div>` : ''}
+        <button class="j-dot" ${open ? '' : 'disabled'} aria-label="${st.title}">${cleared ? `<img src="${portrait(face.id)}" alt=""><i class="j-star">★</i>` : open ? `<img src="${portrait(face.id)}" alt="">` : '<i class="j-lock">🔒</i>'}</button>
+        <span class="j-name">${open ? st.title : '???'}</span><small class="j-num">${ch.n ? `${ch.n}-${i + 1}` : `튜토리얼 ${i + 1}`}</small></div>`);
+    });
+    const nodes = nodeList.join('');
+    html += `<section class="jch ${chOpen ? '' : 'locked'}" style="--sky:url(${eraSky(ch.era)})">
+      <div class="j-reward ${chDone ? 'got' : ''}"><div class="j-bubble">${chDone ? '<b>✓</b>' : '<b>🔒</b>'}<span>${mem.map((n) => { const p = PHILOSOPHERS.find((x) => x.realName === n); return p ? `<img src="${portrait(p.id)}" alt="">` : ''; }).join('')}</span><small>${chDone ? '돌아온 기억' : '장을 마치면 기억 회복'}</small></div></div>
+      <div class="j-path">${nodes}</div>
+      <div class="j-title"><small>${ch.n ? `제${ch.n}장 · ${ch.era}` : '시작 튜토리얼'}</small><b>${ch.title}</b></div></section>`;
+    chHtml.unshift(html); html = '';
   }
-  if (storyChapter === 0 && !STORY.filter((x) => x.chapter === 0).every((x) => done.includes(x.id))) {
+  wrap.innerHTML = chHtml.join('');
+  box.appendChild(wrap);
+  wrap.onclick = (e) => {
+    const n = (e.target as HTMLElement).closest('.jnode') as HTMLElement | null;
+    if (!n || n.classList.contains('lock')) return;
+    storyInfo(STORY_MAP.get(n.dataset.st!)!);
+  };
+  const bar = document.createElement('div');
+  bar.className = 'j-bar';
+  const n = done.length, total = STORY.length;
+  bar.innerHTML = `<div class="j-prog"><small>여정 ${n}/${total}</small><i style="--v:${n / total}"></i>${n >= total ? '<small>완주! 위에서 난이도를 골라 본편에 도전하세요</small>' : ''}</div>
+    <button id="j-go" class="chunky gold j-go" ${next ? '' : 'disabled'}><small>${next ? (next.chapter ? `${next.chapter}장 · ${next.when}` : '시작 튜토리얼') : ''}</small><b>${next ? `▶ ${next.title}` : '여정 완주'}</b></button>`;
+  if (next) (bar.querySelector('#j-go') as HTMLButtonElement).onclick = () => startStory(next);
+  box.appendChild(bar);
+  if (STORY.filter((x) => x.chapter === 0).some((x) => !done.includes(x.id))) {
     const skip = document.createElement('button');
     skip.className = 'ghost small tut-skip-all';
     skip.textContent = '튜토리얼 건너뛰기 → 1장으로';
-    skip.onclick = () => { if (!window.confirm('시작 튜토리얼을 건너뛸까요? 고대 철학자 여섯 명이 바로 열려요.')) return; progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), ...STORY.filter((x) => x.chapter === 0).map((x) => x.id)])]; saveProgress(progress); storyChapter = -1; renderHome(); };
-    box.appendChild(skip);
+    skip.onclick = () => { if (!window.confirm('시작 튜토리얼을 건너뛸까요? 고대 철학자 여섯 명이 바로 열려요.')) return; progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), ...STORY.filter((x) => x.chapter === 0).map((x) => x.id)])]; saveProgress(progress); renderHome(); };
+    bar.appendChild(skip);
   }
-  const total = STORY.length, n = done.length;
-  const prog = document.createElement('p');
-  prog.className = 'hint story-prog';
-  prog.innerHTML = n >= total ? '📖 이야기를 모두 마쳤어요! 위에서 난이도를 골라 본편에 도전하세요.' : `📖 이야기 ${n}/${total} · 다 깨면 <b>보통 이상</b> 난이도가 열려요`;
-  box.appendChild(prog);
+  // 지금 위치로 스크롤
+  requestAnimationFrame(() => {
+    // 노드를 잇는 굽은 점선 길
+    const base = wrap.getBoundingClientRect(), pts = [...wrap.querySelectorAll<HTMLElement>('.j-dot')].map((d) => { const r = d.getBoundingClientRect(); return [r.left + r.width / 2 - base.left, r.top + r.height / 2 - base.top + wrap.scrollTop]; });
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'j-road'); svg.setAttribute('width', String(wrap.clientWidth)); svg.setAttribute('height', String(wrap.scrollHeight));
+    const d = pts.map(([x, y], i) => i ? `Q ${(pts[i - 1][0] + x) / 2 + (i % 2 ? 30 : -30)} ${(pts[i - 1][1] + y) / 2} ${x} ${y}` : `M ${x} ${y}`).join(' ');
+    svg.innerHTML = `<path d="${d}" stroke="#fffaf3" stroke-width="16" fill="none" stroke-linecap="round" opacity=".85"/><path d="${d}" stroke="#c9a27e" stroke-width="3.5" fill="none" stroke-dasharray="2 10" stroke-linecap="round"/>`;
+    wrap.prepend(svg);
+    const cur = wrap.querySelector('.jnode.now .j-dot') as HTMLElement | null;
+    if (cur) wrap.scrollTop = cur.getBoundingClientRect().top - base.top + wrap.scrollTop - wrap.clientHeight * 0.5; else wrap.scrollTop = next ? wrap.scrollHeight : 0;
+  });
+}
+
+function storyInfo(st: StoryStage) {
+  const cleared = (progress.storyCleared ?? []).includes(st.id);
+  const o = document.createElement('div');
+  o.className = 'overlay';
+  o.innerHTML = `<div class="pop j-info"><small class="hint">${st.when}</small><h2>${st.title}</h2>
+    <div class="stage-info"><div>👑 보스 <b>${st.boss}</b> (${st.waves ?? STORY_WAVES}웨이브)</div>
+    <div>🧠 돌아오는 기억: <b>${st.memories.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b></div>
+    ${st.unlock?.length ? `<div>🎟 소환에 새로 등장: <b>${st.unlock.map((n) => PHILOSOPHERS.find((p) => p.realName === n)!.name).join(', ')}</b></div>` : ''}
+    <div>🔓 조합 가능 등급: <b>${TIER_NAME[tierCap()]}</b>까지 (카드를 가진 철학자는 예외)</div></div>
+    <div class="rd-btns"><button class="chunky blue j-x">닫기</button><button class="chunky gold j-s">${cleared ? '↻ 다시 도전' : '▶ 출발'}</button></div></div>`;
+  o.onclick = (e) => { const el = e.target as HTMLElement; if (el === o || el.closest('.j-x')) o.remove(); else if (el.closest('.j-s')) { o.remove(); startStory(st); } };
+  document.body.appendChild(o);
 }
 
 /** 대사 재생: 탭하면 글자가 다 나오고, 한 번 더 탭하면 다음 줄 */
