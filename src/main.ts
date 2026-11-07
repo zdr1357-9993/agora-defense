@@ -684,14 +684,15 @@ function draw() {
     const [ex, ey] = g.enemyPos(e);
     const x = ex * cellX, y = ey * cell, sz = cell * (e.boss ? 1.25 : 0.85);
     const walk = Math.abs(Math.sin(tick * 0.2 + e.uid)) * 3;
-    ctx.fillStyle = 'rgba(0,0,0,.45)';
-    ctx.beginPath(); ctx.ellipse(x, y + sz * 0.42, sz * 0.32, sz * 0.13, 0, 0, Math.PI * 2); ctx.fill();
     const ksz = e.kind === 'tank' ? 1.25 : e.kind === 'swarm' ? 0.7 : e.kind === 'fast' ? 0.85 : 1;
     const esz = sz * ksz;
+    ctx.fillStyle = 'rgba(60,35,20,.22)';
+    ctx.beginPath(); ctx.ellipse(x, y + esz * 0.4, esz * 0.3, esz * 0.09, 0, 0, Math.PI * 2); ctx.fill();
     const hf = hitFlash.get(e.uid) ?? 0;
-    const squash = 1 + hf * 0.12;
-    ctx.drawImage(monsterSprite2(g.stage.era, e.boss ? 'boss' : e.kind, g.wave >= 15), x - (esz * squash) / 2, y - esz / 2 - walk + esz * (1 - 1 / squash), esz * squash, esz / squash);
-    if (hf > 0.05) { ctx.save(); ctx.globalAlpha = hf * 0.7; ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(whiteSprite(monsterSprite2(g.stage.era, e.boss ? 'boss' : e.kind, g.wave >= 15)), x - (esz * squash) / 2, y - esz / 2 - walk + esz * (1 - 1 / squash), esz * squash, esz / squash); ctx.restore(); }
+    const jx = hf > 0.3 ? (hash(e.uid + tick) - 0.5) * cell * 0.12 * hf : 0;
+    const squash = 1 + hf * 0.22;
+    ctx.drawImage(monsterSprite2(g.stage.era, e.boss ? 'boss' : e.kind, g.wave >= 15), x + jx - (esz * squash) / 2, y - esz / 2 - walk + esz * (1 - 1 / squash), esz * squash, esz / squash);
+    if (hf > 0.05) { ctx.save(); ctx.globalAlpha = hf * 0.7; ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(whiteSprite(monsterSprite2(g.stage.era, e.boss ? 'boss' : e.kind, g.wave >= 15)), x + jx - (esz * squash) / 2, y - esz / 2 - walk + esz * (1 - 1 / squash), esz * squash, esz / squash); ctx.restore(); }
     if ((e.shieldT ?? 0) > 0) { ctx.strokeStyle = 'rgba(255,211,107,.9)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - walk, esz * 0.6, 0, Math.PI * 2); ctx.stroke(); }
     if ((e.slowT ?? 0) > 0) { ctx.fillStyle = 'rgba(169,216,255,.35)'; ctx.beginPath(); ctx.arc(x, y - walk, esz * 0.45, 0, Math.PI * 2); ctx.fill(); }
     if ((e.stunT ?? 0) > 0) { ctx.font = `${cell * 0.25}px sans-serif`; ctx.fillText('💫', x, y - esz / 2 - walk); }
@@ -1244,8 +1245,10 @@ function consumeFx(g: Game) {
     if (f.type === 'shot') recoil.set(f.uid, 1);
     else if (f.type === 'hit') {
       if (f.uid !== undefined) hitFlash.set(f.uid, 1);
+      shapes.push({ kind: 'impact', x: f.x, y: f.y, r: f.big ? 0.55 : 0.32, life: 0.16, max: 0.16 });
+      if (f.big) shake = Math.max(shake, 0.12);
       for (let i = 0; i < (f.big ? 7 : 3); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-2.5, 2.5), vy: rnd(-3, -0.5), life: 0.35, max: 0.35, color: f.big ? '#ffd36b' : '#ffffff', size: rnd(0.04, 0.08), star: f.big });
-      particles.push({ x: f.x + rnd(-0.15, 0.15), y: f.y - 0.3, vx: 0, vy: -1.2, life: 0.7, max: 0.7, color: f.big ? '#ff7a59' : '#3b2a1e', size: f.big ? 0.32 : 0.24, text: fmt(f.dmg) });
+      particles.push({ x: f.x + rnd(-0.15, 0.15), y: f.y - 0.3, vx: 0, vy: -1.2, life: 0.7, max: 0.7, color: f.big ? '#ffd36b' : '#ffffff', size: f.big ? 0.36 : 0.24, text: fmt(f.dmg) + (f.big ? '!' : '') });
     } else if (f.type === 'kill') {
       const shard = ERA_SHARD[g.stage.era] ?? PASTEL;
       for (let i = 0; i < (f.boss ? 44 : 14); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-3.2, 3.2), vy: rnd(-4, 0.5), life: 0.7, max: 0.7, color: shard[i % shard.length], size: rnd(0.05, 0.12), sq: true, rot: rnd(0, 6), g: 7 });
@@ -1297,6 +1300,13 @@ function drawShapes() {
     const k = 1 - s.life / s.max, a = s.life / s.max, X = s.x * cellX, Y = s.y * cell;
     ctx.save(); ctx.globalAlpha = a;
     switch (s.kind) {
+      case 'impact': { // 타격 순간 섬광 + 방사선
+        const R = (s.r ?? 0.3) * cell;
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(X, Y, R * (1 - k * 0.5), 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2.5;
+        for (let i = 0; i < 6; i++) { const an = i * 1.047 + s.x * 3; ctx.beginPath(); ctx.moveTo(X + Math.cos(an) * R * (0.6 + k), Y + Math.sin(an) * R * (0.6 + k)); ctx.lineTo(X + Math.cos(an) * R * (1.3 + k * 1.6), Y + Math.sin(an) * R * (1.3 + k * 1.6)); ctx.stroke(); }
+        break;
+      }
       case 'pop': // 처치 순간 흰 링
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 4 * a + 1; ctx.beginPath(); ctx.arc(X, Y, (s.r ?? 0.6) * cell * (0.2 + k * 0.8), 0, Math.PI * 2); ctx.stroke(); break;
       case 'splash': // 원형 폭발
@@ -1338,8 +1348,10 @@ function drawFx(w: number, fh: number) {
     const a = Math.max(0, p.life / p.max);
     ctx.globalAlpha = a;
     if (p.text) {
-      ctx.font = `900 ${Math.max(10, cell * p.size)}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.strokeText(p.text, p.x * cellX, p.y * cell);
+      const age = 1 - a, pop = age < 0.15 ? 1 + (0.15 - age) * 5 : 1;
+      ctx.font = `900 ${Math.max(10, cell * p.size * pop)}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.globalAlpha = Math.min(1, a * 1.8);
+      ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = '#3b2a1e'; ctx.strokeText(p.text, p.x * cellX, p.y * cell);
       ctx.fillStyle = p.color; ctx.fillText(p.text, p.x * cellX, p.y * cell);
     } else {
       ctx.fillStyle = p.color;
