@@ -5,7 +5,7 @@ import { STAGE_STARS, ERA_BONUS, STAR_BONUS } from './affinity';
 import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
 import { ITEM, isOwner, ITEM_BONUS } from './items';
 import {
-  homage, statsOf, TYPE_ICON, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, CAT_NAME, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, UPGRADE, type Stage,
+  homage, statsOf, TYPE_ICON, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, CAT_NAME, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, UPGRADE, type Stage, type Recipe,
 } from './data';
 import { philosopherSprite, skinnedSprite, SKINS, monsterSprite, monsterSprite2, itemSprite, TIER_AURA } from './sprites';
 import { SKILLS } from './skills';
@@ -272,8 +272,8 @@ function resize() {
   const W = wrap.clientWidth;
   // 필드가 먼저: 상단·하단 버튼을 뺀 높이에서 아래 패널 최소 높이(104px)만 남기고 필드에 준다
   const battle = $('battle');
-  const fixed = ['hud', 'cats', 'dock'].reduce((a, id) => a + $(id).offsetHeight, 0) + 8 * 4 + 16;
-  const H = Math.max(160, battle.clientHeight - fixed - 128);
+  const fixed = ['hud', 'cats', 'actions', 'dock'].reduce((a, id) => a + $(id).offsetHeight, 0) + 8 * 5 + 16;
+  const H = Math.max(160, battle.clientHeight - fixed - 86);
   if (!W || !battle.clientHeight) return;
   // 세로에 맞춰 칸 크기를 정하고, 가로는 화면 폭까지 넓힌다 (칸이 최대 1.5배까지 옆으로 길어짐)
   const c = Math.min(W / GRID, H / ROWS);
@@ -313,7 +313,7 @@ function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   selected = null;
   resultShown = false;
   introT = 2.8;
-  lastSynthKey = lastInfoKey = lastCatKey = '';
+  lastSynthKey = lastInfoKey = lastCatKey = ''; $('merge').dataset.k = '';
   show('battle');
   tutStep = progress.battleTutDone || oneTool ? -1 : 0; tutShown = -2;
   updateUI();
@@ -397,6 +397,29 @@ canvas.addEventListener('pointerdown', (ev) => {
 
 $('summon').onclick = () => { if (game?.summon()) sfx.summon(); selected = null; $('summon').blur(); updateUI(); };
 $('sell').onclick = () => { if (game && selected) { game.sell(selected); selected = null; updateUI(); } };
+$('upgrade-btn').onclick = () => { if (game && selected && game.upgrade(selected)) { sfx.merge(); lastInfoKey = ''; updateUI(); } };
+$('d-recipes').onclick = () => recipeSheet();
+$('merge').onclick = () => {
+  if (!game) return;
+  const list = mergeChoices(game);
+  if (!list.length) { toast(selected ? '이 철학자로 지금 할 수 있는 조합이 없어요 · 📜 조합표를 확인해 보세요' : '지금 할 수 있는 조합이 없어요'); return; }
+  if (list.length === 1) { doMerge(list[0]); return; }
+  const ov = document.createElement('div');
+  ov.className = 'overlay merge-ov';
+  ov.innerHTML = `<div class="pop merge-pop"><h3>⚗ 어떤 조합을 할까요?</h3>${list.map((r, i) => { const res = PHIL.get(r.result)!; const seen = QA_MODE || progress.seen.includes(res.id) || !res.hidden;
+    return `<button class="mrow t${res.tier}" data-i="${i}"><img src="${portrait(res.id)}"><span><b>${seen ? res.name : '???'}</b><small>${r.materials.map((m) => shortName(PHIL.get(m)!.name)).join(' + ')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''}</small></span><em class="tier-chip t${res.tier}">${TIER_NAME[res.tier]}</em></button>`; }).join('')}</div>`;
+  ov.onclick = (e) => { const b = (e.target as HTMLElement).closest('.mrow') as HTMLElement | null; if (b) doMerge(list[+b.dataset.i!]); ov.remove(); };
+  document.body.appendChild(ov);
+};
+function doMerge(r: Recipe) { if (game?.synthesize(r)) bump(progress, 'merges'); selected = null; lastInfoKey = ''; updateUI(); }
+/** 지금 바로 할 수 있는 조합 (선택한 철학자가 있으면 그 철학자가 재료인 것만) */
+function mergeChoices(g: Game): Recipe[] {
+  if (g.over) return [];
+  return g.availableRecipes().filter((r) => g.hasCatalyst(r) && !g.isLocked(r) && (!selected || r.materials.includes(selected.philId)))
+    .sort((a, b) => PHIL.get(b.result)!.tier - PHIL.get(a.result)!.tier);
+}
+/** 필드 표시용: 조합 가능한 철학자 id, 선택한 철학자의 재료 짝 id */
+let readyIds = new Set<string>(), partnerIds = new Set<string>();
 // 웨이브 시작 / (판이 끝났으면) 나가기 — 버튼 하나, 상태로 판단
 $('start').onclick = () => {
   if (!game) return;
@@ -422,7 +445,7 @@ function updateUI() {
   $('cost').textContent = g.tickets ? `🎟${g.tickets} 무료` : `${g.summonCost}G`;
   $<HTMLButtonElement>('summon').disabled = !g.canSummon() || !!g.over;
   $<HTMLButtonElement>('sell').disabled = !selected;
-  $('sell').innerHTML = selected ? `판매 <small>(+${g.sellValue(selected)}G)</small>` : '판매';
+  $('sell').querySelector('span')!.textContent = selected ? `판매 +${g.sellValue(selected)}G` : '판매';
   const start = $<HTMLButtonElement>('start');
   start.textContent = g.over ? '나가기' : g.raid ? (g.running ? `⏱ ${Math.ceil(g.raidLeft)}초` : '👑 레이드 시작') : g.countdown > 0 ? `다음 웨이브 ${Math.ceil(g.countdown)}` : '웨이브 시작';
   if (g.raid) { $('wave').textContent = `💥${Math.round(g.raidDamage / 1000)}k`; $('wave-max').textContent = ''; $<HTMLElement>('wave-bar').style.width = `${(1 - g.raidLeft / g.raid.time) * 100 * (g.running ? 1 : 0)}%`; }
@@ -443,31 +466,27 @@ function updateUI() {
     resultPanel(g, html);
   }
 
-  // 정보창
+  // 선택 카드 / 다음 웨이브
   const info = $('info');
-  const infoKey = `${g.wave}|${g.running}|${selected?.uid}|${selected?.philId}|${selected?.level}|${g.towers.length}|${selected?.cy}|${selected && g.upgradeCost(selected) !== null ? g.gold >= g.upgradeCost(selected)! : ''}`;
+  const ready = mergeChoices(g);
+  const allReady = g.over ? [] : g.availableRecipes().filter((r) => g.hasCatalyst(r) && !g.isLocked(r));
+  readyIds = new Set(allReady.flatMap((r) => r.materials));
+  partnerIds = new Set(selected ? ready.flatMap((r) => r.materials).filter((m) => m !== selected!.philId || ready.some((r) => r.materials.filter((x) => x === m).length > 1)) : []);
+  const infoKey = `${g.wave}|${g.running}|${selected?.uid}|${selected?.philId}|${selected?.level}|${g.towers.length}|${selected?.cy}`;
   if (infoKey !== lastInfoKey) {
     lastInfoKey = infoKey;
-    info.className = '';
     if (selected) {
       const p = PHIL.get(selected.philId)!;
-      const cost = g.upgradeCost(selected);
-      info.className = `icard t${p.tier}`;
-      info.innerHTML = `<div class="ic-top"><img src="${portrait(p.id)}"><div><span class="tier-chip t${p.tier}">${TIER_NAME[p.tier]}</span>${selected.level ? ` <span class="tag lv">+${selected.level}</span>` : ''}<b>${p.name}</b></div></div>
-        <div class="ic-skill"><b>✦ ${p.skill}</b><br>${p.skillDesc}</div>
-        ${cost !== null ? `<button id="upgrade" class="up">⬆ 강화 ${cost}G</button>` : ''}`;
-      const up = document.getElementById('upgrade');
-      if (up) { (up as HTMLButtonElement).disabled = g.gold < cost!; up.onclick = () => { if (selected && g.upgrade(selected)) { lastInfoKey = ''; updateUI(); } }; }
+      info.className = `scard t${p.tier}`;
+      info.innerHTML = `<div class="sc-face"><img src="${pedArt(p.id)}"></div><div class="sc-body"><div class="sc-name"><span class="tier-chip t${p.tier}">${TIER_NAME[p.tier]}</span>${selected.level ? `<span class="tag lv">+${selected.level}</span>` : ''}<b>${p.name}</b></div><div class="sc-skill"><b>✦ ${p.skill}</b> ${p.skillDesc}</div></div>`;
     } else {
-      info.className = 'icard empty';
       const nk = g.waveKind(), nkName = { normal: g.stage.enemyEarly, fast: '빠른 도그마', tank: '단단한 도그마', swarm: '도그마 떼', boss: g.bossName() }[nk];
       const nkTip = { normal: '기본 무리', fast: '느리게 만드는 철학자가 좋아요', tank: '한 방이 센 철학자가 좋아요', swarm: '범위 공격이 좋아요', boss: '강화를 미리 해 두세요' }[nk];
-      info.innerHTML = `<div class="ic-next"><div class="ic-mon"><img src="${monsterUrl(g.stage.era, nk)}"></div><div><small>${g.running ? '지금' : '다음'} · ${g.running ? g.wave : g.wave + 1}웨이브</small><b>${nkName}</b><em>${nkTip}</em></div></div>
-        <div class="ic-meters"><div><span>필드</span><i style="--v:${g.fielded().length / 25}"></i><b>${g.fielded().length}/25</b></div><div><span>대기석</span><i style="--v:${(BENCH - g.benchSlots().length) / BENCH}"></i><b>${BENCH - g.benchSlots().length}/${BENCH}</b></div></div>
-        <small class="ic-tip">철학자를 탭하면 스킬·강화 · 빈 칸을 누르면 옮겨요</small>`;
+      info.className = 'scard empty';
+      info.innerHTML = `<div class="sc-mon"><img src="${monsterUrl(g.stage.era, nk)}"></div><div class="sc-body"><small>${g.running ? '지금' : '다음'} · ${g.running ? g.wave : g.wave + 1}웨이브</small><b>${nkName}</b><em>${nkTip}</em></div>
+        <div class="sc-meta"><span>필드 <b>${g.fielded().length}/25</b></span><span>대기석 <b>${BENCH - g.benchSlots().length}/${BENCH}</b></span><small>철학자를 탭해 보세요</small></div>`;
     }
   }
-
   // 촉매
   const catKey = JSON.stringify(g.catalysts) + g.running + g.wave;
   if (catKey !== lastCatKey) {
@@ -477,55 +496,19 @@ function updateUI() {
       `<span class="c ${g.catalysts[id] ? 'on' : ''} ${fresh.has(id) ? 'flash' : ''}" title="촉매: ${CAT_NAME[id]}">${CAT_ICON[id]}${g.catalysts[id]}</span>`).join('');
   }
 
-  // 조합: 지금 만들 수 있는 것 + 하나만 모자란 것
-  const recipes = g.over ? [] : g.availableRecipes()
-    .sort((a, b) => Number(g.hasCatalyst(b)) - Number(g.hasCatalyst(a)) || PHIL.get(b.result)!.tier - PHIL.get(a.result)!.tier)
-    ;
-  const near = g.over || g.oneTool ? [] : RECIPES.filter((r) => !recipes.includes(r) && g.ownedMaterials(r).filter((x) => !x).length === 1 && !PHIL.get(r.result)!.hidden)
-    .sort((a, b) => PHIL.get(a.result)!.tier - PHIL.get(b.result)!.tier).slice(0, 2);
-  const goals = RECIPES.filter((r) => (progress.likedRecipes ?? []).includes(r.id));
-  const key = near.map((r) => r.id).join() + '|' + recipes.map((r) => r.id + g.hasCatalyst(r)).join() + '|' + goals.map((r) => g.ownedMaterials(r).join('')).join();
-  if (key !== lastSynthKey) {
-    lastSynthKey = key;
-    const box = $('synth');
-    box.innerHTML = '';
-    const head = document.createElement('div');
-    head.className = 'sy-head';
-    head.textContent = recipes.length ? `⚗ 조합 가능 ${recipes.length}` : '⚗ 조합';
-    box.appendChild(head);
-    const face = (id: string, known = true) => `<img src="${portrait(id)}" class="${known ? '' : 'unk'}">`;
-    for (const r of goals) {
-      const res = PHIL.get(r.result)!, own = g.ownedMaterials(r);
-      const known = QA_MODE || progress.seen.includes(res.id);
-      const el = document.createElement('div');
-      el.className = 'sy-row goal';
-      el.innerHTML = `<span class="res">${face(res.id, known)}</span><span class="txt"><b>💗 ${known ? shortName(res.name) : '???'}</b><span class="mats">${r.materials.map((m, i) => `<i class="${own[i] ? 'have' : ''}">${face(m)}</i>`).join('')}</span></span><span class="cnt">${own.filter(Boolean).length}/${own.length}</span>`;
-      box.appendChild(el);
-    }
-    for (const r of recipes.slice(0, 8)) {
-      const b = document.createElement('button');
-      const res = PHIL.get(r.result)!;
-      const ok = g.hasCatalyst(r);
-      const seen = progress.seen.includes(res.id) || QA_MODE;
-      const lockedR = g.isLocked(r);
-      b.className = `sy-row ready t${res.tier} ${ok && !lockedR ? '' : 'locked'}`;
-      b.innerHTML = `<span class="res">${face(res.id, seen || !res.hidden)}</span><span class="txt"><b>${res.hidden && !seen ? '???' : shortName(res.name)}</b><span class="mats">${r.materials.map((m) => `<i>${face(m)}</i>`).join('<em>+</em>')}${r.catalyst ? `<em>+${CAT_ICON[r.catalyst]}</em>` : ''}</span></span><span class="go">조합</span>`;
-      if (!ok || lockedR) b.disabled = true;
-      if (lockedR) b.title = '카드가 있어야 조합할 수 있어요 (뽑기에서 얻기)';
-      if (lockedR) b.insertAdjacentHTML('beforeend', `<small class="lk">${lockReason(r)}</small>`);
-      b.onclick = () => { if (g.synthesize(r)) bump(progress, 'merges'); selected = null; updateUI(); }; // 조합 후 선택 상태로 두지 않음
-      box.appendChild(b);
-    }
-    for (const r of near) {
-      const res = PHIL.get(r.result)!, own = g.ownedMaterials(r);
-      const miss = r.materials.find((_, i) => !own[i])!;
-      const seen = progress.seen.includes(res.id) || QA_MODE;
-      const el = document.createElement('div');
-      el.className = 'sy-row near';
-      el.innerHTML = `<span class="res">${face(res.id, seen)}</span><span class="txt"><b>${seen ? shortName(res.name) : '???'}</b><span class="hint-miss">💡 <i class="miss">${face(miss)}</i>${shortName(PHIL.get(miss)!.name)}만 더</span></span>`;
-      box.appendChild(el);
-    }
+  // 하단 행동 버튼
+  const mb = $<HTMLButtonElement>('merge');
+  const mKey = ready.map((r) => r.id).join() + (selected?.uid ?? '');
+  if (mb.dataset.k !== mKey) {
+    mb.dataset.k = mKey;
+    mb.classList.toggle('hot', ready.length > 0);
+    mb.innerHTML = ready.length ? `<i><img src="${portrait(ready[0].result)}"></i><span>합성</span>${ready.length > 1 ? `<em>${ready.length}</em>` : ''}` : '<i>⚗</i><span>합성</span>';
   }
+  mb.disabled = !ready.length;
+  const cost = selected ? g.upgradeCost(selected) : null;
+  const ub = $<HTMLButtonElement>('upgrade-btn');
+  ub.disabled = !selected || cost === null || g.gold < cost;
+  ub.querySelector('span')!.textContent = selected && cost !== null ? `강화 ${cost}G` : '강화';
 }
 
 // ---------- 그리기 ----------
@@ -660,6 +643,18 @@ function draw() {
       ctx.fillStyle = isSel ? '#ffd36b' : 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.roundRect(cx - nw / 2, ny - fs * 0.62, nw, fs * 1.24, fs * 0.6); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#3b2a1e'; ctx.fillText(nm, cx, ny + 0.5);
+    }
+    // 조합 표시: 재료 짝은 금빛 고리, 조합 가능은 ✦ 배지
+    if (selected && t !== selected && partnerIds.has(t.philId)) {
+      const pr = 0.5 + 0.5 * Math.sin(tick * 0.15);
+      ctx.strokeStyle = `rgba(255,190,60,${0.55 + pr * 0.4})`; ctx.lineWidth = 3 + pr * 2;
+      ctx.beginPath(); ctx.ellipse(cx, foot - cell * 0.02, cell * 0.42, cell * 0.16, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    if (readyIds.has(t.philId) && !(selected === t)) {
+      const sx2 = (t.cx + 0.82) * cellX, sy2 = (t.cy + 0.18) * cell + Math.sin(tick * 0.12 + t.uid) * 2, sr = cell * 0.12;
+      ctx.fillStyle = '#ff5f8f'; ctx.beginPath(); ctx.arc(sx2, sy2, sr, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = `${sr * 1.4}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('✦', sx2, sy2 + 0.5);
     }
     // 등급 배지
     const bx = (t.cx + 0.2) * cellX, by = (t.cy + 0.2) * cell, br = cell * 0.13;
@@ -1612,7 +1607,7 @@ const TUT: { sel: string; text: string; done?: (g: Game) => boolean; pos?: 'top'
   { sel: '#summon', text: '👋 먼저 <b>소환</b>을 눌러 철학자를 불러 보세요. 흔함 9명 중 한 명이 나와요.', done: (g) => g.towers.length >= 1 },
   { sel: '#summon', text: '좋아요! 철학자는 빈 칸에 자동으로 앉아요. <b>두 번 더</b> 소환해 볼까요?', done: (g) => g.towers.length >= 3 },
   { sel: '#field', text: '칸에 앉은 철학자를 <b>탭</b>하면 정보·강화·판매가 나와요. 선택한 채로 다른 칸을 탭하면 <b>자리를 옮겨요</b>. 맨 아래 <b>대기석</b> 5칸은 싸우지 않지만 조합 재료로 쓰여요. 필드가 차면 소환된 철학자가 대기석으로 가요.', pos: 'top' },
-  { sel: '#synth', text: '조합 재료가 모이면 여기 <b>⚗ 조합</b> 버튼이 떠요. 하나만 모자란 조합은 💡로 알려 줘요. 예: 소크라테스 둘 → 플라톤!', pos: 'top' },
+  { sel: '#merge', text: '조합 재료가 모이면 철학자 머리 위에 <b>✦</b>가 뜨고, 여기 <b>합성</b> 버튼이 결과 얼굴과 함께 반짝여요. 누르기만 하면 돼요!', pos: 'top' },
   { sel: '#start', text: '준비 끝! <b>웨이브 시작</b>을 누르면 도그마(적)가 몰려와요.', done: (g) => g.running },
   { sel: '#lives', text: '🧠 이게 <b>멘탈</b>이에요. 도그마가 길 끝에 닿으면 1(보스는 5)씩 깎이고, 못 잡은 적은 <b>다시 돌아와요</b>. 0이 되면 패배!', pos: 'top' },
   { sel: '#cats', text: '웨이브를 깨면 골드와 <b>촉매</b>(🔥💎🌀⚙️🪞)를 얻어요. 촉매는 희귀 이상 조합 재료예요. 보스를 잡으면 🎟 무료 소환권도 줘요. 칩을 누르면 설명이 나와요.', pos: 'top' },
