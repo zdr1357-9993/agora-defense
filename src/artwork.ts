@@ -1,7 +1,7 @@
 import atlasIds from './character-atlas.json';
 import { ART_SOURCES } from './artwork-sources';
 
-export const RELEASE = '20261108v3';
+export const RELEASE = '20261108v4';
 export type ArtName = keyof typeof ART_SOURCES;
 const images = new Map<ArtName, HTMLImageElement>();
 const tiles = new Map<string, HTMLCanvasElement>();

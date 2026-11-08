@@ -126,3 +126,34 @@ button.ghost { border-radius: 2px; }
 #codex-list .codex-grid .card.unknown { background: #e9e2f0 !important; }
 .thinker::before, .thinker::after { display: none; }
 .j-stage-number, .j-go b, #dock button, .card b { font-weight: 700; }
+
+/* v4: one geometry for CSS, bitmap and pointer hit testing. No layout border. */
+#field-wrap { padding: 10px; border: 1px solid #c5b6d2; border-radius: 3px; background-size: cover; background-position: center; overflow: hidden; isolation: isolate; }
+#field { display: block; border: 0; border-radius: 0; outline: 2px solid #9987b0; outline-offset: 0; box-shadow: 0 3px 0 #c6b8d5; image-rendering: pixelated; }
+.memory-reveal.gacha-stage { background: #f5effa; color: #514569; padding: max(20px,env(safe-area-inset-top)) 16px max(20px,env(safe-area-inset-bottom)); overflow-y: auto; gap: 20px; }
+.memory-reveal .memory-caption { text-align: center; z-index: 2; flex: none; }
+.memory-caption small { font-size: 11px; letter-spacing: 2px; color: #8a789a; }
+.memory-caption h2 { font-size: clamp(16px,4vw,23px); margin: 10px 0; }
+.memory-caption p { font-size: 12px; color: #8b7d99; }
+.memory-reveal .scroll-wrap { border: 0; background: transparent; box-shadow: none; color: #655574; display: flex; flex-direction: column; align-items: center; gap: 12px; border-radius: 0; padding: 10px; font-size: 15px; }
+.memory-reveal .scroll-wrap small { font-size: 11px; color: #91839e; }
+.memory-scroll { width: min(280px,70vw); height: min(280px,70vw); object-fit: contain; image-rendering: pixelated; animation: memoryBob 2.4s steps(12) infinite; }
+.memory-reveal.opened .scroll-wrap { animation: memoryUnseal .38s ease-out forwards; }
+.memory-reveal .cards { width: min(440px,100%); grid-template-columns: repeat(5,minmax(0,1fr)); gap: 10px 7px; max-height: 60dvh; overflow: auto; padding: 12px 5px; flex: 0 1 auto; }
+.memory-reveal .cards.single { width: 184px; grid-template-columns: minmax(0,1fr); }
+.memory-reveal .gcard { border: 2px solid #baabc8 !important; border-radius: 3px; background: #fffcf7; box-shadow: 0 3px 0 #ded2e8; animation: memoryCard .3s ease-out both; min-width: 0; padding: 8px 2px; }
+.memory-reveal .gcard img { width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
+.memory-reveal .gcard b { font-size: 10px; font-weight: 700; overflow-wrap: anywhere; }
+.memory-reveal .gcard small { font-size: 9px; color: #93809c; }
+.memory-reveal .gcard.legend { border-color: #cfb072 !important; background: #fff4d9; box-shadow: 0 3px 0 #e1cda1; }
+.memory-reveal .gcard.mythic { border-color: #b899c5 !important; background: #f8e7f2; box-shadow: 0 3px 0 #d6bfdf; }
+.memory-reveal .gcard i { top: -9px; right: -3px; border: 1px solid #ac8bb7; border-radius: 2px; font-size: 9px; }
+.memory-reveal .g-actions { flex: none; }
+.memory-reveal .g-actions button { min-height: 44px; min-width: 120px; font-size: 14px; }
+@keyframes memoryBob { 50% { transform: translateY(-6px) rotate(-2deg); } }
+@keyframes memoryUnseal { to { transform: translateY(-18px) scale(1.08); opacity: 0; } }
+@keyframes memoryCard { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media(max-width: 360px) { .memory-reveal .cards { grid-template-columns: repeat(4,minmax(0,1fr)); } .jnode.l { transform: translateX(-58px); } .jnode.r { transform: translateX(58px); } }
+@media(prefers-reduced-motion: reduce) { .memory-reveal *, .era-wipe { animation: none !important; transition: none !important; } }
+
+.memory-reveal, .memory-reveal * { font-family: 'Galmuri11', system-ui, sans-serif !important; }

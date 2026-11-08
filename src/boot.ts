@@ -2,7 +2,7 @@ import { loadArtwork, iconUrl, artworkCharacter, RELEASE } from './artwork';
 
 const loader = document.createElement('div');
 loader.className = 'art-loader';
-loader.innerHTML = '<b>AGORA</b><p>철학자들이 광장으로 오는 중…</p><progress max="16" value="0"></progress><small>잠깐, 망치는 니체만 들고 오세요.</small>';
+loader.innerHTML = '<b>AGORA</b><p>철학자들이 광장으로 오는 중…</p><progress max="18" value="0"></progress><small>잠깐, 망치는 니체만 들고 오세요.</small>';
 document.body.appendChild(loader);
 
 loadArtwork((done, total) => {

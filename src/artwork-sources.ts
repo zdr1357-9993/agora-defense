@@ -1,5 +1,7 @@
 // Generated production art, bundled with Vite content hashes.
 export const ART_SOURCES = {
+  'battle-tiles': new URL('./assets/battle-tiles.webp', import.meta.url).href,
+  'memory-seal': new URL('./assets/memory-seal.webp', import.meta.url).href,
   'characters-1': new URL('./assets/characters-1.webp', import.meta.url).href,
   'characters-2': new URL('./assets/characters-2.webp', import.meta.url).href,
   'characters-3': new URL('./assets/characters-3.webp', import.meta.url).href,

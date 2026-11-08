@@ -1,25 +1,24 @@
-import { eraArtUrl } from './artwork';
-/** Small, code-native pixel scenery. No external images or asset downloads. */
-const COLORS: Record<string, [string, string, string]> = {
-  고대: ['#f2effb', '#ddd5ed', '#a9c8bb'],
-  동양: ['#edf5ef', '#d5e6dd', '#a3c5b4'],
-  중세: ['#f2eef8', '#dfd6eb', '#bcb1d2'],
-  근대: ['#edf2fa', '#d4deef', '#aabbd4'],
-  현대: ['#f6edf5', '#ead8e8', '#c5afd0'],
-};
-
-export function journeyArt(era: string): string {
-  return eraArtUrl(era);
+import { eraArtUrl, artImage } from './artwork';
+const ERAS = ['고대', '동양', '중세', '근대', '현대'];
+const COLORS = ['#f1e9dc', '#e3eee7', '#eee5f3', '#e9eef6', '#f5e5ec'];
+export function journeyArt(era: string): string { return eraArtUrl(era); }
+/** Equal-cell atlas; rounded boundaries avoid sampling neighbouring eras. */
+export function drawEraTile(x: CanvasRenderingContext2D, era: string, column: number, dx: number, dy: number, width: number, height = width) {
+  const row = Math.max(0, ERAS.indexOf(era));
+  const image = artImage('battle-tiles');
+  if (!image) { x.fillStyle = COLORS[row]; x.fillRect(dx, dy, width, height); return; }
+  const sx = Math.round(column * image.naturalWidth / 5), sy = Math.round(row * image.naturalHeight / 5);
+  const sw = Math.round((column + 1) * image.naturalWidth / 5) - sx;
+  const sh = Math.round((row + 1) * image.naturalHeight / 5) - sy;
+  x.drawImage(image, sx, sy, sw, sh, dx, dy, width, height);
 }
-
-/** Quiet, alternating cells. Uses the actual game grid and cell dimensions. */
 export function drawPastelFloor(x: CanvasRenderingContext2D, era: string, cellX: number, cellY: number, grid: number) {
-  const [sky, stone] = COLORS[era] ?? COLORS.고대;
-  x.fillStyle = sky; x.fillRect(0, 0, cellX * grid, cellY * grid);
-  for (let row = 1; row < grid - 1; row++) for (let col = 1; col < grid - 1; col++) {
-    x.fillStyle = (row + col) % 2 ? '#e3f3ed' : '#edf8f3';
-    x.fillRect(col * cellX + 1, row * cellY + 1, cellX - 2, cellY - 2);
-    x.strokeStyle = '#b8accd'; x.lineWidth = 1.5;
-    x.strokeRect(col * cellX + .5, row * cellY + .5, cellX - 1, cellY - 1);
+  x.imageSmoothingEnabled = false;
+  for (let row = 0; row < grid; row++) for (let col = 0; col < grid; col++) {
+    const inner = row > 0 && col > 0 && row < grid - 1 && col < grid - 1;
+    const left = Math.round(col * cellX), top = Math.round(row * cellY);
+    const width = Math.round((col + 1) * cellX) - left, height = Math.round((row + 1) * cellY) - top;
+    drawEraTile(x, era, inner ? (row + col) % 2 : 2, left, top, width, height);
+    if (inner) { x.strokeStyle = '#b5a7bd'; x.lineWidth = 1; x.strokeRect(left + .5, top + .5, width - 1, height - 1); }
   }
 }

@@ -1,5 +1,5 @@
 import { artUrl, artImage, iconHtml } from './artwork';
-import { journeyArt, drawPastelFloor } from './pastel-art';
+import { journeyArt, drawPastelFloor, drawEraTile } from './pastel-art';
 import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
 import { ACCOUNTS, login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
 import { STAGE_PATHS } from './paths';
@@ -271,21 +271,22 @@ const ROWS = GRID + 1.4;
 function resize() {
   const dpr = window.devicePixelRatio || 1;
   const wrap = $('field-wrap');
-  const W = wrap.clientWidth;
+  const frameStyle = getComputedStyle(wrap);
+  const W = wrap.clientWidth - (parseFloat(frameStyle.paddingLeft) || 0) - (parseFloat(frameStyle.paddingRight) || 0);
   // 필드가 먼저: 상단·하단 버튼을 뺀 높이에서 아래 패널 최소 높이(104px)만 남기고 필드에 준다
   const battle = $('battle');
   const gap = parseFloat(getComputedStyle(battle).rowGap) || 8, pad = parseFloat(getComputedStyle(battle).paddingTop) + parseFloat(getComputedStyle(battle).paddingBottom);
   const fixed = ['hud', 'cats', 'selbar', 'actions', 'dock'].reduce((a, id) => a + $(id).offsetHeight, 0) + gap * 5 + pad;
-  const H = Math.max(150, battle.clientHeight - fixed);
+  const H = Math.max(150, battle.clientHeight - fixed - (parseFloat(frameStyle.paddingTop) || 0) - (parseFloat(frameStyle.paddingBottom) || 0));
   if (!W || !battle.clientHeight) return;
   // 세로에 맞춰 칸 크기를 정하고, 가로는 화면 폭까지 넓힌다 (칸이 최대 1.5배까지 옆으로 길어짐)
   const c = Math.min(W / GRID, H / ROWS);
   const width = Math.floor(c * GRID); // 정사각형 칸
   const height = Math.floor(c * ROWS);
   canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
-  canvas.width = width * dpr;
-  canvas.height = height * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(height * dpr);
+  ctx.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
   cell = height / ROWS;
   cellX = width / GRID;
 }
@@ -301,6 +302,7 @@ new ResizeObserver(resize).observe($('battle'));
 function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   if (story) { const base = STAGES.find((x) => x.id === story.base)!; s = { ...base, name: story.title, boss10: story.boss, boss20: story.boss, story: story.when }; }
   spawnAt.clear();
+  $('field-wrap').style.backgroundImage = `linear-gradient(#fff9 0 0),url(${journeyArt(s.era)})`;
   eraWipe(s.era, story ? story.title : s.name, story ? story.when : '');
   game = new Game(s, {
     cardMult: (id) => cardMult(progress.cards[id] ?? 0),
@@ -525,24 +527,26 @@ function draw() {
   if (!game || !cell) return;
   const g = game;
   const w = canvas.clientWidth, hTot = canvas.clientHeight, fh = GRID * cell; // fh: 필드 높이
-  ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
-  ctx.clearRect(0, 0, w, hTot);
+  ctx.setTransform(canvas.width / w, 0, 0, canvas.height / hTot, 0, 0);
+  ctx.fillStyle = '#e9e3f2'; ctx.fillRect(0, 0, w, hTot);
   // 대기석 판 (필드 아래)
   ctx.fillStyle = '#e9e3f2'; ctx.fillRect(0, fh, w, hTot - fh);
   ctx.fillStyle = '#b2a6c5'; ctx.fillRect(0, fh - 1, w, 2);
   ctx.font = `${Math.max(10, cell * 0.2)}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('대기석', cellX * 0.5, fh + cell * 0.6); ctx.fillText(`${BENCH - game.benchSlots().length}/${BENCH}`, cellX * 6.5, fh + cell * 0.6);
+  drawEraTile(ctx, g.stage.era, 3, 0, fh + cell * .25, cellX * .85);
+  drawEraTile(ctx, g.stage.era, 4, w - cellX * .85, fh + cell * .25, cellX * .85);
   // 대기석: 칸 대신 나무 벤치 한 줄
   ctx.fillStyle = '#c9bfdc'; ctx.beginPath(); ctx.roundRect(cellX * 0.95, fh + cell * 0.78, cellX * 5.1, cell * 0.16, cell * 0.08); ctx.fill();
   ctx.fillStyle = '#a99bbb'; for (const lx of [1.2, 5.8]) ctx.fillRect(cellX * lx, fh + cell * 0.94, cell * 0.08, cell * 0.22);
   ctx.save();
-  if (shake > 0) ctx.translate(rnd(-1, 1) * shake * 8, rnd(-1, 1) * shake * 8);
+  // Keep the board anchored: camera translation exposed clear strips at its edges.
   ctx.imageSmoothingEnabled = false;
 
   // ---- 바닥: 스테이지별 질감 (칸 테두리 없이 하나의 필드처럼) ----
   const th = THEME[g.stage.era] ?? THEME['고대'];
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, fh); ctx.clip();
-  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingEnabled = false;
   drawPastelFloor(ctx, g.stage.era, cellX, cell, GRID);
   ctx.imageSmoothingEnabled = false;
   // ---- 길: 굽이치는 두꺼운 길 + 테두리 ----
@@ -998,14 +1002,14 @@ function renderRoom() {
   const next = { ...progress, tapLevel: progress.tapLevel + 1 };
   $('tab-room').innerHTML = `
     <div class="room">
-      <div class="room-head"><h2>${iconHtml('room')} 고민방</h2><button class="info-btn" id="room-info">i</button></div>
+      <div class="room-head"><h2>${iconHtml('room')} 고민방</h2><button class="info-btn" id="room-info" aria-label="고민방 안내">i</button></div>
       <div class="room-sky" style="background-image:url(${artUrl('room')})"><div class="room-bubble">“${p.quote}”</div>
-        <button id="thinker" class="thinker t${p.tier}"><img src="${heroPortrait(p.id)}"></button>
+        <button id="thinker" class="thinker t${p.tier}" aria-label="${p.name}와 고민하고 고뇌 얻기"><img src="${heroPortrait(p.id)}"></button>
         <div class="room-floor"></div></div>
       <div class="room-stat"><span>고뇌</span><b id="room-gonoe">${Math.floor(progress.gonoe).toLocaleString()}</b></div>
       <div class="room-rates"><span>👆 탭당 <b>+${tapGain(progress)}</b></span><span>⏳ 초당 <b>+${rate.toFixed(1)}</b></span></div>
       ${idle ? `<p class="hint">자리를 비운 사이 고뇌 <b>+${idle.toLocaleString()}</b></p>` : ''}
-      <div class="room-owners">${owned.slice(0, 7).map((o) => `<button data-owner="${o.id}" class="${o.id === roomThinker ? 'on' : ''}"><img src="${portrait(o.id)}"></button>`).join('')}</div>
+      <div class="room-owners">${owned.slice(0, 7).map((o) => `<button data-owner="${o.id}" aria-label="${o.name}를 고민방 주인으로 선택" aria-pressed="${o.id === roomThinker}" class="${o.id === roomThinker ? 'on' : ''}"><img src="${portrait(o.id)}"></button>`).join('')}</div>
       <button id="room-ad" class="chunky pink">${adFree(progress) ? '✨' : '📺'} 30분치 고뇌 바로 받기 <small>(+${Math.round(rate * 1800).toLocaleString()} · 오늘 ${adsLeft(progress)}회)</small></button>
       <button id="tap-up" class="chunky blue">💭 고민의 깊이 Lv.${progress.tapLevel + 1} → ${progress.tapLevel + 2}<small>탭 +${tapGain(progress)}→+${tapGain(next)} · 초당 ${rate.toFixed(1)}→${idleRate(next, clearedStages()).toFixed(1)} · 🤔${cost.toLocaleString()}</small></button>
     </div>`;
@@ -1040,16 +1044,16 @@ function renderGacha() {
   const rates = CARD_RATES.map((r) => `<span class="tier-chip t${r.tier}">${TIER_NAME[r.tier]} ${(r.rate * 100).toFixed(1)}%</span>`).join(' ');
   $('tab-gacha').innerHTML = `
     <div class="gacha-box master-box">
-      <div class="gb-head"><h2>${iconHtml('gacha')} 거장 초대</h2><button class="info-btn" data-ginfo="m">i</button></div>
+      <div class="gb-head"><h2>${iconHtml('gacha')} 거장 초대</h2><button class="info-btn" aria-label="거장 초대 안내" data-ginfo="m">i</button></div>
       <div class="banner-art" style="background-image:url(${artUrl('memory-banner')})">${PHILOSOPHERS.filter((p) => p.tier === 7 && !p.hidden).map((p) => `<img src="${pedArt(p.id)}">`).join('')}</div>
       <div class="row">${pullBtn('m10', 'gold')}${pullBtn('m1', 'pink')}</div>
     </div>
     <div class="gacha-box card-box">
-      <div class="gb-head"><h2>${iconHtml('codex')} 기억 떠올리기</h2><button class="info-btn" data-ginfo="c">i</button></div>
+      <div class="gb-head"><h2>${iconHtml('codex')} 기억 떠올리기</h2><button class="info-btn" aria-label="기억 떠올리기 안내" data-ginfo="c">i</button></div>
       <div class="row">${pullBtn('c1', 'pink')}${pullBtn('c10', 'gold')}${pullBtn('c10g', 'blue')}</div>
     </div>
     <div class="gacha-box tool-box">
-      <div class="gb-head"><h2>🧰 도구 상자</h2><button class="info-btn" data-ginfo="t">i</button></div>
+      <div class="gb-head"><h2>🧰 도구 상자</h2><button class="info-btn" aria-label="도구 상자 안내" data-ginfo="t">i</button></div>
       <div class="row">${pullBtn('t1', 'mint')}${pullBtn('t10', 'gold')}${pullBtn('t10g', 'blue')}</div>
     </div>`;
   const INFO: Record<string, string> = {
@@ -1072,23 +1076,28 @@ function renderGacha() {
   }
 }
 
-/** 뽑기 연출: 봉인된 두루마리(최고 등급 색으로 빛남) → 터치 → 광선 폭발 → 한 장씩 공개 */
+/** 기억 두루마리 → 부드러운 열기 → 카드 공개. 결과·확률은 기존 규칙 그대로. */
 function gachaShow(o: PullOption, got: string[], before: Record<string, number>) {
   const isTool = o.kind === 'tool';
   const tiers = got.map((id) => (isTool ? 3 : PHIL.get(id)!.tier));
   const top = Math.max(...tiers);
   const glow = top >= 7 ? 'rainbow' : top >= 6 ? 'gold' : top >= 5 ? 'orange' : 'blue';
   const ov = document.createElement('div');
-  ov.className = `gacha-stage glow-${glow}`;
-  ov.innerHTML = `<div class="rays"></div><div class="scroll-wrap"><div class="scroll">${isTool ? '🧰' : '📜'}</div><p>터치해서 펼치기</p></div>
+  ov.className = `gacha-stage memory-reveal glow-${glow}`;
+  ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', '기억 펼치기');
+  const previousFocus = document.activeElement as HTMLElement | null;
+  ov.innerHTML = `<div class="memory-caption"><small>아고라 기억 우체국</small><h2>잊고 있던 생각이 도착했어요</h2><p class="reveal-progress" aria-live="polite">총 ${got.length}개의 기억</p></div>
+    <button type="button" class="scroll-wrap" aria-label="두루마리 펼치기"><img class="memory-scroll" src="${artUrl('memory-seal')}" alt="분홍 리본으로 묶인 기억 두루마리"><span>눌러서 기억 펼치기</span><small>철학자도 택배는 못 참지.</small></button>
     <div class="cards ${got.length === 1 ? 'single' : ''}"></div><div class="g-actions"><button class="chunky blue skip">모두 열기</button><button class="chunky gold done hidden">확인</button></div>`;
   document.body.appendChild(ov);
-  sfx.drumroll(1.2);
+  sfx.drumroll(.6);
+  ov.querySelector<HTMLButtonElement>('.scroll-wrap')!.focus();
   const counted: Record<string, number> = { ...before };
   const cardsEl = ov.querySelector('.cards')!;
-  let opened = false, idx = 0, timer = 0;
+  let opened = false, idx = 0, timer = 0, revealTimer = 0;
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   const flipNext = (chain = true) => {
-    if (idx >= got.length) { ov.querySelector('.skip')!.classList.add('hidden'); ov.querySelector('.done')!.classList.remove('hidden'); return; }
+    if (idx >= got.length) { ov.querySelector('.skip')!.classList.add('hidden'); ov.querySelector('.done')!.classList.remove('hidden'); ov.querySelector<HTMLButtonElement>('.done')!.focus(); return; }
     const id = got[idx], tier = tiers[idx];
     const el = document.createElement('div');
     if (isTool) {
@@ -1103,27 +1112,33 @@ function gachaShow(o: PullOption, got: string[], before: Record<string, number>)
       const tag = prev === 0 ? '<i class="new">NEW</i>' : now > prev ? `<i class="lvup">Lv.${now}!</i>` : '';
       el.className = `gcard t${tier} ${tier >= 6 ? 'legend' : ''} ${tier >= 7 ? 'mythic' : ''}`;
       el.innerHTML = `${tag}<img src="${pedArt(id)}"><b>${p.name}</b><small>${TIER_NAME[tier]}</small>`;
-      if (tier >= 6) { burst(ov, tier - 1); shakeEl(ov); }
+      // The border marks rarity without full-screen flashes or camera shake.
     }
-    sfx.reveal(tier - 1);
+    if (chain) sfx.reveal(tier - 1);
     cardsEl.appendChild(el);
     idx++;
-    if (chain) timer = window.setTimeout(() => flipNext(), tier >= 6 ? 700 : 160);
+    ov.querySelector('.reveal-progress')!.textContent = `${idx} / ${got.length}개의 기억을 펼쳤어요`;
+    if (chain) timer = window.setTimeout(() => flipNext(), reducedMotion ? 30 : tier >= 6 ? 430 : 180);
     else if (idx >= got.length) flipNext(false);
   };
   const open = () => {
     if (opened) return; opened = true;
     ov.classList.add('opened');
-    setTimeout(() => flipNext(), 450);
+    revealTimer = window.setTimeout(() => flipNext(), reducedMotion ? 0 : 380);
   };
   ov.querySelector('.scroll-wrap')!.addEventListener('click', open);
-  setTimeout(open, 1400);
+  // Explicit opening keeps the animation under the player's control.
   ov.querySelector('.skip')!.addEventListener('click', (e) => {
     e.stopPropagation();
-    opened = true; ov.classList.add('opened'); clearTimeout(timer);
+    opened = true; ov.classList.add('opened'); window.clearTimeout(timer); window.clearTimeout(revealTimer);
     while (idx < got.length) flipNext(false);
+    flipNext(false); // Last card may already be visible while its completion timer is pending.
   });
-  ov.querySelector('.done')!.addEventListener('click', () => { ov.remove(); renderGacha(); });
+  ov.querySelector('.done')!.addEventListener('click', () => { window.clearTimeout(timer); window.clearTimeout(revealTimer); ov.remove(); renderGacha(); if (previousFocus?.isConnected) previousFocus.focus(); else $('tab-gacha').querySelector<HTMLButtonElement>('button')?.focus(); });
+  ov.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') { event.preventDefault(); (ov.querySelector(idx < got.length ? '.skip' : '.done') as HTMLButtonElement).click(); }
+    if (event.key === 'Tab') { const buttons = [...ov.querySelectorAll<HTMLButtonElement>('button')].filter(b => !b.classList.contains('hidden') && !(opened && b.classList.contains('scroll-wrap'))); const current = buttons.indexOf(document.activeElement as HTMLButtonElement); event.preventDefault(); buttons[(current + (event.shiftKey ? buttons.length - 1 : 1)) % buttons.length]?.focus(); }
+  });
 }
 
 function burst(host: HTMLElement, tier: number) {
