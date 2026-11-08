@@ -1,3 +1,4 @@
+import { artImage, ERA_ART, eraArtUrl } from './artwork';
 // TCG 카드 삽화: 시대별 배경 장면 + 기존 도트 캐릭터를 크게 얹어 카드 그림을 만든다
 import type { Philosopher } from './data';
 
@@ -129,7 +130,9 @@ export function cardArt(p: Philosopher, sprite: HTMLCanvasElement, skinKey = '')
   cv.width = W; cv.height = H;
   const c = cv.getContext('2d')!;
   const r = rng(parseInt(p.id.slice(1), 10) * 97);
-  (SCENES[p.era] ?? SCENES['고대'])(c, r);
+  const background = artImage(ERA_ART[p.era] ?? 'map-ancient');
+  if (background) c.drawImage(background, 0, 0, background.naturalWidth, background.naturalWidth * H / W, 0, 0, W, H);
+  else (SCENES[p.era] ?? SCENES['고대'])(c, r);
 
   // 바닥 그림자 + 무대 빛
   const glow = c.createRadialGradient(150, 150, 10, 150, 150, 120);
@@ -144,7 +147,7 @@ export function cardArt(p: Philosopher, sprite: HTMLCanvasElement, skinKey = '')
 
   // 반짝이
   const sp = p.tier >= 5 ? ['#fde047', '#f0abfc', '#67e8f9'] : ['#fff', '#fde68a'];
-  for (let i = 0; i < 4 + p.tier * 2; i++) sparkle(c, 20 + r() * 260, 15 + r() * 170, 3 + r() * 5, sp[i % sp.length]);
+  for (let i = 0; i < 3; i++) sparkle(c, 20 + r() * 260, 15 + r() * 170, 3 + r() * 5, sp[i % sp.length]);
   const url = cv.toDataURL();
   cache.set(key, url);
   return url;
@@ -153,13 +156,5 @@ export function cardArt(p: Philosopher, sprite: HTMLCanvasElement, skinKey = '')
 /** 시대 배경 그림만 (스토리 장면용) */
 const sceneCache = new Map<string, string>();
 export function sceneArt(era: string): string {
-  const hit = sceneCache.get(era);
-  if (hit) return hit;
-  const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
-  const c = cv.getContext('2d')!;
-  (SCENES[era] ?? SCENES['고대'])(c, rng(era.length * 31));
-  const url = cv.toDataURL();
-  sceneCache.set(era, url);
-  return url;
+  return eraArtUrl(era);
 }

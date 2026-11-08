@@ -1,0 +1,19 @@
+// Generated production art, bundled with Vite content hashes.
+export const ART_SOURCES = {
+  'characters-1': new URL('./assets/characters-1.webp', import.meta.url).href,
+  'characters-2': new URL('./assets/characters-2.webp', import.meta.url).href,
+  'characters-3': new URL('./assets/characters-3.webp', import.meta.url).href,
+  'characters-5': new URL('./assets/characters-5.webp', import.meta.url).href,
+  'characters-4': new URL('./assets/characters-4.webp', import.meta.url).href,
+  'map-contemporary': new URL('./assets/map-contemporary.webp', import.meta.url).href,
+  'map-medieval': new URL('./assets/map-medieval.webp', import.meta.url).href,
+  'map-modern': new URL('./assets/map-modern.webp', import.meta.url).href,
+  'map-east': new URL('./assets/map-east.webp', import.meta.url).href,
+  'map-ancient': new URL('./assets/map-ancient.webp', import.meta.url).href,
+  'items': new URL('./assets/items.webp', import.meta.url).href,
+  'memory-banner': new URL('./assets/memory-banner.webp', import.meta.url).href,
+  'enemies': new URL('./assets/enemies.webp', import.meta.url).href,
+  'title-ribbon': new URL('./assets/title-ribbon.webp', import.meta.url).href,
+  'room': new URL('./assets/room.webp', import.meta.url).href,
+  'ui-icons': new URL('./assets/ui-icons.webp', import.meta.url).href,
+} as const;
