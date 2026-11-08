@@ -1,0 +1,10 @@
+[
+  [
+    "battle-tiles",
+    "Use case: stylized-concept. Production 2D game tile atlas, square image EXACTLY 5 columns and 5 rows edge-to-edge equal square cells, NO gaps NO labels. Each row a different era of cute low-fatigue Korean philosophy tower defense. Row1 ancient Greek cream marble and sage grass; row2 East Asian mint moss stone and pale jade; row3 medieval monastery lavender limestone and muted lilac; row4 enlightenment academy powder blue cobblestones and pale sand; row5 contemporary campus blush paving and mint grass. Columns1 and2: seamless quiet deployment ground tiles with extremely subtle four-corner edging, mostly plain, no objects. Column3: quiet walking-path paving tile. Columns4 and5: top-down surrounding ground with small era-specific scenic objects near perimeter only (Greek broken column, pot; East bamboo, stone lantern; medieval books and herbs; academy lamp and telescope; campus planter and bench). Crisp chunky pixel art, tiny 16-bit RPG assets, orthographic top-down, flat lighting, muted cream/mint/lavender/pink, no gradients no glows no characters no text no grid separators. Every cell fills exactly its equal atlas rectangle."
+  ],
+  [
+    "memory-seal",
+    "Use case: stylized-concept. Transparent background production game sprite: one cute closed cream parchment memory scroll tied with dusty pink ribbon and tiny mint wax seal featuring a simple question mark symbol. Small comically crooked philosopher laurel leaf tucked in ribbon. Facing front with slight top-down angle. Restrained pastel pixel art, chunky crisp 16-bit pixels, muted lavender outline, no glow no lighting effects, centered isolated object with large transparent margin, fits square, no surrounding scene no text. For a cozy B-grade Korean philosophy game gacha animation, charming inexpensive handcrafted appearance. Actual alpha transparency."
+  ]
+]
