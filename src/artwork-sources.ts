@@ -1,5 +1,13 @@
 // Generated production art, bundled with Vite content hashes.
 export const ART_SOURCES = {
+  'greek-01': new URL('./assets/greek-01.webp', import.meta.url).href,
+  'greek-02': new URL('./assets/greek-02.webp', import.meta.url).href,
+  'greek-03': new URL('./assets/greek-03.webp', import.meta.url).href,
+  'greek-04': new URL('./assets/greek-04.webp', import.meta.url).href,
+  'greek-05': new URL('./assets/greek-05.webp', import.meta.url).href,
+  'signature-fx-a': new URL('./assets/signature-fx-a.webp', import.meta.url).href,
+  'signature-fx-b': new URL('./assets/signature-fx-b.webp', import.meta.url).href,
+
   'arena-ancient': new URL('./assets/arena-ancient.webp', import.meta.url).href,
   'arena-east': new URL('./assets/arena-east.webp', import.meta.url).href,
   'arena-medieval': new URL('./assets/arena-medieval.webp', import.meta.url).href,

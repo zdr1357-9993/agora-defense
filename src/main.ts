@@ -1,6 +1,8 @@
+import { canWearSkin, revealAdminCollection } from './ui-policy';
+import { signatureProfile, signaturePose, drawSignatureEffect, type SignatureCast } from './signature-fx';
 import { wrapCanvasText } from './text-layout';
 import { artUrl, artImage, iconHtml } from './artwork';
-import { journeyArt, drawPastelFloor, arenaArt, drawWaitingBench } from './pastel-art';
+import { journeyArt, drawPastelFloor, arenaArt, drawWaitingBench, GREEK_BACKDROPS } from './pastel-art';
 import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
 import { ACCOUNTS, login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
 import { STAGE_PATHS } from './paths';
@@ -47,7 +49,7 @@ function lockReason(r: { result: string; logic: string }): string {
 }
 const itemUrl = (id: string) => itemSprite(id).toDataURL();
 /** 착용 스킨이 반영된 도트 */
-const spriteFor = (id: string) => skinnedSprite(PHIL.get(id)!, progress?.skinOn?.[id]);
+const spriteFor = (id: string) => skinnedSprite(PHIL.get(id)!, canWearSkin(PHIL.get(id)!.tier) ? progress?.skinOn?.[id] : undefined);
 const monUrl = new Map<string, string>();
 const monsterUrl = (era: string, k: 'normal' | 'fast' | 'tank' | 'swarm' | 'boss') => { const key = era + k; if (!monUrl.has(key)) monUrl.set(key, monsterSprite2(era, k).toDataURL()); return monUrl.get(key)!; };
 const portrait = (id: string) => {
@@ -58,6 +60,8 @@ const portrait = (id: string) => {
 
 let progress = loadProgress();
 let me: Account | null = null;
+const isAdmin = () => me?.role === 'master';
+const difficultyName = (d: { id: string; name: string }) => isAdmin() && d.id === 'challenge' ? '챌린지' : d.name;
 
 const clearedStages = () => STAGES.filter((s) => progress.cleared.includes(s.id)).length;
 
@@ -102,7 +106,7 @@ function renderHome() {
   if (diffOpen) {
     const chips = document.createElement('div');
     chips.className = 'diffs';
-    chips.innerHTML = DIFFICULTIES.map((d) => `<button data-diff="${d.id}" class="${d.id === diffId ? 'on' : ''}" style="--c:${d.color}">${d.icon}<span>${d.name}</span></button>`).join('');
+    chips.innerHTML = DIFFICULTIES.map((d) => `<button data-diff="${d.id}" class="${d.id === diffId ? 'on' : ''}" style="--c:${d.color}">${d.icon}<span>${difficultyName(d)}</span></button>`).join('');
     box.appendChild(chips);
     for (const b of chips.querySelectorAll<HTMLButtonElement>('button')) b.onclick = () => { diffId = b.dataset.diff!; renderHome(); };
   }
@@ -159,7 +163,7 @@ function renderCodex() {
   const grid = document.createElement('div');
   grid.className = 'codex-grid';
   for (const p of PHILOSOPHERS.filter((x) => x.tier === codexTier)) {
-    const known = seen.has(p.id) || !!progress.cards[p.id] || (QA_MODE && !p.hidden);
+    const known = seen.has(p.id) || !!progress.cards[p.id] || (isAdmin() || (QA_MODE && !p.hidden));
     const n = progress.cards[p.id] ?? 0, lv = cardLevel(n);
     const d = document.createElement('div');
     d.className = `card t${p.tier} ${known ? '' : 'unknown'} ${n ? 'owned' : ''}`;
@@ -207,10 +211,11 @@ function showCard(id: string) {
     <div class="bar"><i style="width:${next ? Math.min(100, (n / next) * 100) : 100}%"></i></div>
     <small>전투 공격력 ×${cardMult(n).toFixed(2)}${aw ? ` · 스킬 위력 +${aw * 20}%` : ''}</small></div>
     <div class="pc-lines"><b>📜 일화</b>${UNLOCK_LEVELS.map((L, i) => lv >= L ? `<p>“${homage(lines[i])}”</p>` : `<p class="locked">🔒 카드 Lv.${L}에 열려요</p>`).join('')}</div>
-    ${n ? `<div class="pc-skins"><b>👗 스킨</b>${Object.entries(SKINS).map(([k, s]) => {
+    ${n && canWearSkin(p.tier) ? `<div class="pc-skins"><b>👗 스킨</b>${Object.entries(SKINS).map(([k, s]) => {
       const own = progress.skins.includes(id + ':' + k), on = progress.skinOn[id] === k;
       return `<button data-skin="${k}" class="${on ? 'on' : ''}">${s.icon} ${s.name}${on ? ' (착용 중)' : own ? '' : ' · 💎' + s.price}</button>`;
     }).join('')}${progress.skinOn[id] ? '<button data-skin="">기본 모습</button>' : ''}</div>` : ''}
+    ${n && !canWearSkin(p.tier) ? '<p class="skin-lock-note">스킨은 거장·근원 철학자부터 착용할 수 있어요.</p>' : ''}
     <div class="pc-tools"><b>🧰 장착 도구</b>${ownedTools.length ? ownedTools.map((it) => `<button data-equip="${it.id}" class="${cur === it.id ? 'on' : ''} ${isOwner(it.id, p.realName) ? 'own' : ''}"><img src="${itemUrl(it.id)}">${it.name}${isOwner(it.id, p.realName) ? ' ★' : ''}</button>`).join('') + (cur ? '<button data-equip="">해제</button>' : '') : '<small>도구 상자에서 도구를 뽑아 오세요</small>'}</div>
     ${n ? `<button class="chunky ${progress.favorite === id ? 'pink' : 'blue'} fav-set">${progress.favorite === id ? '💗 나의 최애 (해제하기)' : '💗 최애로 지정 · 고민방 주인'}</button>` : ''}`;
   alertBox(cardHtml(id).replace('<div class="pc-foot">', growth + '<button class="chunky blue tcg-from">🃏 카드로 보기</button><div class="pc-foot">'));
@@ -223,6 +228,7 @@ function showCard(id: string) {
   };
   for (const b of document.querySelectorAll<HTMLButtonElement>('[data-skin]')) b.onclick = (e) => {
     e.stopPropagation();
+    if (!canWearSkin(p.tier)) { toast('스킨은 거장 이상부터 열려요'); return; }
     const k = b.dataset.skin!;
     if (!k) delete progress.skinOn[id];
     else if (progress.skins.includes(id + ':' + k)) progress.skinOn[id] = k;
@@ -303,7 +309,7 @@ new ResizeObserver(resize).observe($('battle'));
 
 function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   if (story) { const base = STAGES.find((x) => x.id === story.base)!; s = { ...base, name: story.title, boss10: story.boss, boss20: story.boss, story: story.when }; }
-  spawnAt.clear();
+  spawnAt.clear(); signatureCasts.clear(); signatureLast.clear();
   $('field-wrap').style.backgroundImage = '';
   eraWipe(s.era, story ? story.title : s.name, story ? story.when : '');
   game = new Game(s, {
@@ -457,7 +463,7 @@ function updateUI() {
   $('wave-max').textContent = String(g.maxWave);
   $<HTMLElement>('wave-bar').style.width = `${(g.wave / g.maxWave) * 100}%`;
   $('diff-chip').textContent = g.diff.icon;
-  $('diff-chip').title = g.diff.name;
+  $('diff-chip').title = difficultyName(g.diff);
   $('cost').textContent = g.tickets ? `🎟${g.tickets} 무료` : `${g.summonCost}G`;
   $<HTMLButtonElement>('summon').disabled = !g.canSummon() || !!g.over;
   $<HTMLButtonElement>('sell').disabled = !selected;
@@ -538,7 +544,7 @@ function draw() {
   ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = '#f3eee8'; ctx.fillRect(0, 0, fullW, fullH);
-  const scenery = arenaArt(g.stage.era);
+  const scenery = arenaArt(g.stage.era, progress.battleBackdrop);
   if (scenery) ctx.drawImage(scenery, 0, 0, fullW, fullH);
   ctx.setTransform(scaleX, 0, 0, scaleY, insetX * scaleX, insetY * scaleY);
   // An actual illustrated bench sits under the five waiting positions.
@@ -645,23 +651,26 @@ function draw() {
     const bob = Math.sin((tick + t.cx * 9 + t.cy * 5) * 0.1) * cell * 0.03;
     const sz = cell * (p.tier >= 6 ? 1.08 : 0.96);
     const rc = recoil.get(t.uid) ?? 0;
+    const cast = signatureCasts.get(t.uid);
+    const pose = cast ? signaturePose(p.id, cast.age / cast.duration) : {angle:0,lift:0};
     const sx = sz * (1 + rc * 0.12), sy = sz * (1 - rc * 0.1);
     ctx.save();
     ctx.globalAlpha = age < 6 ? 0 : 1;
-    ctx.translate(cx, foot); ctx.rotate(-rc * 0.22); ctx.translate(-cx, -foot);
+    ctx.translate(cx, foot - pose.lift * cell); ctx.rotate(-rc * 0.22 + pose.angle); ctx.translate(-cx, -foot);
     ctx.drawImage(spriteFor(p.id), cx - sx / 2, foot - sy * 0.97 + bob - drop * cell * 0.7, sx, sy);
     ctx.restore();
     if ((t.stunT ?? 0) > 0) {
       ctx.font = `${cell * 0.32}px sans-serif`; ctx.textAlign = 'center';
       ctx.fillText('💤', cx + cell * 0.28, foot - cell * 0.9 + Math.sin(tick * 0.15) * 3);
     }
-    // Quiet battlefield: show a full name on selection, with details below.
-    if (isSel) {
+    if (cast && t.cy < GRID) drawSignatureEffect(ctx, p.id, cast.age / cast.duration, cx, foot, cast.tx * cellX, cast.ty * cell, cell, cast.skill);
+    // Full names stay visible beneath every philosopher, including the waiting bench.
+    {
       const nm = p.name;
-      const fs = Math.max(9, cell * 0.18);
+      const fs = Math.max(7.5, Math.min(9.5, cell * .18, cellX * 1.45 / Array.from(nm).length));
       ctx.font = `${fs}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const nw = ctx.measureText(nm).width + 8, ny = foot + fs * 0.35 + cell * 0.07;
-      ctx.fillStyle = isSel ? '#ffd36b' : 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#b8a9c7'; ctx.lineWidth = 1;
+      ctx.fillStyle = isSel ? '#f9e9b7' : 'rgba(255,253,247,.78)'; ctx.strokeStyle = '#b8a9c7'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(cx - nw / 2, ny - fs * 0.62, nw, fs * 1.24, fs * 0.6); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#3b2a1e'; ctx.fillText(nm, cx, ny + 0.5);
     }
@@ -737,21 +746,21 @@ function draw() {
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
   // Full quotes wrap across multiple lines instead of being cut at 16 characters.
-  ctx.font = `${Math.max(12, cell * .23)}px "Galmuri11", sans-serif`;
+  ctx.font = `${Math.max(10, cell * .19)}px "Galmuri11", sans-serif`;
   let previousBubbleBottom = -1;
   for (const [uid, sp] of [...speeches].slice(-3)) {
     const t = g.towers.find((x) => x.uid === uid);
     if (!t) { speeches.delete(uid); continue; }
-    const maxTextWidth = Math.min(w - 32, Math.max(170, cellX * 4));
+    const maxTextWidth = Math.min(cellX * 4.7, Math.max(126, cellX * 3.1));
     const lines = wrapCanvasText(sp.text, maxTextWidth, text => ctx.measureText(text).width);
-    const lineHeight = Math.max(17, cell * .31);
+    const lineHeight = Math.max(14, cell * .25);
     const tw = Math.max(...lines.map(text => ctx.measureText(text).width)) + 20;
     const th = lines.length * lineHeight + 14;
     let x = (t.cx + .5) * cellX;
-    x = Math.max(tw / 2 + 4, Math.min(w - tw / 2 - 4, x));
-    let top = Math.max(8, t.cy * cell - th - 8);
+    x = Math.max(cellX + tw / 2 + 2, Math.min(w - cellX - tw / 2 - 2, x));
+    let top = Math.max(cell * 1.05, t.cy * cell - th - 8);
     if (top < previousBubbleBottom + 6 && previousBubbleBottom >= 0) top = previousBubbleBottom + 6;
-    top = Math.min(fh - th - 4, top); previousBubbleBottom = top + th;
+    top = Math.min(cell * (GRID - 1) - th - 4, top); previousBubbleBottom = top + th;
     ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, sp.t / .35));
     ctx.fillStyle = '#fffdf6'; ctx.strokeStyle = '#b3a1c1'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(x - tw / 2, top, tw, th, 5); ctx.fill(); ctx.stroke();
@@ -778,7 +787,7 @@ function draw() {
     ctx.fillText(g.stage.name, w / 2, fh / 2 - cell * 0.35);
     ctx.font = `700 ${cell * 0.22}px "Galmuri11", sans-serif`;
     ctx.fillText(STAGE_PATHS[g.stage.id].caption, w / 2, fh / 2 + cell * 0.1);
-    ctx.fillText(`${g.diff.icon} ${g.diff.name} · 최종 보스: ${g.stage.boss20} (${g.maxWave}웨이브)`, w / 2, fh / 2 + cell * 0.45);
+    ctx.fillText(`${g.diff.icon} ${difficultyName(g.diff)} · 최종 보스: ${g.stage.boss20} (${g.maxWave}웨이브)`, w / 2, fh / 2 + cell * 0.45);
     ctx.restore();
   }
   drawFx(w, fh);
@@ -1020,13 +1029,17 @@ function renderRoom() {
       <div class="room-sky" style="background-image:url(${artUrl('room')})"><div class="room-bubble">“${p.quote}”</div>
         <button id="thinker" class="thinker t${p.tier}" aria-label="${p.name}와 고민하고 고뇌 얻기"><img src="${portrait(p.id)}" alt="${p.name}"></button>
         <div class="room-floor"></div></div>
+      <div class="room-favorite"><small>${progress.favorite === p.id ? '💗 나의 최애 철학자' : '오늘의 고민 친구'}</small><b id="room-favorite-name">${p.name}</b></div>
+      <label class="room-owner-select">함께 고민할 최애<select id="room-owner-select">${owned.map(o => `<option value="${o.id}" ${o.id === p.id ? 'selected' : ''}>${o.name}</option>`).join('')}</select></label>
       <div class="room-stat"><span>고뇌</span><b id="room-gonoe">${Math.floor(progress.gonoe).toLocaleString()}</b></div>
       <div class="room-rates"><span>👆 탭당 <b>+${tapGain(progress)}</b></span><span>⏳ 초당 <b>+${rate.toFixed(1)}</b></span></div>
       ${idle ? `<p class="hint">자리를 비운 사이 고뇌 <b>+${idle.toLocaleString()}</b></p>` : ''}
-      <div class="room-owners">${owned.slice(0, 7).map((o) => `<button data-owner="${o.id}" aria-label="${o.name}를 고민방 주인으로 선택" aria-pressed="${o.id === roomThinker}" class="${o.id === roomThinker ? 'on' : ''}"><img src="${portrait(o.id)}"></button>`).join('')}</div>
+      <div class="room-owners">${[...owned].sort((a,b) => Number(b.id === p.id) - Number(a.id === p.id)).slice(0, 7).map((o) => `<button data-owner="${o.id}" aria-label="${o.name}를 고민방 주인으로 선택" aria-pressed="${o.id === roomThinker}" class="${o.id === roomThinker ? 'on' : ''}"><img src="${portrait(o.id)}"></button>`).join('')}</div>
       <button id="room-ad" class="chunky pink">${adFree(progress) ? '✨' : '📺'} 30분치 고뇌 바로 받기 <small>(+${Math.round(rate * 1800).toLocaleString()} · 오늘 ${adsLeft(progress)}회)</small></button>
       <button id="tap-up" class="chunky blue">💭 고민의 깊이 Lv.${progress.tapLevel + 1} → ${progress.tapLevel + 2}<small>탭 +${tapGain(progress)}→+${tapGain(next)} · 초당 ${rate.toFixed(1)}→${idleRate(next, clearedStages()).toFixed(1)} · 🤔${cost.toLocaleString()}</small></button>
     </div>`;
+  const roomSelect = $('room-owner-select') as HTMLSelectElement;
+  roomSelect.onchange = () => { roomThinker = roomSelect.value; progress.favorite = roomThinker; saveProgress(progress); renderRoom(); };
   for (const b of $('tab-room').querySelectorAll<HTMLButtonElement>('[data-owner]')) b.onclick = () => { roomThinker = b.dataset.owner!; progress.favorite = roomThinker; saveProgress(progress); sfx.click(); renderRoom(); }; // 고민방 주인 = 💗최애
   const ra = $<HTMLButtonElement>('room-ad');
   ra.disabled = adsLeft(progress) <= 0;
@@ -1110,6 +1123,12 @@ function gachaShow(o: PullOption, got: string[], before: Record<string, number>)
   const cardsEl = ov.querySelector('.cards')!;
   let opened = false, idx = 0, timer = 0, revealTimer = 0;
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  const sparkle = (host: HTMLElement, tier: number) => {
+    if (reducedMotion) return;
+    const trail = document.createElement('div'); trail.className = `memory-sparkles rarity-${Math.min(7,tier)}`;
+    for (let i=0;i<(tier>=6?10:6);i++) { const dot=document.createElement('i'); dot.style.setProperty('--a', `${i * 360 / (tier>=6?10:6)}deg`); dot.style.setProperty('--delay', `${i * 22}ms`); trail.appendChild(dot); }
+    host.appendChild(trail); window.setTimeout(() => trail.remove(), 1000);
+  };
   const flipNext = (chain = true) => {
     if (idx >= got.length) { ov.querySelector('.skip')!.classList.add('hidden'); ov.querySelector('.done')!.classList.remove('hidden'); ov.querySelector<HTMLButtonElement>('.done')!.focus(); return; }
     const id = got[idx], tier = tiers[idx];
@@ -1130,6 +1149,7 @@ function gachaShow(o: PullOption, got: string[], before: Record<string, number>)
     }
     if (chain) sfx.reveal(tier - 1);
     cardsEl.appendChild(el);
+    if (chain) sparkle(el, tier);
     idx++;
     ov.querySelector('.reveal-progress')!.textContent = `${idx} / ${got.length}개의 기억을 펼쳤어요`;
     if (chain) timer = window.setTimeout(() => flipNext(), reducedMotion ? 30 : tier >= 6 ? 430 : 180);
@@ -1137,7 +1157,7 @@ function gachaShow(o: PullOption, got: string[], before: Record<string, number>)
   };
   const open = () => {
     if (opened) return; opened = true;
-    ov.classList.add('opened');
+    ov.classList.add('opened'); sparkle(ov.querySelector('.memory-caption') as HTMLElement, top);
     revealTimer = window.setTimeout(() => flipNext(), reducedMotion ? 0 : 380);
   };
   ov.querySelector('.scroll-wrap')!.addEventListener('click', open);
@@ -1170,6 +1190,7 @@ function burst(host: HTMLElement, tier: number) {
 function shakeEl(el: HTMLElement) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
 
 // ---------- 상점 ----------
+let skinShopId = '';
 function renderShop() {
   const item = (x: (typeof SHOP)[number]) => {
     const sold = x.once && progress.purchases.includes(x.id);
@@ -1177,23 +1198,26 @@ function renderShop() {
     return `<div class="shop-item ${sold ? 'sold' : ''} ${x.big ? 'big' : ''}">${x.tag ? `<i class="tag-hot">${x.tag}</i>` : ''}${active}<div class="shop-icon">${iconHtml(x.tickets ? 'ticket' : x.gems ? 'gem' : x.gonoe ? 'coin' : 'codex', x.icon)}</div><b>${x.name}</b><small>${x.desc}</small>
       <button class="chunky ${x.costGems ? 'blue' : 'gold'}" data-buy="${x.id}" ${sold ? 'disabled' : ''}>${sold ? '구매 완료' : x.price}</button></div>`;
   };
-  const fav = progress.favorite && progress.cards[progress.favorite] ? progress.favorite : PHILOSOPHERS.filter((p) => progress.cards[p.id]).sort((a, b) => b.tier - a.tier)[0]?.id;
+  const skinCandidates = PHILOSOPHERS.filter(p => progress.cards[p.id] && canWearSkin(p.tier));
+  const fav = skinShopId && skinCandidates.some(p => p.id === skinShopId) ? skinShopId : progress.favorite && skinCandidates.some(p => p.id === progress.favorite) ? progress.favorite : skinCandidates[0]?.id;
   $('tab-shop').innerHTML = `<div class="tab-head"><h2>🛍 상점</h2><span class="proto-chip">시험판 · 실제 결제 없음</span></div>
     <h3 class="shop-sec">멤버십</h3><div class="shop-grid">${SHOP.filter((x) => x.sub).map(item).join('')}</div>
     <h3 class="shop-sec">지혜석 · 초대장</h3><div class="shop-grid">${SHOP.filter((x) => !x.sub).map(item).join('')}</div>
-    ${fav ? `<h3 class="shop-sec">👗 스킨 <small>(${PHIL.get(fav)!.name})</small></h3><div class="skin-shop">${Object.entries(SKINS).map(([k, sk]) => {
+    ${fav ? `<label class="skin-target">스킨을 입힐 철학자<select id="skin-target">${skinCandidates.map(p => `<option value="${p.id}" ${p.id === fav ? 'selected' : ''}>${p.name}</option>`).join('')}</select></label><h3 class="shop-sec">👗 스킨 <small>(${PHIL.get(fav)!.name})</small></h3><div class="skin-shop">${Object.entries(SKINS).map(([k, sk]) => {
       const own = progress.skins.includes(fav + ':' + k), on = progress.skinOn[fav] === k;
       return `<button class="skin-card ${on ? 'on' : ''} r-${sk.rank}" data-skinbuy="${k}"><img src="${skinnedSprite(PHIL.get(fav)!, k).toDataURL()}"><b>${sk.icon} ${sk.name}</b><small>${sk.fxName}</small><em>${on ? '착용 중' : own ? '착용하기' : '💎' + sk.price}</em></button>`;
-    }).join('')}</div><p class="hint">스킨은 💗최애(없으면 가장 높은 등급) 철학자에게 적용돼요. 도감 정보보기에서 다른 철학자도 바꿀 수 있어요.</p>` : ''}`;
+    }).join('')}</div><p class="hint">보유한 거장·근원 철학자를 위에서 고른 뒤 스킨을 착용해요. 도감 정보보기에서도 바꿀 수 있어요.</p>` : '<p class="skin-lock-note">거장 이상 철학자의 기억을 얻으면 스킨이 열려요.</p>'}`;
   for (const b of $('tab-shop').querySelectorAll<HTMLButtonElement>('[data-buy]')) b.onclick = () => {
     const it = SHOP.find((x) => x.id === b.dataset.buy)!;
     if (!it.costGems && !window.confirm(`[모의 결제] ${it.name} (${it.price})\n실제 결제는 일어나지 않아요. 지급할까요?`)) return;
     if (buy(progress, it)) { saveProgress(progress); refreshWallet(); renderShop(); sfx.reveal(5); toast(`🎉 ${it.name} 지급 완료!`); }
     else toast('💎 지혜석이 부족해요');
   };
+  const skinTarget = document.getElementById('skin-target') as HTMLSelectElement | null;
+  if (skinTarget) skinTarget.onchange = () => { skinShopId = skinTarget.value; renderShop(); };
   for (const b of $('tab-shop').querySelectorAll<HTMLButtonElement>('[data-skinbuy]')) b.onclick = () => {
     const k = b.dataset.skinbuy!, sk = SKINS[k];
-    if (!fav) return;
+    if (!fav || !canWearSkin(PHIL.get(fav)!.tier)) return;
     if (!progress.skins.includes(fav + ':' + k)) {
       if (progress.gems < sk.price) { toast('💎 지혜석이 부족해요'); return; }
       if (!window.confirm(`${sk.icon} ${sk.name} 스킨을 💎${sk.price}에 살까요?`)) return;
@@ -1286,6 +1310,8 @@ const BOSS_BAND: Record<string, [string, string, string]> = { 고대: ['#7a3318'
 const ERA_SHARD: Record<string, string[]> = { 고대: ['#e8925a', '#2a1810', '#fff3d6', '#f5c04a'], 중세: ['#ca8a04', '#7f1d1d', '#fde68a', '#94a3b8'], 동양: ['#1c1917', '#c8323a', '#f6f2e4', '#6b7280'], 근대: ['#b45309', '#64748b', '#fde68a', '#e2d4b8'], 현대: ['#a855f7', '#22d3ee', '#f43f5e', '#fde047'] };
 const particles: Particle[] = [];
 const recoil = new Map<number, number>();
+const signatureCasts = new Map<number, SignatureCast>();
+const signatureLast = new Map<number, number>();
 let shake = 0;
 let banner: { text: string; t: number } | null = null;
 let bossIntro: { name: string; t: number } | null = null;
@@ -1307,7 +1333,14 @@ function consumeFx(g: Game) {
       if (f.kind === 'crit') particles.push({ x: f.x, y: f.y - 0.6, vx: 0, vy: -1.2, life: 0.5, max: 0.5, color: '#f59e0b', size: 0.26, text: '치명!' });
       continue;
     }
-    if (f.type === 'shot') recoil.set(f.uid, 1);
+    if (f.type === 'shot') {
+      recoil.set(f.uid, 1);
+      const t = g.towers.find(t => t.uid === f.uid);
+      if (t && !signatureCasts.has(t.uid) && signatureCasts.size < 10 && tick - (signatureLast.get(t.uid) ?? -100) > 22) {
+        signatureLast.set(t.uid, tick);
+        signatureCasts.set(t.uid, { uid:t.uid, id:t.philId, age:0, duration:signatureProfile(t.philId).duration, tx:f.tx ?? t.cx+1, ty:f.ty ?? t.cy, skill:false });
+      }
+    }
     else if (f.type === 'hit') {
       if (f.uid !== undefined) hitFlash.set(f.uid, 1);
       shapes.push({ kind: 'impact', x: f.x, y: f.y, r: f.big ? 0.55 : 0.32, life: 0.16, max: 0.16 });
@@ -1326,7 +1359,7 @@ function consumeFx(g: Game) {
       if (f.tier >= 5) shake = 0.35;
     } else if (f.type === 'boss') { bossIntro = { name: f.name, t: 2.6 }; shake = 0.4; sfx.boss(); }
     else if (f.type === 'bossSkill' && f.text) { banner = { text: f.text, t: 1.6 }; shake = 0.25; sfx.bossSkill(); }
-    else if (f.type === 'say') speeches.set(f.uid, { text: f.text, t: Math.min(8, Math.max(3.8, Array.from(f.text).length * .13)) });
+    else if (f.type === 'say') { speeches.set(f.uid, { text: f.text, t: Math.min(8, Math.max(3.8, Array.from(f.text).length * .13)) }); const cast = signatureCasts.get(f.uid); if (cast) { cast.skill = true; cast.age = 0; } }
     else if (f.type === 'ticket') { banner = { text: `${f.why}! 🎟 무료 소환권 +${f.n}`, t: 2 }; sfx.reveal(5); }
     else if (f.type === 'stun') { const t = g.towers.find((x) => x.uid === f.uid); if (t) for (let i = 0; i < 8; i++) particles.push({ x: t.cx + 0.5, y: t.cy + 0.3, vx: rnd(-1, 1), vy: rnd(-2, -0.5), life: 0.6, max: 0.6, color: '#c7a6ff', size: 0.07 }); }
   }
@@ -1335,6 +1368,7 @@ const speeches = new Map<number, { text: string; t: number }>();
 const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
 
 function updateFx(dt: number) {
+  for (const [uid, cast] of signatureCasts) { cast.age += dt / speed; if (cast.age >= cast.duration) signatureCasts.delete(uid); }
   for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; if (!p.text) p.vy += 6 * dt; p.life -= dt; }
   for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
   for (const s of shapes) s.life -= dt;
@@ -1342,7 +1376,7 @@ function updateFx(dt: number) {
   for (const [k, v] of recoil) { const n = v - dt * 6; if (n <= 0) recoil.delete(k); else recoil.set(k, n); }
   for (const [k, v] of hitFlash) { const n = v - dt * 9; if (n <= 0) hitFlash.delete(k); else hitFlash.set(k, n); }
   if (shake > 0) shake = Math.max(0, shake - dt);
-  for (const [k, v] of speeches) { v.t -= dt; if (v.t <= 0) speeches.delete(k); }
+  for (const [k, v] of speeches) { v.t -= dt / speed; if (v.t <= 0) speeches.delete(k); }
   if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
   if (bossIntro) { bossIntro.t -= dt; if (bossIntro.t <= 0) bossIntro = null; }
 }
@@ -1512,6 +1546,9 @@ document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault());
 
 // ---------- 시작 ----------
+const backdropSelect = $('backdrop-select') as HTMLSelectElement;
+backdropSelect.onchange = () => { progress.battleBackdrop = backdropSelect.value; saveProgress(progress); toast('배경 시안을 바꿨어요'); };
+$('admin-fx').onclick = () => openSignaturePreview();
 $('open-recipes').onclick = () => recipeSheet();
 $('open-rates').onclick = rateSheet;
 for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.onclick = () => { sfx.click(); switchTab(b.dataset.tab!); };
@@ -1519,7 +1556,7 @@ for (const id of ['mute', 'mute-b']) { const b = document.getElementById(id); if
 $('b-recipes').onclick = () => recipeSheet();
 $('tut-again').onclick = () => { $('settings').classList.add('hidden'); progress.battleTutDone = false; progress.tabTut = []; pageTutStart(currentTab); saveProgress(progress); toast('🎓 화면마다, 그리고 다음 전투에서 튜토리얼이 다시 나와요'); };
 $('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); progress = loadProgress(); bootQA(); renderHome(); switchTab('stages'); } };
-function bootQA() { if (QA_MODE && !progress.purchases.includes('qa')) { progress.gonoe += QA_GONOE; progress.gems += QA_GEMS; progress.tickets += 5; progress.purchases.push('qa'); saveProgress(progress); } }
+function bootQA() { if (isAdmin() && revealAdminCollection(progress, PHILOSOPHERS.map(p => p.id))) saveProgress(progress); if (QA_MODE && !progress.purchases.includes('qa')) { progress.gonoe += QA_GONOE; progress.gems += QA_GEMS; progress.tickets += 5; progress.purchases.push('qa'); saveProgress(progress); } }
 
 function welcome() {
   if (progress.tutorialDone) return;
@@ -1546,6 +1583,7 @@ function enter(acc: Account) {
   progress = loadProgress();
   if (isNew && acc.role === 'veteran') { seedVeteran(progress); saveProgress(progress); }
   bootQA();
+  backdropSelect.value = progress.battleBackdrop ?? 'greek-01';
   spriteUrl.clear();
   $('who').textContent = `👤 ${acc.id}${acc.role === 'master' ? ' 👑' : ''}`;
   $('admin-bar').classList.toggle('hidden', acc.role !== 'master');
@@ -1589,6 +1627,8 @@ async function syncCloud(id: string, pw: string) {
     // 서버 쪽이 더 최신이거나, 이 기기가 처음이면 서버 것을 쓴다
     if (remote && (freshDevice || (remote.savedAt ?? 0) > (progress.savedAt ?? 0))) {
       progress = adoptProgress(remote);
+      bootQA();
+      backdropSelect.value = progress.battleBackdrop ?? 'greek-01';
       spriteUrl.clear(); renderHome(); refreshWallet();
       toast('☁️ 서버에 저장된 진행을 불러왔어요');
     } else { cloudSave(progress); void cloudFlush(); }
@@ -1641,7 +1681,7 @@ function tcgCard(id: string) {
 }
 function openTcg(startId?: string) {
   const seen = new Set(progress.seen);
-  const list = [...PHILOSOPHERS].filter((p) => seen.has(p.id) || !!progress.cards[p.id] || (QA_MODE && !p.hidden)).sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id));
+  const list = [...PHILOSOPHERS].filter((p) => seen.has(p.id) || !!progress.cards[p.id] || (isAdmin() || (QA_MODE && !p.hidden))).sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id));
   if (!list.length) { toast('아직 만난 철학자가 없어요'); return; }
   const ov = document.createElement('div');
   ov.className = 'overlay tcg-ov';
@@ -1805,6 +1845,7 @@ function summonPool(st?: StoryStage): string[] {
 }
 /** 기억이 열린 시대: 지금 진행 중인 장까지 */
 function openEras(): Set<string> {
+  if (isAdmin()) return new Set(PHILOSOPHERS.map(p => p.era));
   const done = progress.storyCleared ?? [];
   const next = STORY.find((s) => !done.includes(s.id));
   const upto = QA_MODE || !next ? 5 : next.chapter;
@@ -1815,81 +1856,57 @@ const storyOpen = (st: StoryStage) => { const i = STORY.indexOf(st); return QA_M
 let storyChapter = -1;
 /** 설정에서 '처음부터 튜토리얼'을 눌렀을 때 (이미 1장을 진행한 계정도 튜토리얼을 다시 열어 둔다) */
 let replayTutorial = false;
+let journeySelectedId = '';
 function renderStory(box: HTMLElement) {
-  // 시작 튜토리얼이 생기기 전에 이미 1장을 진행한 계정은 튜토리얼을 마친 것으로 본다
-  if (!replayTutorial && (progress.storyCleared ?? []).some((id) => STORY_MAP.get(id)?.chapter) && !(progress.storyCleared ?? []).includes('A5')) {
-    progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), 'A1', 'A2', 'A3', 'A4', 'A5'])]; saveProgress(progress);
+  if (!replayTutorial && (progress.storyCleared ?? []).some(id => STORY_MAP.get(id)?.chapter) && !(progress.storyCleared ?? []).includes('A5')) {
+    progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), 'A1','A2','A3','A4','A5'])]; saveProgress(progress);
   }
   const done = progress.storyCleared ?? [];
-  const next = STORY.find((x) => !done.includes(x.id) && storyOpen(x)) ?? null;
-  const heading = document.createElement('div');
-  heading.className = 'journey-heading';
-  heading.innerHTML = '<h2>모험의 여정</h2><small>작은 철학자들의 대모험</small>';
-  box.appendChild(heading);
-  const wrap = document.createElement('div');
-  wrap.className = 'journey';
-  // 아래에서 위로 올라가는 여정: 장마다 시대 배경 구역, 단계마다 길 위의 노드
-  let html = '', k = 0;
-  const chHtml: string[] = [];
-  for (const ch of CHAPTERS) {
-    const sts = STORY.filter((x) => x.chapter === ch.n);
-    const chDone = sts.every((x) => done.includes(x.id));
-    const chOpen = sts.some((x) => storyOpen(x));
-    const mem = [...new Set(sts.flatMap((x) => x.memories))].slice(0, 4);
-    const nodeList: string[] = [];
-    sts.forEach((st, i) => {
-      const open = storyOpen(st), cleared = done.includes(st.id), now = next?.id === st.id;
-      const face = PHILOSOPHERS.find((p) => p.realName === st.memories[0])!;
-      const side = ['c', 'r', 'c', 'l'][(k++) % 4];
-      nodeList.unshift(`<div class="jnode ${side} ${cleared ? 'done' : now ? 'now' : open ? 'open' : 'lock'}" data-st="${st.id}">
-        ${now ? '<div class="j-me"><em>여기!</em></div>' : ''}
-        <button class="j-dot" ${open ? '' : 'disabled'} aria-label="${st.title}">${cleared ? '<i class="j-check">✓</i>' : now ? `<img src="${portrait(face.id)}" alt="" class="j-current-face"><span class="j-stage-number">${ch.n ? `${ch.n}-${i + 1}` : i + 1}</span>` : open ? `<span class="j-stage-number">${ch.n ? `${ch.n}-${i + 1}` : i + 1}</span>` : `<i class="j-lock">${iconHtml('lock', '잠김')}</i>`}</button>
-        <span class="j-name">${open ? st.title : '???'}</span><small class="j-num">${ch.n ? `${ch.n}-${i + 1}` : `튜토리얼 ${i + 1}`}</small></div>`);
-    });
-    const nodes = nodeList.join('');
-    html += `<section class="jch ${chOpen ? '' : 'locked'}" style="--sky:url(${eraSky(ch.era)})">
-      <div class="j-reward ${chDone ? 'got' : ''}"><div class="j-bubble">${chDone ? '<b>✓</b>' : '<b>🔒</b>'}<span>${mem.map((n) => { const p = PHILOSOPHERS.find((x) => x.realName === n); return p ? `<img src="${portrait(p.id)}" alt="">` : ''; }).join('')}</span><small>${chDone ? '돌아온 기억' : '장을 마치면 기억 회복'}</small></div></div>
-      <div class="j-path">${nodes}</div>
-      <div class="j-title"><small>${ch.n ? `제${ch.n}장 · ${ch.era}` : '시작 튜토리얼'}</small><b>${ch.title}</b></div></section>`;
-    chHtml.unshift(html); html = '';
-  }
-  wrap.innerHTML = chHtml.join('');
+  const next = STORY.find(st => !done.includes(st.id) && storyOpen(st)) ?? STORY[STORY.length - 1];
+  const chapter = CHAPTERS.find(ch => ch.n === storyChapter) ?? CHAPTERS.find(ch => ch.n === next.chapter)!;
+  storyChapter = chapter.n;
+  const stages = STORY.filter(st => st.chapter === chapter.n);
+  let selectedStage = stages.find(st => st.id === journeySelectedId) ?? stages.find(st => st.id === next.id) ?? stages.find(storyOpen) ?? stages[0];
+  journeySelectedId = selectedStage.id;
+  const positions = stages.length === 5 ? [[17,76],[42,62],[75,72],[79,36],[43,20]] : [[18,75],[44,55],[78,65],[72,25]];
+  const faceId = progress.favorite && progress.cards[progress.favorite] ? progress.favorite : 'T106';
+  const heading = document.createElement('div'); heading.className = 'journey-heading';
+  heading.innerHTML = '<h2>모험의 여정</h2><small>지도를 눌러 목적지를 고르고, 준비되면 출발해요</small>'; box.appendChild(heading);
+  const chapters = document.createElement('nav'); chapters.className = 'journey-chapters'; chapters.setAttribute('aria-label','시대 선택');
+  chapters.innerHTML = CHAPTERS.map(ch => `<button data-chapter="${ch.n}" aria-pressed="${ch.n === chapter.n}">${ch.n ? `${ch.n}장 ${ch.era}` : '시작'}</button>`).join('');
+  for (const button of chapters.querySelectorAll<HTMLButtonElement>('button')) button.onclick = () => { storyChapter = Number(button.dataset.chapter); journeySelectedId = ''; renderHome(); };
+  box.appendChild(chapters);
+  const wrap = document.createElement('div'); wrap.className = 'journey roam-map'; wrap.setAttribute('aria-label',`${chapter.title} 여정 지도`);
+  wrap.style.backgroundImage = `url(${artUrl('greek-01')})`;
+  const points = positions.map(([x,y],i) => i ? `Q ${(positions[i-1][0]+x)/2} ${positions[i-1][1]} ${x} ${y}` : `M ${x} ${y}`).join(' ');
+  wrap.innerHTML = `<svg class="roam-road" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${points}" fill="none" stroke="#a899b0" stroke-width="7" opacity=".35"/><path d="${points}" fill="none" stroke="#fff8e8" stroke-width="5.7"/><path d="${points}" fill="none" stroke="#d2bda2" stroke-width=".5" stroke-dasharray="1.5 2"/></svg>
+    <div class="roam-chapter-title"><small>${chapter.n ? `${chapter.n}장 · ${chapter.era}` : '시작 튜토리얼'}</small><b>${chapter.title}</b></div>
+    ${stages.map((st,i) => `<div class="jnode roam-node ${done.includes(st.id) ? 'done' : storyOpen(st) ? 'open' : 'lock'}" data-st="${st.id}" style="left:${positions[i][0]}%;top:${positions[i][1]}%"><button class="j-dot" aria-label="${storyOpen(st) ? st.title : '아직 열리지 않은 기억'}" aria-disabled="${!storyOpen(st)}" aria-pressed="${st.id === selectedStage.id}">${done.includes(st.id) ? '✓' : storyOpen(st) ? `${chapter.n || 'T'}-${i+1}` : iconHtml('lock','잠김')}</button><span class="j-name">${storyOpen(st) ? st.title : '아직 모르는 기억'}</span></div>`).join('')}
+    <div class="journey-traveler" aria-hidden="true"><img src="${portrait(faceId)}" alt=""><span>여기!</span></div>`;
   box.appendChild(wrap);
-  wrap.onclick = (e) => {
-    const n = (e.target as HTMLElement).closest('.jnode') as HTMLElement | null;
-    if (!n || n.classList.contains('lock')) return;
-    storyInfo(STORY_MAP.get(n.dataset.st!)!);
-  };
-  const bar = document.createElement('div');
-  bar.className = 'j-bar';
-  const n = done.length, total = STORY.length;
-  bar.innerHTML = `<div class="j-prog"><small>기억 ${n}/${total}</small><i style="--v:${n / total}"></i>${n >= total ? '<small>완주! 위에서 난이도를 골라 본편에 도전하세요</small>' : ''}</div>
-    <button id="j-go" class="chunky gold j-go" ${next ? '' : 'disabled'}><small>${next ? (next.chapter ? `${next.chapter}장 · ${next.when}` : '시작 튜토리얼') : ''}</small><b>${next ? `▶ 모험 시작 · ${next.title}` : '여정 완주'}</b></button>`;
-  if (next) (bar.querySelector('#j-go') as HTMLButtonElement).onclick = () => startStory(next);
-  const note = document.createElement('p');
-  note.className = 'journey-note';
-  note.textContent = '도그마는 단단하고, 내 멘탈은 말랑하다.';
-  bar.appendChild(note);
+  const bar = document.createElement('div'); bar.className = 'j-bar journey-destination';
+  bar.innerHTML = `<p class="destination-status" role="status"></p><div class="destination-actions"><button id="j-go" class="chunky mint j-go"></button><button class="journey-info" aria-label="선택한 목적지 상세 정보">정보</button></div><div class="j-prog"><small>기억 ${done.length}/${STORY.length}</small><i style="--v:${done.length/STORY.length}"></i><button class="journey-current">다음 여정으로</button></div>`;
   box.appendChild(bar);
-  if (STORY.filter((x) => x.chapter === 0).some((x) => !done.includes(x.id))) {
-    const skip = document.createElement('button');
-    skip.className = 'ghost small tut-skip-all';
-    skip.textContent = '튜토리얼 건너뛰기 → 1장으로';
-    skip.onclick = () => { if (!window.confirm('시작 튜토리얼을 건너뛸까요? 고대 철학자 여섯 명이 바로 열려요.')) return; progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), ...STORY.filter((x) => x.chapter === 0).map((x) => x.id)])]; saveProgress(progress); renderHome(); };
-    bar.appendChild(skip);
+  const traveler = wrap.querySelector<HTMLElement>('.journey-traveler')!;
+  const update = (st: StoryStage, initial = false) => {
+    selectedStage = st; journeySelectedId = st.id;
+    const open = storyOpen(st), index = stages.indexOf(st);
+    for (const node of wrap.querySelectorAll<HTMLElement>('.roam-node')) { const chosen = node.dataset.st === st.id; node.classList.toggle('chosen',chosen); node.querySelector('button')!.setAttribute('aria-pressed',String(chosen)); }
+    if (open) { traveler.style.left = positions[index][0]+'%'; traveler.style.top = positions[index][1]+'%'; if (!initial) { traveler.classList.remove('walking'); void traveler.offsetWidth; traveler.classList.add('walking'); } }
+    else if (initial) { const first = Math.max(0, stages.findIndex(storyOpen)); traveler.style.left = positions[first][0]+'%'; traveler.style.top = positions[first][1]+'%'; }
+    const go = bar.querySelector<HTMLButtonElement>('#j-go')!;
+    go.disabled = !open; go.innerHTML = `<small>${open ? st.when : '앞선 기억을 먼저 되찾아 주세요'}</small><b>${open ? `▶ ${done.includes(st.id) ? '다시 떠나기' : '여기로 출발'} · ${st.title}` : '아직 도착할 수 없어요'}</b>`;
+    bar.querySelector('.destination-status')!.textContent = open ? `목적지 · ${st.title}` : '잠긴 지점이에요. 앞선 여정을 마치면 길이 열려요.';
+  };
+  wrap.onclick = event => { const node = (event.target as HTMLElement).closest<HTMLElement>('.roam-node'); if (node) update(STORY_MAP.get(node.dataset.st!)!); };
+  bar.querySelector<HTMLButtonElement>('#j-go')!.onclick = () => { if (storyOpen(selectedStage)) startStory(selectedStage); };
+  bar.querySelector<HTMLButtonElement>('.journey-info')!.onclick = () => { if (storyOpen(selectedStage)) storyInfo(selectedStage); else toast('앞선 여정을 마치면 자세한 기억이 열려요'); };
+  bar.querySelector<HTMLButtonElement>('.journey-current')!.onclick = () => { storyChapter = next.chapter; journeySelectedId = next.id; renderHome(); };
+  update(selectedStage,true);
+  if (STORY.filter(st => st.chapter === 0).some(st => !done.includes(st.id))) {
+    const skip = document.createElement('button'); skip.className = 'ghost small tut-skip-all'; skip.textContent = '튜토리얼 건너뛰기 → 1장으로';
+    skip.onclick = () => { if (!window.confirm('시작 튜토리얼을 건너뛸까요?')) return; progress.storyCleared = [...new Set([...done,...STORY.filter(st => st.chapter===0).map(st=>st.id)])]; saveProgress(progress); storyChapter = 1; renderHome(); }; bar.appendChild(skip);
   }
-  // 지금 위치로 스크롤
-  requestAnimationFrame(() => {
-    // 노드를 잇는 굽은 점선 길
-    const base = wrap.getBoundingClientRect(), pts = [...wrap.querySelectorAll<HTMLElement>('.j-dot')].map((d) => { const r = d.getBoundingClientRect(); return [r.left + r.width / 2 - base.left, r.top + r.height / 2 - base.top + wrap.scrollTop]; });
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('class', 'j-road'); svg.setAttribute('width', String(wrap.clientWidth)); svg.setAttribute('height', String(wrap.scrollHeight));
-    const d = pts.map(([x, y], i) => i ? `Q ${(pts[i - 1][0] + x) / 2 + (i % 2 ? 30 : -30)} ${(pts[i - 1][1] + y) / 2} ${x} ${y}` : `M ${x} ${y}`).join(' ');
-    svg.innerHTML = `<path d="${d}" stroke="#f9f7fc" stroke-width="5" fill="none" stroke-linecap="square" opacity=".7"/><path d="${d}" stroke="#b4a5c9" stroke-width="3" fill="none" stroke-dasharray="4 8" stroke-linecap="square"/>`;
-    wrap.prepend(svg);
-    const cur = wrap.querySelector('.jnode.now .j-dot') as HTMLElement | null;
-    if (cur) wrap.scrollTop = cur.getBoundingClientRect().top - base.top + wrap.scrollTop - wrap.clientHeight * 0.5; else wrap.scrollTop = next ? wrap.scrollHeight : 0;
-  });
 }
 
 function storyInfo(st: StoryStage) {
@@ -2157,3 +2174,28 @@ $('signup').onclick = async () => {
   enter({ id, hash: '', role: 'fresh', label: '일반 계정' });
   void syncCloud(id, pw);
 };
+
+function openSignaturePreview() {
+  const overlay = document.createElement('div'); overlay.className = 'overlay signature-preview';
+  overlay.innerHTML = `<section class="pop"><header><h2>철학자 도트 동작</h2><button class="close" aria-label="미리보기 닫기">✕</button></header><p>미리보기예요. 공격력·확률·보유 카드는 바뀌지 않아요.</p><label>철학자<select id="fx-preview-phil">${PHILOSOPHERS.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select></label><canvas width="640" height="400" class="signature-preview-canvas"></canvas><label>동작 프레임<input type="range" id="fx-preview-phase" min="0" max="99" value="40"></label><div class="signature-preview-buttons"><button data-signature="T106">소크라테스</button><button data-signature="T505">니체</button><button data-signature="T207">플라톤</button><button class="fx-preview-play">자동 재생</button></div><p class="signature-preview-caption"></p></section>`;
+  document.body.appendChild(overlay);
+  const select = overlay.querySelector<HTMLSelectElement>('#fx-preview-phil')!, slider = overlay.querySelector<HTMLInputElement>('#fx-preview-phase')!;
+  const canvas = overlay.querySelector<HTMLCanvasElement>('canvas')!, x = canvas.getContext('2d')!;
+  let playing = false, frame = 0, start = 0;
+  const drawPreview = (phase: number) => {
+    const id = select.value, p = PHIL.get(id)!, profile = signatureProfile(id), pose = signaturePose(id,phase);
+    x.fillStyle = '#faf4e8'; x.fillRect(0,0,640,400); x.imageSmoothingEnabled = false;
+    x.fillStyle = '#d7ccdf'; x.fillRect(44,322,540,2);
+    x.save(); x.translate(200,290-pose.lift*120); x.rotate(pose.angle); x.drawImage(spriteFor(id),-72,-132,144,144); x.restore();
+    drawSignatureEffect(x,id,phase,200,280,480,210,150,true);
+    x.font = '20px Galmuri11,sans-serif'; x.fillStyle = '#675674'; x.textAlign = 'center'; x.fillText(p.name,200,355);
+    overlay.querySelector('.signature-preview-caption')!.textContent = `${p.name} · ${profile.motif} · ${profile.gesture} · 4프레임 도트 + 동작 궤적`;
+  };
+  const animate = (now: number) => { if (!overlay.isConnected) return; if (playing) { const phase = ((now-start)%1500)/1500; slider.value=String(Math.floor(phase*99)); drawPreview(phase); } frame=requestAnimationFrame(animate); };
+  select.onchange = () => drawPreview(Number(slider.value)/100);
+  slider.oninput = () => { playing=false; drawPreview(Number(slider.value)/100); };
+  for (const button of overlay.querySelectorAll<HTMLButtonElement>('[data-signature]')) button.onclick = () => { select.value=button.dataset.signature!; drawPreview(Number(slider.value)/100); };
+  overlay.querySelector<HTMLButtonElement>('.fx-preview-play')!.onclick = () => { playing=!playing; start=performance.now(); };
+  overlay.querySelector<HTMLButtonElement>('.close')!.onclick = () => { cancelAnimationFrame(frame); overlay.remove(); };
+  drawPreview(.4); frame=requestAnimationFrame(animate);
+}

@@ -1,0 +1,642 @@
+{
+  "T101": {
+    "name": "탈레스",
+    "motif": "water",
+    "row": 10,
+    "gesture": "wave",
+    "variant": 0,
+    "duration": 0.62
+  },
+  "T102": {
+    "name": "피타고라스",
+    "motif": "atom",
+    "row": 8,
+    "gesture": "orbit",
+    "variant": 1,
+    "duration": 0.69
+  },
+  "T103": {
+    "name": "헤라클레이토스",
+    "motif": "fire",
+    "row": 9,
+    "gesture": "wave",
+    "variant": 2,
+    "duration": 0.76
+  },
+  "T104": {
+    "name": "파르메니데스",
+    "motif": "atom",
+    "row": 8,
+    "gesture": "orbit",
+    "variant": 3,
+    "duration": 0.83
+  },
+  "T105": {
+    "name": "데모크리토스",
+    "motif": "atom",
+    "row": 8,
+    "gesture": "orbit",
+    "variant": 4,
+    "duration": 0.9
+  },
+  "T106": {
+    "name": "소크라테스",
+    "motif": "staff",
+    "row": 0,
+    "gesture": "swing",
+    "variant": 5,
+    "duration": 0.62
+  },
+  "T107": {
+    "name": "노자",
+    "motif": "water",
+    "row": 10,
+    "gesture": "wave",
+    "variant": 6,
+    "duration": 0.69
+  },
+  "T108": {
+    "name": "공자",
+    "motif": "bamboo",
+    "row": 3,
+    "gesture": "unroll",
+    "variant": 0,
+    "duration": 0.76
+  },
+  "T109": {
+    "name": "싯다르타",
+    "motif": "lotus",
+    "row": 4,
+    "gesture": "orbit",
+    "variant": 1,
+    "duration": 0.83
+  },
+  "T201": {
+    "name": "아낙시만드로스",
+    "motif": "water",
+    "row": 10,
+    "gesture": "wave",
+    "variant": 2,
+    "duration": 0.9
+  },
+  "T202": {
+    "name": "제논",
+    "motif": "staff",
+    "row": 0,
+    "gesture": "swing",
+    "variant": 3,
+    "duration": 0.62
+  },
+  "T203": {
+    "name": "엠페도클레스",
+    "motif": "fire",
+    "row": 9,
+    "gesture": "wave",
+    "variant": 4,
+    "duration": 0.69
+  },
+  "T204": {
+    "name": "아낙사고라스",
+    "motif": "atom",
+    "row": 8,
+    "gesture": "orbit",
+    "variant": 5,
+    "duration": 0.76
+  },
+  "T205": {
+    "name": "프로타고라스",
+    "motif": "words",
+    "row": 14,
+    "gesture": "throw",
+    "variant": 6,
+    "duration": 0.83
+  },
+  "T206": {
+    "name": "고르기아스",
+    "motif": "words",
+    "row": 14,
+    "gesture": "throw",
+    "variant": 0,
+    "duration": 0.9
+  },
+  "T207": {
+    "name": "플라톤",
+    "motif": "books",
+    "row": 2,
+    "gesture": "throw",
+    "variant": 1,
+    "duration": 0.62
+  },
+  "T208": {
+    "name": "디오게네스",
+    "motif": "lantern",
+    "row": 13,
+    "gesture": "swing",
+    "variant": 2,
+    "duration": 0.69
+  },
+  "T209": {
+    "name": "에피쿠로스",
+    "motif": "atom",
+    "row": 8,
+    "gesture": "orbit",
+    "variant": 3,
+    "duration": 0.76
+  },
+  "T210": {
+    "name": "피론",
+    "motif": "staff",
+    "row": 0,
+    "gesture": "swing",
+    "variant": 4,
+    "duration": 0.83
+  },
+  "T211": {
+    "name": "장자",
+    "motif": "water",
+    "row": 10,
+    "gesture": "wave",
+    "variant": 5,
+    "duration": 0.9
+  },
+  "T212": {
+    "name": "맹자",
+    "motif": "bamboo",
+    "row": 3,
+    "gesture": "unroll",
+    "variant": 6,
+    "duration": 0.62
+  },
+  "T213": {
+    "name": "순자",
+    "motif": "bamboo",
+    "row": 3,
+    "gesture": "unroll",
+    "variant": 0,
+    "duration": 0.69
+  },
+  "T214": {
+    "name": "한비자",
+    "motif": "bamboo",
+    "row": 3,
+    "gesture": "unroll",
+    "variant": 1,
+    "duration": 0.76
+  },
+  "T301": {
+    "name": "아리스토텔레스",
+    "motif": "scroll",
+    "row": 12,
+    "gesture": "unroll",
+    "variant": 2,
+    "duration": 0.83
+  },
+  "T302": {
+    "name": "마르쿠스 아우렐리우스",
+    "motif": "staff",
+    "row": 0,
+    "gesture": "swing",
+    "variant": 3,
+    "duration": 0.9
+  },
+  "T303": {
+    "name": "세네카",
+    "motif": "words",
+    "row": 14,
+    "gesture": "throw",
+    "variant": 4,
+    "duration": 0.62
+  },
+  "T304": {
+    "name": "루크레티우스",
+    "motif": "atom",
+    "row": 8,
+    "gesture": "orbit",
+    "variant": 5,
+    "duration": 0.69
+  },
+  "T305": {
+    "name": "키케로",
+    "motif": "staff",
+    "row": 0,
+    "gesture": "swing",
+    "variant": 6,
+    "duration": 0.76
+  },
+  "T306": {
+    "name": "플로티노스",
+    "motif": "lotus",
+    "row": 4,
+    "gesture": "orbit",
+    "variant": 0,
+    "duration": 0.83
+  },
+  "T307": {
+    "name": "히파티아",
+    "motif": "atom",
+    "row": 8,
+    "gesture": "orbit",
+    "variant": 1,
+    "duration": 0.9
+  },
+  "T308": {
+    "name": "아우구스티누스",
+    "motif": "scroll",
+    "row": 12,
+    "gesture": "unroll",
+    "variant": 2,
+    "duration": 0.62
+  },
+  "T309": {
+    "name": "나가르주나",
+    "motif": "lotus",
+    "row": 4,
+    "gesture": "orbit",
+    "variant": 3,
+    "duration": 0.69
+  },
+  "T310": {
+    "name": "혜능",
+    "motif": "fire",
+    "row": 9,
+    "gesture": "wave",
+    "variant": 4,
+    "duration": 0.76
+  },
+  "T311": {
+    "name": "원효",
+    "motif": "lotus",
+    "row": 4,
+    "gesture": "orbit",
+    "variant": 5,
+    "duration": 0.83
+  },
+  "T312": {
+    "name": "주희",
+    "motif": "bamboo",
+    "row": 3,
+    "gesture": "unroll",
+    "variant": 6,
+    "duration": 0.9
+  },
+  "T313": {
+    "name": "이븐 시나",
+    "motif": "lantern",
+    "row": 13,
+    "gesture": "swing",
+    "variant": 0,
+    "duration": 0.62
+  },
+  "T314": {
+    "name": "이븐 루시드",
+    "motif": "words",
+    "row": 14,
+    "gesture": "throw",
+    "variant": 1,
+    "duration": 0.69
+  },
+  "T401": {
+    "name": "토마스 아퀴나스",
+    "motif": "scroll",
+    "row": 12,
+    "gesture": "unroll",
+    "variant": 2,
+    "duration": 0.76
+  },
+  "T402": {
+    "name": "오컴의 윌리엄",
+    "motif": "razor",
+    "row": 6,
+    "gesture": "slash",
+    "variant": 3,
+    "duration": 0.83
+  },
+  "T403": {
+    "name": "니콜로 마키아벨리",
+    "motif": "scroll",
+    "row": 12,
+    "gesture": "unroll",
+    "variant": 4,
+    "duration": 0.9
+  },
+  "T404": {
+    "name": "미셸 드 몽테뉴",
+    "motif": "books",
+    "row": 2,
+    "gesture": "throw",
+    "variant": 5,
+    "duration": 0.62
+  },
+  "T405": {
+    "name": "르네 데카르트",
+    "motif": "scroll",
+    "row": 12,
+    "gesture": "unroll",
+    "variant": 6,
+    "duration": 0.69
+  },
+  "T406": {
+    "name": "토머스 홉스",
+    "motif": "lantern",
+    "row": 13,
+    "gesture": "swing",
+    "variant": 0,
+    "duration": 0.76
+  },
+  "T407": {
+    "name": "블레즈 파스칼",
+    "motif": "atom",
+    "row": 8,
+    "gesture": "orbit",
+    "variant": 1,
+    "duration": 0.83
+  },
+  "T408": {
+    "name": "바뤼흐 스피노자",
+    "motif": "water",
+    "row": 10,
+    "gesture": "wave",
+    "variant": 2,
+    "duration": 0.9
+  },
+  "T409": {
+    "name": "존 로크",
+    "motif": "lantern",
+    "row": 13,
+    "gesture": "swing",
+    "variant": 3,
+    "duration": 0.62
+  },
+  "T410": {
+    "name": "고트프리트 라이프니츠",
+    "motif": "lightning",
+    "row": 11,
+    "gesture": "throw",
+    "variant": 4,
+    "duration": 0.69
+  },
+  "T411": {
+    "name": "데이비드 흄",
+    "motif": "mirror",
+    "row": 7,
+    "gesture": "reflect",
+    "variant": 5,
+    "duration": 0.76
+  },
+  "T412": {
+    "name": "왕양명",
+    "motif": "fire",
+    "row": 9,
+    "gesture": "wave",
+    "variant": 6,
+    "duration": 0.83
+  },
+  "T413": {
+    "name": "퇴계 이황",
+    "motif": "bamboo",
+    "row": 3,
+    "gesture": "unroll",
+    "variant": 0,
+    "duration": 0.9
+  },
+  "T414": {
+    "name": "장 자크 루소",
+    "motif": "water",
+    "row": 10,
+    "gesture": "wave",
+    "variant": 1,
+    "duration": 0.62
+  },
+  "T501": {
+    "name": "게오르크 헤겔",
+    "motif": "gears",
+    "row": 15,
+    "gesture": "orbit",
+    "variant": 2,
+    "duration": 0.69
+  },
+  "T502": {
+    "name": "아르투어 쇼펜하우어",
+    "motif": "mirror",
+    "row": 7,
+    "gesture": "reflect",
+    "variant": 3,
+    "duration": 0.76
+  },
+  "T503": {
+    "name": "쇠렌 키르케고르",
+    "motif": "staff",
+    "row": 0,
+    "gesture": "swing",
+    "variant": 4,
+    "duration": 0.83
+  },
+  "T504": {
+    "name": "카를 마르크스",
+    "motif": "gears",
+    "row": 15,
+    "gesture": "orbit",
+    "variant": 5,
+    "duration": 0.9
+  },
+  "T505": {
+    "name": "프리드리히 니체",
+    "motif": "hammer",
+    "row": 1,
+    "gesture": "slam",
+    "variant": 6,
+    "duration": 0.62
+  },
+  "T506": {
+    "name": "존 스튜어트 밀",
+    "motif": "books",
+    "row": 2,
+    "gesture": "throw",
+    "variant": 0,
+    "duration": 0.69
+  },
+  "T507": {
+    "name": "고틀로프 프레게",
+    "motif": "atom",
+    "row": 8,
+    "gesture": "orbit",
+    "variant": 1,
+    "duration": 0.76
+  },
+  "T508": {
+    "name": "버트런드 러셀",
+    "motif": "atom",
+    "row": 8,
+    "gesture": "orbit",
+    "variant": 2,
+    "duration": 0.83
+  },
+  "T509": {
+    "name": "지그문트 프로이트",
+    "motif": "mirror",
+    "row": 7,
+    "gesture": "reflect",
+    "variant": 3,
+    "duration": 0.9
+  },
+  "T510": {
+    "name": "에드문트 후설",
+    "motif": "atom",
+    "row": 8,
+    "gesture": "orbit",
+    "variant": 4,
+    "duration": 0.62
+  },
+  "T601": {
+    "name": "마르틴 하이데거",
+    "motif": "staff",
+    "row": 0,
+    "gesture": "swing",
+    "variant": 5,
+    "duration": 0.69
+  },
+  "T602": {
+    "name": "루트비히 비트겐슈타인",
+    "motif": "words",
+    "row": 14,
+    "gesture": "throw",
+    "variant": 6,
+    "duration": 0.76
+  },
+  "T603": {
+    "name": "장 폴 사르트르",
+    "motif": "staff",
+    "row": 0,
+    "gesture": "swing",
+    "variant": 0,
+    "duration": 0.83
+  },
+  "T604": {
+    "name": "자크 라캉",
+    "motif": "mirror",
+    "row": 7,
+    "gesture": "reflect",
+    "variant": 1,
+    "duration": 0.9
+  },
+  "T605": {
+    "name": "미셸 푸코",
+    "motif": "razor",
+    "row": 6,
+    "gesture": "slash",
+    "variant": 2,
+    "duration": 0.62
+  },
+  "T606": {
+    "name": "한나 아렌트",
+    "motif": "books",
+    "row": 2,
+    "gesture": "throw",
+    "variant": 3,
+    "duration": 0.69
+  },
+  "T607": {
+    "name": "질 들뢰즈",
+    "motif": "water",
+    "row": 10,
+    "gesture": "wave",
+    "variant": 4,
+    "duration": 0.76
+  },
+  "T608": {
+    "name": "에마뉘엘 레비나스",
+    "motif": "staff",
+    "row": 0,
+    "gesture": "swing",
+    "variant": 5,
+    "duration": 0.83
+  },
+  "T609": {
+    "name": "테오도어 아도르노",
+    "motif": "gears",
+    "row": 15,
+    "gesture": "orbit",
+    "variant": 6,
+    "duration": 0.9
+  },
+  "T610": {
+    "name": "니시다 기타로",
+    "motif": "bamboo",
+    "row": 3,
+    "gesture": "unroll",
+    "variant": 0,
+    "duration": 0.62
+  },
+  "T611": {
+    "name": "다산 정약용",
+    "motif": "bamboo",
+    "row": 3,
+    "gesture": "unroll",
+    "variant": 1,
+    "duration": 0.69
+  },
+  "T612": {
+    "name": "바울",
+    "motif": "fire",
+    "row": 9,
+    "gesture": "wave",
+    "variant": 2,
+    "duration": 0.76
+  },
+  "T613": {
+    "name": "알베르 카뮈",
+    "motif": "staff",
+    "row": 0,
+    "gesture": "swing",
+    "variant": 3,
+    "duration": 0.83
+  },
+  "T701": {
+    "name": "델포이의 소크라테스",
+    "motif": "staff",
+    "row": 0,
+    "gesture": "swing",
+    "variant": 4,
+    "duration": 0.9
+  },
+  "T702": {
+    "name": "임마누엘 칸트",
+    "motif": "clock",
+    "row": 5,
+    "gesture": "orbit",
+    "variant": 5,
+    "duration": 0.62
+  },
+  "T703": {
+    "name": "자크 데리다",
+    "motif": "razor",
+    "row": 6,
+    "gesture": "slash",
+    "variant": 6,
+    "duration": 0.69
+  },
+  "T704": {
+    "name": "대성지성 공자",
+    "motif": "bamboo",
+    "row": 3,
+    "gesture": "unroll",
+    "variant": 0,
+    "duration": 0.76
+  },
+  "T705": {
+    "name": "고타마 붓다",
+    "motif": "lotus",
+    "row": 4,
+    "gesture": "orbit",
+    "variant": 1,
+    "duration": 0.83
+  },
+  "T706": {
+    "name": "예수",
+    "motif": "fire",
+    "row": 9,
+    "gesture": "wave",
+    "variant": 2,
+    "duration": 0.9
+  }
+}

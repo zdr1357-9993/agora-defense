@@ -45,7 +45,7 @@ export interface Enemy {
 export type FxEvent =
   | { type: 'hit'; x: number; y: number; dmg: number; big: boolean; uid?: number }
   | { type: 'kill'; x: number; y: number; gold: number; boss: boolean }
-  | { type: 'shot'; uid: number }
+  | { type: 'shot'; uid: number; tx?: number; ty?: number }
   | { type: 'morph'; x: number; y: number; tier: number }
   | { type: 'boss'; name: string }
   | { type: 'bossSkill'; text: string }
@@ -451,7 +451,8 @@ export class Game {
       if (!best) continue;
       t.cd = st.cooldown;
       t.shots = (t.shots ?? 0) + 1;
-      this.fx.push({ type: 'shot', uid: t.uid });
+      const [shotX, shotY] = this.enemyPos(best);
+      this.fx.push({ type: 'shot', uid: t.uid, tx: shotX, ty: shotY });
       let dmg = st.dmg * (1 + UPGRADE.perLevel * t.level) * im.dmg * this.meta.cardMult(t.philId) * (1 + (atk.get(t.uid) ?? 0)) * this.home(t).mult;
       if (best.boss && t.philId === this.stage.counter) dmg *= COUNTER_MULT;
       if (skill) {

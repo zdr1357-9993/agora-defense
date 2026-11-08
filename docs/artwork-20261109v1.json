@@ -1,0 +1,35 @@
+[
+  {
+    "name": "greek-01",
+    "title": "01 · 올리브 아고라",
+    "prompt": "Use case: stylized-concept. Production background for cute Greek philosopher tower defense. Square. three squat cream Greek columns, tiny round olive trees and a terracotta pot, sage and buttery cream sunny square. Match the attached existing dot-eye philosopher sprite reference's very simple coarse pixel shapes and limited pastel palette. Background must be equally simple and toy-like, not elaborate landscape. Flat 2D top-down RPG courtyard with scenery only in outer 12 percent, entire center 76 percent almost plain light ground for readable gameplay. No road, track, grid, text, UI, characters or glow. Large visible square pixels, 16-bit game, very few details, no grain or painterly texture. Cute B-grade warm pastel, low eye fatigue."
+  },
+  {
+    "name": "greek-02",
+    "title": "02 · 에게해 항구",
+    "prompt": "Use case: stylized-concept. Production background for cute Greek philosopher tower defense. Square. pale blue sea far upper edge, tiny white Greek houses with blue roofs in corners, sandy peach ground. Match the attached existing dot-eye philosopher sprite reference's very simple coarse pixel shapes and limited pastel palette. Background must be equally simple and toy-like, not elaborate landscape. Flat 2D top-down RPG courtyard with scenery only in outer 12 percent, entire center 76 percent almost plain light ground for readable gameplay. No road, track, grid, text, UI, characters or glow. Large visible square pixels, 16-bit game, very few details, no grain or painterly texture. Cute B-grade warm pastel, low eye fatigue."
+  },
+  {
+    "name": "greek-03",
+    "title": "03 · 월계수 학당",
+    "prompt": "Use case: stylized-concept. Production background for cute Greek philosopher tower defense. Square. tiny Greek academy with low bookshelves and round laurel shrubs at corners, cream ground, mint and lavender. Match the attached existing dot-eye philosopher sprite reference's very simple coarse pixel shapes and limited pastel palette. Background must be equally simple and toy-like, not elaborate landscape. Flat 2D top-down RPG courtyard with scenery only in outer 12 percent, entire center 76 percent almost plain light ground for readable gameplay. No road, track, grid, text, UI, characters or glow. Large visible square pixels, 16-bit game, very few details, no grain or painterly texture. Cute B-grade warm pastel, low eye fatigue."
+  },
+  {
+    "name": "greek-04",
+    "title": "04 · 노을 신전",
+    "prompt": "Use case: stylized-concept. Production background for cute Greek philosopher tower defense. Square. tiny simplified Greek temple corners, peach sky and pale lilac floor, cozy low contrast evening. Match the attached existing dot-eye philosopher sprite reference's very simple coarse pixel shapes and limited pastel palette. Background must be equally simple and toy-like, not elaborate landscape. Flat 2D top-down RPG courtyard with scenery only in outer 12 percent, entire center 76 percent almost plain light ground for readable gameplay. No road, track, grid, text, UI, characters or glow. Large visible square pixels, 16-bit game, very few details, no grain or painterly texture. Cute B-grade warm pastel, low eye fatigue."
+  },
+  {
+    "name": "greek-05",
+    "title": "05 · 낙서 공책 아고라",
+    "prompt": "Use case: stylized-concept. Production background for cute Greek philosopher tower defense. Square. simple Greek columns and olive pots as chunky pixel doodles on warm cream paper, mint and pink accents, funny handmade board game. Match the attached existing dot-eye philosopher sprite reference's very simple coarse pixel shapes and limited pastel palette. Background must be equally simple and toy-like, not elaborate landscape. Flat 2D top-down RPG courtyard with scenery only in outer 12 percent, entire center 76 percent almost plain light ground for readable gameplay. No road, track, grid, text, UI, characters or glow. Large visible square pixels, 16-bit game, very few details, no grain or painterly texture. Cute B-grade warm pastel, low eye fatigue."
+  },
+  {
+    "name": "signature-fx-a",
+    "prompt": "Use case: stylized-concept. Actual production transparent PIXEL GAME EFFECT animation atlas. EXACTLY 4 columns and 8 equal rows, no borders no gaps except transparent margins in each equal cell. Every ROW is one effect animated across its FOUR cells left-to-right (windup, active, follow-through, fading). Eight rows from top to bottom: 1: Socrates wooden walking staff sweeping sideways; 2: Nietzsche heavy short-handled philosopher hammer slamming downward; 3: Plato exactly THREE small flying books in a fan formation; 4: Confucius bamboo manuscript and calligraphy stroke; 5: Buddhist lotus petals opening in a small ring; 6: Kant pocket-watch hands ticking through a quarter turn; 7: Occam razor cutting a short neat arc; 8: Lacan small hand mirror tilting and reflecting a tiny square. Only objects and their tiny restrained motion traces, no hands, no characters, no scenery, no labels, no text. Same center and scale in each frame, all objects inside their equal cells. Match simple chunky 24-32 native pixel object art enlarged, limited pastel colors, crisp square pixels, dark muted plum outlines. No large auras, no bright glows, no white explosions. Genuine transparent alpha background. Tall 1:2 overall atlas, effects suitable for tiny cute philosopher defenders, motifs readable at 40 pixels."
+  },
+  {
+    "name": "signature-fx-b",
+    "prompt": "Use case: stylized-concept. Actual production transparent PIXEL GAME EFFECT animation atlas. EXACTLY 4 columns and 8 equal rows, no borders no gaps except transparent margins in each equal cell. Every ROW is one effect animated across its FOUR cells left-to-right (windup, active, follow-through, fading). Eight rows from top to bottom: 1: Democritus three atom dots orbiting; 2: Heraclitus small flame curling; 3: Thales small water ribbon splashing; 4: Leibniz small branching lightning trace; 5: Aristotle rolled parchment unfolding; 6: Diogenes lantern swinging; 7: Wittgenstein blocky speech-symbol tiles scattering; 8: Hegel two small gears interlocking. Only objects and their tiny restrained motion traces, no hands, no characters, no scenery, no labels, no text. Same center and scale in each frame, all objects inside their equal cells. Match simple chunky 24-32 native pixel object art enlarged, limited pastel colors, crisp square pixels, dark muted plum outlines. No large auras, no bright glows, no white explosions. Genuine transparent alpha background. Tall 1:2 overall atlas, effects suitable for tiny cute philosopher defenders, motifs readable at 40 pixels."
+  }
+]

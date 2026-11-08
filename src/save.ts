@@ -49,6 +49,8 @@ export interface Progress {
   tabTut?: string[];
   /** 최애 철학자 (고민방 주인 · 전장 하트) */
   favorite?: string;
+  /** User-selected Greek background concept; legacy era option remains available. */
+  battleBackdrop?: string;
   /** 보유 스킨 "철학자ID:테마" / 착용 중인 스킨 */
   skins: string[];
   skinOn: Record<string, string>;
