@@ -1,5 +1,6 @@
+import { wrapCanvasText } from './text-layout';
 import { artUrl, artImage, iconHtml } from './artwork';
-import { journeyArt, drawPastelFloor, drawEraTile } from './pastel-art';
+import { journeyArt, drawPastelFloor, arenaArt, drawWaitingBench } from './pastel-art';
 import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
 import { ACCOUNTS, login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
 import { STAGE_PATHS } from './paths';
@@ -162,7 +163,7 @@ function renderCodex() {
     const n = progress.cards[p.id] ?? 0, lv = cardLevel(n);
     const d = document.createElement('div');
     d.className = `card t${p.tier} ${known ? '' : 'unknown'} ${n ? 'owned' : ''}`;
-    d.innerHTML = `${progress.favorite === p.id ? '<span class="fav">💗</span>' : ''}${lv ? `<span class="lv ${awakenLevel(n) ? 'aw' : ''}">${awakenLevel(n) ? '✦' + awakenLevel(n) : 'Lv.' + lv}</span>` : ''}<img src="${portrait(p.id)}"><b>${known ? shortName(p.name) : '???'}</b>`;
+    d.innerHTML = `${progress.favorite === p.id ? '<span class="fav">💗</span>' : ''}${lv ? `<span class="lv ${awakenLevel(n) ? 'aw' : ''}">${awakenLevel(n) ? '✦' + awakenLevel(n) : 'Lv.' + lv}</span>` : ''}<img src="${portrait(p.id)}"><b>${known ? p.name : '???'}</b>`;
     if (known) d.onclick = () => openTcg(p.id);
     grid.appendChild(d);
   }
@@ -267,6 +268,7 @@ let introT = 0;
 
 /** 필드(7칸) + 대기석 한 줄 높이 */
 const ROWS = GRID + 1.4;
+const SCENERY_MARGIN = .4;
 /** 화면 높이에 맞춰 필드 크기를 정한다: 남는 공간 안에서 가장 크게 (스크롤 없이 한 화면) */
 function resize() {
   const dpr = window.devicePixelRatio || 1;
@@ -277,18 +279,18 @@ function resize() {
   const battle = $('battle');
   const gap = parseFloat(getComputedStyle(battle).rowGap) || 8, pad = parseFloat(getComputedStyle(battle).paddingTop) + parseFloat(getComputedStyle(battle).paddingBottom);
   const fixed = ['hud', 'cats', 'selbar', 'actions', 'dock'].reduce((a, id) => a + $(id).offsetHeight, 0) + gap * 5 + pad;
-  const H = Math.max(150, battle.clientHeight - fixed - (parseFloat(frameStyle.paddingTop) || 0) - (parseFloat(frameStyle.paddingBottom) || 0));
+  const H = Math.max(150, battle.clientHeight - fixed - (parseFloat(frameStyle.paddingTop) || 0) - (parseFloat(frameStyle.paddingBottom) || 0) - (parseFloat(frameStyle.borderTopWidth) || 0) - (parseFloat(frameStyle.borderBottomWidth) || 0));
   if (!W || !battle.clientHeight) return;
   // 세로에 맞춰 칸 크기를 정하고, 가로는 화면 폭까지 넓힌다 (칸이 최대 1.5배까지 옆으로 길어짐)
-  const c = Math.min(W / GRID, H / ROWS);
-  const width = Math.floor(c * GRID); // 정사각형 칸
-  const height = Math.floor(c * ROWS);
+  const c = Math.min(W / (GRID + SCENERY_MARGIN * 2), H / (ROWS + SCENERY_MARGIN * 2));
+  const width = Math.floor(c * (GRID + SCENERY_MARGIN * 2)); // 정사각형 칸
+  const height = Math.floor(c * (ROWS + SCENERY_MARGIN * 2));
   canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
   ctx.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
-  cell = height / ROWS;
-  cellX = width / GRID;
+  cell = height / (ROWS + SCENERY_MARGIN * 2);
+  cellX = width / (GRID + SCENERY_MARGIN * 2);
 }
 window.addEventListener('resize', resize);
 // 기기마다 실제 보이는 높이 (iOS 사파리 주소창·안드로이드 내비 바 반영)
@@ -302,7 +304,7 @@ new ResizeObserver(resize).observe($('battle'));
 function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   if (story) { const base = STAGES.find((x) => x.id === story.base)!; s = { ...base, name: story.title, boss10: story.boss, boss20: story.boss, story: story.when }; }
   spawnAt.clear();
-  $('field-wrap').style.backgroundImage = `linear-gradient(#fff9 0 0),url(${journeyArt(s.era)})`;
+  $('field-wrap').style.backgroundImage = '';
   eraWipe(s.era, story ? story.title : s.name, story ? story.when : '');
   game = new Game(s, {
     cardMult: (id) => cardMult(progress.cards[id] ?? 0),
@@ -395,8 +397,11 @@ function startStory(st: StoryStage) { startBattle(STAGES[0], undefined, st); pla
 canvas.addEventListener('pointerdown', (ev) => {
   if (!game) return;
   const r = canvas.getBoundingClientRect();
-  const cx = Math.floor(((ev.clientX - r.left) / r.width) * GRID);
-  const cy = Math.min(GRID, Math.floor(((ev.clientY - r.top) / r.height) * ROWS));
+  const px = ev.clientX - r.left - cellX * SCENERY_MARGIN;
+  const py = ev.clientY - r.top - cell * SCENERY_MARGIN;
+  if (px < 0 || py < 0 || px >= GRID * cellX || py >= ROWS * cell) return;
+  const cx = Math.floor(px / cellX);
+  const cy = Math.min(GRID, Math.floor(py / cell));
   const benchHit = cy === GRID && cx >= 1 && cx <= BENCH;
   if (cx < 0 || cy < 0 || cx >= GRID || (cy === GRID && !benchHit) || (cy < GRID && game.isRoad(cx, cy))) { selected = null; updateUI(); return; }
   const t = game.towerAt(cx, cy);
@@ -526,19 +531,22 @@ function updateUI() {
 function draw() {
   if (!game || !cell) return;
   const g = game;
-  const w = canvas.clientWidth, hTot = canvas.clientHeight, fh = GRID * cell; // fh: 필드 높이
-  ctx.setTransform(canvas.width / w, 0, 0, canvas.height / hTot, 0, 0);
-  ctx.fillStyle = '#e9e3f2'; ctx.fillRect(0, 0, w, hTot);
-  // 대기석 판 (필드 아래)
-  ctx.fillStyle = '#e9e3f2'; ctx.fillRect(0, fh, w, hTot - fh);
-  ctx.fillStyle = '#b2a6c5'; ctx.fillRect(0, fh - 1, w, 2);
-  ctx.font = `${Math.max(10, cell * 0.2)}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('대기석', cellX * 0.5, fh + cell * 0.6); ctx.fillText(`${BENCH - game.benchSlots().length}/${BENCH}`, cellX * 6.5, fh + cell * 0.6);
-  drawEraTile(ctx, g.stage.era, 3, 0, fh + cell * .25, cellX * .85);
-  drawEraTile(ctx, g.stage.era, 4, w - cellX * .85, fh + cell * .25, cellX * .85);
-  // 대기석: 칸 대신 나무 벤치 한 줄
-  ctx.fillStyle = '#c9bfdc'; ctx.beginPath(); ctx.roundRect(cellX * 0.95, fh + cell * 0.78, cellX * 5.1, cell * 0.16, cell * 0.08); ctx.fill();
-  ctx.fillStyle = '#a99bbb'; for (const lx of [1.2, 5.8]) ctx.fillRect(cellX * lx, fh + cell * 0.94, cell * 0.08, cell * 0.22);
+  const fullW = canvas.clientWidth, fullH = canvas.clientHeight;
+  const insetX = cellX * SCENERY_MARGIN, insetY = cell * SCENERY_MARGIN;
+  const w = GRID * cellX, hTot = ROWS * cell, fh = GRID * cell;
+  const scaleX = canvas.width / fullW, scaleY = canvas.height / fullH;
+  ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#f3eee8'; ctx.fillRect(0, 0, fullW, fullH);
+  const scenery = arenaArt(g.stage.era);
+  if (scenery) ctx.drawImage(scenery, 0, 0, fullW, fullH);
+  ctx.setTransform(scaleX, 0, 0, scaleY, insetX * scaleX, insetY * scaleY);
+  // An actual illustrated bench sits under the five waiting positions.
+  drawWaitingBench(ctx, g.stage.era, cellX * .65, fh + cell * .53, cellX * 5.7, cell * .95);
+  ctx.font = `${Math.max(10, cell * .2)}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(255,253,247,.92)';
+  ctx.fillRect(cellX * 2.2, fh + cell * .08, cellX * 2.6, cell * .32);
+  ctx.fillStyle = '#655975'; ctx.fillText(`대기석  ${BENCH - game.benchSlots().length}/${BENCH}`, w / 2, fh + cell * .25);
   ctx.save();
   // Keep the board anchored: camera translation exposed clear strips at its edges.
   ctx.imageSmoothingEnabled = false;
@@ -547,11 +555,11 @@ function draw() {
   const th = THEME[g.stage.era] ?? THEME['고대'];
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, fh); ctx.clip();
   ctx.imageSmoothingEnabled = false;
-  drawPastelFloor(ctx, g.stage.era, cellX, cell, GRID);
+  drawPastelFloor(ctx, g.stage.era, cellX, cell, GRID, !!selected);
   ctx.imageSmoothingEnabled = false;
   // ---- 길: 굽이치는 두꺼운 길 + 테두리 ----
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  for (const [color, width] of [[th.roadEdge, 0.9], [th.road, 0.72]] as const) {
+  for (const [color, width] of [[hexA(th.roadEdge, .5), 0.69], [hexA(th.road, .8), 0.63]] as const) {
     ctx.strokeStyle = color; ctx.lineWidth = cell * width;
     for (const path of g.layout.paths) {
       ctx.beginPath();
@@ -560,7 +568,7 @@ function draw() {
       ctx.stroke();
     }
   }
-  ctx.strokeStyle = th.roadLine; ctx.lineWidth = 1.5; ctx.setLineDash([3, 9]);
+  ctx.strokeStyle = hexA(th.roadLine, .35); ctx.lineWidth = 1; ctx.setLineDash([2, 10]);
   for (const path of g.layout.paths) {
     ctx.beginPath();
     path.forEach(([px, py], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, (px + 0.5) * cellX, (py + 0.5) * cell));
@@ -647,13 +655,13 @@ function draw() {
       ctx.font = `${cell * 0.32}px sans-serif`; ctx.textAlign = 'center';
       ctx.fillText('💤', cx + cell * 0.28, foot - cell * 0.9 + Math.sin(tick * 0.15) * 3);
     }
-    // 이름표 (모든 철학자 발밑)
-    {
-      const nm = (progress.favorite === t.philId ? '💗' : '') + shortName(p.name);
+    // Quiet battlefield: show a full name on selection, with details below.
+    if (isSel) {
+      const nm = p.name;
       const fs = Math.max(9, cell * 0.18);
       ctx.font = `${fs}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const nw = ctx.measureText(nm).width + 8, ny = foot + fs * 0.35 + cell * 0.07;
-      ctx.fillStyle = isSel ? '#ffd36b' : 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
+      ctx.fillStyle = isSel ? '#ffd36b' : 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#b8a9c7'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(cx - nw / 2, ny - fs * 0.62, nw, fs * 1.24, fs * 0.6); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#3b2a1e'; ctx.fillText(nm, cx, ny + 0.5);
     }
@@ -716,7 +724,7 @@ function draw() {
     }
   }
 
-  ctx.font = `700 ${Math.max(9, cell * 0.14)}px "Noto Sans KR", sans-serif`;
+  ctx.font = `700 ${Math.max(9, cell * 0.14)}px "Galmuri11", sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   // 탄환: 작은 빛 구슬 (대사는 스킬이 터질 때만 말풍선으로)
   for (const b of g.bullets) {
@@ -728,28 +736,34 @@ function draw() {
     ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
-  // 스킬 대사 말풍선
-  ctx.font = `${Math.max(10, cell * 0.2)}px "Galmuri11", sans-serif`;
-  for (const [uid, sp] of speeches) {
+  // Full quotes wrap across multiple lines instead of being cut at 16 characters.
+  ctx.font = `${Math.max(12, cell * .23)}px "Galmuri11", sans-serif`;
+  let previousBubbleBottom = -1;
+  for (const [uid, sp] of [...speeches].slice(-3)) {
     const t = g.towers.find((x) => x.uid === uid);
     if (!t) { speeches.delete(uid); continue; }
-    const a = Math.min(1, sp.t / 0.3, (2.4 - sp.t) / 0.15 + 0.2);
-    const text = sp.text.length > 16 ? sp.text.slice(0, 15) + '…' : sp.text;
-    const tw = ctx.measureText(text).width + 14, th = cell * 0.36;
-    let x = (t.cx + 0.5) * cellX; const y = t.cy * cell - th * 0.2;
-    x = Math.max(tw / 2 + 2, Math.min(w - tw / 2 - 2, x));
-    ctx.save(); ctx.globalAlpha = Math.max(0, a);
-    ctx.fillStyle = '#fffdf6'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.roundRect(x - tw / 2, y - th, tw, th, th / 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo((t.cx + 0.42) * cellX, y - 1); ctx.lineTo((t.cx + 0.5) * cellX, y + cell * 0.1); ctx.lineTo((t.cx + 0.58) * cellX, y - 1); ctx.fill();
-    ctx.fillStyle = '#3b2a1e'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y - th / 2 + 1);
+    const maxTextWidth = Math.min(w - 32, Math.max(170, cellX * 4));
+    const lines = wrapCanvasText(sp.text, maxTextWidth, text => ctx.measureText(text).width);
+    const lineHeight = Math.max(17, cell * .31);
+    const tw = Math.max(...lines.map(text => ctx.measureText(text).width)) + 20;
+    const th = lines.length * lineHeight + 14;
+    let x = (t.cx + .5) * cellX;
+    x = Math.max(tw / 2 + 4, Math.min(w - tw / 2 - 4, x));
+    let top = Math.max(8, t.cy * cell - th - 8);
+    if (top < previousBubbleBottom + 6 && previousBubbleBottom >= 0) top = previousBubbleBottom + 6;
+    top = Math.min(fh - th - 4, top); previousBubbleBottom = top + th;
+    ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, sp.t / .35));
+    ctx.fillStyle = '#fffdf6'; ctx.strokeStyle = '#b3a1c1'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(x - tw / 2, top, tw, th, 5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#514569'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    lines.forEach((text, i) => ctx.fillText(text, x, top + 7 + (i + .5) * lineHeight));
     ctx.restore();
   }
 
   if (g.noticeTime > 0) {
     ctx.save(); ctx.globalAlpha = Math.min(1, g.noticeTime);
     ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillRect(0, fh / 2 - cell * 0.45, w, cell * 0.9);
-    ctx.fillStyle = '#3b2a1e'; ctx.font = `800 ${Math.max(12, cell * 0.32)}px "Noto Sans KR", sans-serif`;
+    ctx.fillStyle = '#3b2a1e'; ctx.font = `800 ${Math.max(12, cell * 0.32)}px "Galmuri11", sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(g.notice, w / 2, fh / 2);
     ctx.restore();
   }
@@ -758,11 +772,11 @@ function draw() {
     ctx.save();
     ctx.globalAlpha = Math.min(1, introT / 0.6, (2.8 - introT) / 0.3);
     ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(0, fh / 2 - cell * 0.9, w, cell * 1.8);
-    ctx.fillStyle = '#3b2a1e'; ctx.font = `800 ${cell * 0.22}px "Nanum Myeongjo", serif`;
+    ctx.fillStyle = '#3b2a1e'; ctx.font = `800 ${cell * 0.22}px "Galmuri11", sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = `800 ${cell * 0.4}px "Nanum Myeongjo", serif`;
+    ctx.font = `800 ${cell * 0.4}px "Galmuri11", sans-serif`;
     ctx.fillText(g.stage.name, w / 2, fh / 2 - cell * 0.35);
-    ctx.font = `700 ${cell * 0.22}px "Noto Sans KR", sans-serif`;
+    ctx.font = `700 ${cell * 0.22}px "Galmuri11", sans-serif`;
     ctx.fillText(STAGE_PATHS[g.stage.id].caption, w / 2, fh / 2 + cell * 0.1);
     ctx.fillText(`${g.diff.icon} ${g.diff.name} · 최종 보스: ${g.stage.boss20} (${g.maxWave}웨이브)`, w / 2, fh / 2 + cell * 0.45);
     ctx.restore();
@@ -953,7 +967,7 @@ function drawDecor(kind: string, x: number, y: number, c: number) {
 const SHORT: Record<string, string> = { '델포이의 소크라테스': '소크라테스', '대성지성 공자': '공자', '마르틴 로우데거': '로우데거', '장 폴 사리티리': '사리티리', '자크 디리타': '디리타', '에마뉘엘 리비나스': '리비나스', '테오도어 아도로노': '아도로노', '알베르 카뮈': '카뮈',  '고타마 붓다': '붓다', '다산 정약용': '정약용', '퇴계 이황': '이황', '루트비히 비트겐슈타인': '비트겐', '아르투어 쇼펜하우어': '쇼펜하우어', '고트프리트 라이프니츠': '라이프니츠', '쇠렌 키르케고르': '키르케고르', '헤라클레이토스': '헤라클레', '아리스토텔레스': '아리스토', '나가르주나': '나가르',  '엘레아의 제논': '제논', '오컴의 윌리엄': '오컴', '이븐 시나': '이븐시나', '이븐 루시드': '이븐루시드', '알 킨디': '알킨디', '힐데가르트 폰 빙엔': '힐데가르트' };
 function shortName(name: string) {
   const s = SHORT[name] ?? name.split(' ').pop()!;
-  return s.length > 5 ? s.slice(0, 4) + '…' : s;
+  return s;
 }
 
 // ---------- 장착 ----------
@@ -1004,7 +1018,7 @@ function renderRoom() {
     <div class="room">
       <div class="room-head"><h2>${iconHtml('room')} 고민방</h2><button class="info-btn" id="room-info" aria-label="고민방 안내">i</button></div>
       <div class="room-sky" style="background-image:url(${artUrl('room')})"><div class="room-bubble">“${p.quote}”</div>
-        <button id="thinker" class="thinker t${p.tier}" aria-label="${p.name}와 고민하고 고뇌 얻기"><img src="${heroPortrait(p.id)}"></button>
+        <button id="thinker" class="thinker t${p.tier}" aria-label="${p.name}와 고민하고 고뇌 얻기"><img src="${portrait(p.id)}" alt="${p.name}"></button>
         <div class="room-floor"></div></div>
       <div class="room-stat"><span>고뇌</span><b id="room-gonoe">${Math.floor(progress.gonoe).toLocaleString()}</b></div>
       <div class="room-rates"><span>👆 탭당 <b>+${tapGain(progress)}</b></span><span>⏳ 초당 <b>+${rate.toFixed(1)}</b></span></div>
@@ -1312,7 +1326,7 @@ function consumeFx(g: Game) {
       if (f.tier >= 5) shake = 0.35;
     } else if (f.type === 'boss') { bossIntro = { name: f.name, t: 2.6 }; shake = 0.4; sfx.boss(); }
     else if (f.type === 'bossSkill' && f.text) { banner = { text: f.text, t: 1.6 }; shake = 0.25; sfx.bossSkill(); }
-    else if (f.type === 'say') speeches.set(f.uid, { text: f.text, t: 2.4 });
+    else if (f.type === 'say') speeches.set(f.uid, { text: f.text, t: Math.min(8, Math.max(3.8, Array.from(f.text).length * .13)) });
     else if (f.type === 'ticket') { banner = { text: `${f.why}! 🎟 무료 소환권 +${f.n}`, t: 2 }; sfx.reveal(5); }
     else if (f.type === 'stun') { const t = g.towers.find((x) => x.uid === f.uid); if (t) for (let i = 0; i < 8; i++) particles.push({ x: t.cx + 0.5, y: t.cy + 0.3, vx: rnd(-1, 1), vy: rnd(-2, -0.5), life: 0.6, max: 0.6, color: '#c7a6ff', size: 0.07 }); }
   }

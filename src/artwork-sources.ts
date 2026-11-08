@@ -1,5 +1,13 @@
 // Generated production art, bundled with Vite content hashes.
 export const ART_SOURCES = {
+  'arena-ancient': new URL('./assets/arena-ancient.webp', import.meta.url).href,
+  'arena-east': new URL('./assets/arena-east.webp', import.meta.url).href,
+  'arena-medieval': new URL('./assets/arena-medieval.webp', import.meta.url).href,
+  'arena-modern': new URL('./assets/arena-modern.webp', import.meta.url).href,
+  'arena-contemporary': new URL('./assets/arena-contemporary.webp', import.meta.url).href,
+  'waiting-benches': new URL('./assets/waiting-benches.webp', import.meta.url).href,
+  'sage-variants': new URL('./assets/sage-variants.webp', import.meta.url).href,
+
   'battle-tiles': new URL('./assets/battle-tiles.webp', import.meta.url).href,
   'memory-seal': new URL('./assets/memory-seal.webp', import.meta.url).href,
   'characters-1': new URL('./assets/characters-1.webp', import.meta.url).href,
