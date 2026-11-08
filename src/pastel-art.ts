@@ -2,7 +2,8 @@ import { eraArtUrl, artImage, type ArtName } from './artwork';
 const ERAS = ['고대', '동양', '중세', '근대', '현대'];
 const ARENAS: ArtName[] = ['arena-ancient', 'arena-east', 'arena-medieval', 'arena-modern', 'arena-contemporary'];
 export function journeyArt(era: string): string { return eraArtUrl(era); }
-export function arenaArt(era: string) { return artImage(ARENAS[Math.max(0, ERAS.indexOf(era))]); }
+export const GREEK_BACKDROPS = [['greek-01', '올리브 아고라'], ['greek-02', '에게해 항구'], ['greek-03', '월계수 학당'], ['greek-04', '노을 신전'], ['greek-05', '낙서 공책 아고라']] as const;
+export function arenaArt(era: string, concept = 'greek-01') { return artImage((GREEK_BACKDROPS.some(([id]) => id === concept) ? concept : ARENAS[Math.max(0, ERAS.indexOf(era))]) as ArtName); }
 export function drawWaitingBench(x: CanvasRenderingContext2D, era: string, left: number, top: number, width: number, height: number) {
   const image = artImage('waiting-benches'); if (!image) return;
   const row = Math.max(0, ERAS.indexOf(era));
