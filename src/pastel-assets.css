@@ -112,3 +112,17 @@ button.ghost { border-radius: 2px; }
 .gb-head h2, .room-head h2 { display: flex; align-items: center; gap: 5px; }
 .gb-head h2 .pixel-icon, .room-head h2 .pixel-icon { width: 30px; height: 30px; }
 #login-card input { font-family: 'Galmuri11', sans-serif; border-radius: 2px; border: 2px solid #ae98c4; font-size: 14px; background: #fffaff; }
+
+/* Replace legacy high-specificity card rules and decorative room poles. */
+#codex-list .codex-grid .card { min-height: 110px; padding: 8px 2px 6px; border: 2px solid #b6a1c9 !important; border-radius: 3px; background: #fffbff; box-shadow: 0 3px 0 #e0d4ed; }
+#codex-list .codex-grid .card img { width: 76px; height: 76px; image-rendering: pixelated; }
+#codex-list .codex-grid .card b { font-size: 11px; background: none; border-radius: 0; box-shadow: none; margin-top: 3px; }
+#codex-list .codex-grid .card.t2 { background: #eef7fc; }
+#codex-list .codex-grid .card.t3 { background: #f1eafa; }
+#codex-list .codex-grid .card.t4 { background: #fff7e5; }
+#codex-list .codex-grid .card.t5 { background: #fae8ee; }
+#codex-list .codex-grid .card.t6 { background: #f7e4ee !important; }
+#codex-list .codex-grid .card.t7 { background: #edf8ef !important; }
+#codex-list .codex-grid .card.unknown { background: #e9e2f0 !important; }
+.thinker::before, .thinker::after { display: none; }
+.j-stage-number, .j-go b, #dock button, .card b { font-weight: 700; }

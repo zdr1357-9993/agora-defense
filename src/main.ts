@@ -1,4 +1,4 @@
-import { artUrl, artImage, ERA_ART, eraArtUrl, iconHtml, artworkCharacter, RELEASE } from './artwork';
+import { artUrl, artImage, iconHtml } from './artwork';
 import { journeyArt, drawPastelFloor } from './pastel-art';
 import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
 import { ACCOUNTS, login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
@@ -162,7 +162,7 @@ function renderCodex() {
     const n = progress.cards[p.id] ?? 0, lv = cardLevel(n);
     const d = document.createElement('div');
     d.className = `card t${p.tier} ${known ? '' : 'unknown'} ${n ? 'owned' : ''}`;
-    d.innerHTML = `${progress.favorite === p.id ? '<span class="fav">💗</span>' : ''}${lv ? `<span class="lv ${awakenLevel(n) ? 'aw' : ''}">${awakenLevel(n) ? '✦' + awakenLevel(n) : 'Lv.' + lv}</span>` : ''}<img src="${pedArt(p.id)}"><b>${known ? shortName(p.name) : '???'}</b>`;
+    d.innerHTML = `${progress.favorite === p.id ? '<span class="fav">💗</span>' : ''}${lv ? `<span class="lv ${awakenLevel(n) ? 'aw' : ''}">${awakenLevel(n) ? '✦' + awakenLevel(n) : 'Lv.' + lv}</span>` : ''}<img src="${portrait(p.id)}"><b>${known ? shortName(p.name) : '???'}</b>`;
     if (known) d.onclick = () => openTcg(p.id);
     grid.appendChild(d);
   }
