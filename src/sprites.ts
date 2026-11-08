@@ -1,3 +1,4 @@
+import { artworkCharacter, artworkItem, artworkEnemy } from './artwork';
 // 이전 버전(code_artifact.html)의 24x24 픽셀 도트 생성기를 이식.
 // 시대별 복장 + 인물별 시그니처(소크라테스 대머리, 니체 콧수염, 디오게네스 통 등)
 import type { Philosopher } from './data';
@@ -49,6 +50,7 @@ function makeSprite(draw: (px: Px) => void): HTMLCanvasElement {
 const cache = new Map<string, HTMLCanvasElement>();
 
 export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
+  const art = artworkCharacter(p.id); if (art) return art;
   const hit = cache.get(p.id);
   if (hit) return hit;
   const n = parseInt(p.id.slice(1), 10);
@@ -231,6 +233,7 @@ export function monsterSprite(era: string, kind: 'early' | 'late' | 'boss'): HTM
 // ---------- 장착 아이템 아이콘 (12x12) ----------
 const itemCache = new Map<string, HTMLCanvasElement>();
 export function itemSprite(id: string): HTMLCanvasElement {
+  const art = artworkItem(id); if (art) return art;
   const hit = itemCache.get(id);
   if (hit) return hit;
   const c = document.createElement('canvas');
@@ -284,7 +287,7 @@ export function skinnedSprite(p: Philosopher, skin?: string): HTMLCanvasElement 
   for (let i = 0; i < d.length; i += 4) {
     if (!d[i + 3]) continue;
     const r = d[i], g = d[i + 1], b = d[i + 2];
-    const isOutline = r < 70 && g < 55 && b < 45;
+    const isOutline = r < 115 && g < 100 && b < 135;
     const isSkin = r > 230 && g > 180 && b > 120 && r - b > 30;
     const isEye = r < 40 && g < 40 && b < 60;
     if (isOutline || isSkin || isEye) continue;
@@ -293,7 +296,8 @@ export function skinnedSprite(p: Philosopher, skin?: string): HTMLCanvasElement 
   }
   ctx.putImageData(img, 0, 0);
   // 장신구 (2배 해상도 좌표)
-  const px = (x: number, y: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x * 2, y * 2, w * 2, h * 2); };
+  const unit = base.width / 26;
+  const px = (x: number, y: number, w: number, h: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x * unit, y * unit, w * unit, h * unit); };
   if (skin === 'sakura') { for (const x of [8, 11, 14, 17]) { px(x, 2, 2, 2, '#ff9ecb'); px(x + 0.5, 2.5, 1, 1, '#fff1f7'); } }
   if (skin === 'night') { px(19, 0, 4, 4, '#fde68a'); px(20, 0, 3, 3, '#6366f1'); px(3, 3, 1, 1, '#fff'); px(1, 8, 1, 1, '#fff'); }
   if (skin === 'scholar') { px(8, 7, 4, 3, '#1c1917'); px(12, 7, 4, 3, '#1c1917'); px(9, 8, 2, 1, '#e0f2fe'); px(13, 8, 2, 1, '#e0f2fe'); px(18, 13, 5, 6, '#7c2d12'); px(19, 14, 3, 4, '#fef3c7'); }
@@ -308,6 +312,7 @@ export function skinnedSprite(p: Philosopher, skin?: string): HTMLCanvasElement 
 type MKind = 'normal' | 'fast' | 'tank' | 'swarm' | 'boss';
 const monCache2 = new Map<string, HTMLCanvasElement>();
 export function monsterSprite2(era: string, kind: MKind, late = false): HTMLCanvasElement {
+  const art = artworkEnemy(era, kind); if (art) return art;
   const key = era + kind + late;
   const hit = monCache2.get(key); if (hit) return hit;
   const eye = (x: number, y: number, px: Px, c = '#fff', p = '#1c1917') => { px(x, y, 2, 2, c); px(x + 1, y + 1, 1, 1, p); };

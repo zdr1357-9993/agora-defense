@@ -15,6 +15,7 @@
     "xlsx": "^0.18.5"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.118.0"
+    "@supabase/supabase-js": "^2.118.0",
+    "galmuri": "2.39.2"
   }
 }

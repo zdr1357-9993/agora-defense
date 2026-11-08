@@ -1,3 +1,4 @@
+import { artUrl, artImage, ERA_ART, eraArtUrl, iconHtml, artworkCharacter, RELEASE } from './artwork';
 import { journeyArt, drawPastelFloor } from './pastel-art';
 import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
 import { ACCOUNTS, login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
@@ -529,7 +530,7 @@ function draw() {
   // 대기석 판 (필드 아래)
   ctx.fillStyle = '#e9e3f2'; ctx.fillRect(0, fh, w, hTot - fh);
   ctx.fillStyle = '#b2a6c5'; ctx.fillRect(0, fh - 1, w, 2);
-  ctx.font = `${Math.max(10, cell * 0.2)}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `${Math.max(10, cell * 0.2)}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('대기석', cellX * 0.5, fh + cell * 0.6); ctx.fillText(`${BENCH - game.benchSlots().length}/${BENCH}`, cellX * 6.5, fh + cell * 0.6);
   // 대기석: 칸 대신 나무 벤치 한 줄
   ctx.fillStyle = '#c9bfdc'; ctx.beginPath(); ctx.roundRect(cellX * 0.95, fh + cell * 0.78, cellX * 5.1, cell * 0.16, cell * 0.08); ctx.fill();
@@ -566,7 +567,7 @@ function draw() {
   for (const path of g.layout.paths) for (let i = 1; i < path.length; i++) {
     const [ax, ay] = path[i - 1], [bx, by] = path[i];
     const mx = ((ax + bx) / 2 + 0.5) * cellX, my = ((ay + by) / 2 + 0.5) * cell, ang = Math.atan2(by - ay, bx - ax);
-    ctx.save(); ctx.translate(mx, my); ctx.rotate(ang); ctx.fillStyle = th.roadEdge;
+    ctx.save(); ctx.translate(mx, my); ctx.rotate(ang); ctx.fillStyle = '#fffaff';
     ctx.beginPath(); ctx.moveTo(cell * 0.18, 0); ctx.lineTo(-cell * 0.1, -cell * 0.14); ctx.lineTo(-cell * 0.1, cell * 0.14); ctx.fill(); ctx.restore();
   }
   ctx.font = `${cell * 0.55}px sans-serif`;
@@ -646,7 +647,7 @@ function draw() {
     {
       const nm = (progress.favorite === t.philId ? '💗' : '') + shortName(p.name);
       const fs = Math.max(9, cell * 0.18);
-      ctx.font = `${fs}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = `${fs}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const nw = ctx.measureText(nm).width + 8, ny = foot + fs * 0.35 + cell * 0.07;
       ctx.fillStyle = isSel ? '#ffd36b' : 'rgba(255,255,255,.92)'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.roundRect(cx - nw / 2, ny - fs * 0.62, nw, fs * 1.24, fs * 0.6); ctx.fill(); ctx.stroke();
@@ -662,7 +663,7 @@ function draw() {
       const sx2 = (t.cx + 0.82) * cellX, sy2 = (t.cy + 0.18) * cell + Math.sin(tick * 0.12 + t.uid) * 2, sr = cell * 0.12;
       ctx.fillStyle = '#ff5f8f'; ctx.beginPath(); ctx.arc(sx2, sy2, sr, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.font = `${sr * 1.4}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('✦', sx2, sy2 + 0.5);
+      ctx.fillStyle = '#fff'; ctx.font = `${sr * 1.4}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('✦', sx2, sy2 + 0.5);
     }
     // 등급 배지
     const bx = (t.cx + 0.2) * cellX, by = (t.cy + 0.2) * cell, br = cell * 0.13;
@@ -705,7 +706,7 @@ function draw() {
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(x - bw / 2, by, bw, 5, 3); ctx.fill();
     ctx.fillStyle = r > 0.5 ? '#5fc6a0' : r > 0.25 ? '#ffd36b' : '#ff8f8f'; ctx.beginPath(); ctx.roundRect(x - bw / 2, by, Math.max(2, bw * r), 5, 3); ctx.fill();
     if (e.boss) {
-      ctx.font = `${Math.max(10, cell * 0.22)}px "Jua", sans-serif`; ctx.textAlign = 'center';
+      ctx.font = `${Math.max(10, cell * 0.22)}px "Galmuri11", sans-serif`; ctx.textAlign = 'center';
       ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText(e.name, x, by - 8);
       ctx.fillStyle = '#c2410c'; ctx.fillText(e.name, x, by - 8);
     }
@@ -724,7 +725,7 @@ function draw() {
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
   // 스킬 대사 말풍선
-  ctx.font = `${Math.max(10, cell * 0.2)}px "Jua", sans-serif`;
+  ctx.font = `${Math.max(10, cell * 0.2)}px "Galmuri11", sans-serif`;
   for (const [uid, sp] of speeches) {
     const t = g.towers.find((x) => x.uid === uid);
     if (!t) { speeches.delete(uid); continue; }
@@ -844,6 +845,10 @@ const PEDESTAL: Record<string, [string, string, string | null]> = {
   근대: ['#e9dcc2', '#b9a77f', null], 현대: ['#e4e7ee', '#a9b1bf', null],
 };
 function drawPedestal(cx: number, foot: number, p: { tier: number; era: string }, uid: number, X: CanvasRenderingContext2D = ctx, C: number = cell) {
+  if (artImage('characters-1')) {
+    X.fillStyle = 'rgba(113,99,143,.14)'; X.beginPath(); X.ellipse(cx, foot, C * .32, C * .08, 0, 0, Math.PI * 2); X.fill();
+    return;
+  }
   const [top, side, deco] = PEDESTAL[p.era] ?? PEDESTAL['고대'];
   const rw = C * 0.44, rh = C * 0.13;
   if (p.tier >= 3) { // 등급 후광
@@ -974,7 +979,7 @@ function switchTab(tab: string) {
 }
 function refreshWallet() {
   const w = document.getElementById('wallet');
-  if (w) w.innerHTML = `🤔 ${Math.floor(progress.gonoe).toLocaleString()} <i>💎 ${progress.gems.toLocaleString()}</i>${progress.tickets ? ` <i>🎫 ${progress.tickets}</i>` : ''}`;
+  if (w) w.innerHTML = `<span class="wallet-part">${iconHtml('coin', '고뇌')} ${Math.floor(progress.gonoe).toLocaleString()}</span><span class="wallet-part">${iconHtml('gem', '지혜석')} ${progress.gems.toLocaleString()}</span>${progress.tickets ? `<span class="wallet-part">${iconHtml('ticket', '초대장')} ${progress.tickets}</span>` : ''}`;
   const r = document.getElementById('room-gonoe');
   if (r) r.textContent = Math.floor(progress.gonoe).toLocaleString();
 }
@@ -993,8 +998,8 @@ function renderRoom() {
   const next = { ...progress, tapLevel: progress.tapLevel + 1 };
   $('tab-room').innerHTML = `
     <div class="room">
-      <div class="room-head"><h2>🤔 고민방</h2><button class="info-btn" id="room-info">i</button></div>
-      <div class="room-sky" style="background-image:url(${eraSky(p.era)})"><div class="room-bubble">“${p.quote}”</div>
+      <div class="room-head"><h2>${iconHtml('room')} 고민방</h2><button class="info-btn" id="room-info">i</button></div>
+      <div class="room-sky" style="background-image:url(${artUrl('room')})"><div class="room-bubble">“${p.quote}”</div>
         <button id="thinker" class="thinker t${p.tier}"><img src="${heroPortrait(p.id)}"></button>
         <div class="room-floor"></div></div>
       <div class="room-stat"><span>고뇌</span><b id="room-gonoe">${Math.floor(progress.gonoe).toLocaleString()}</b></div>
@@ -1008,7 +1013,7 @@ function renderRoom() {
   const ra = $<HTMLButtonElement>('room-ad');
   ra.disabled = adsLeft(progress) <= 0;
   ra.onclick = () => watchAd(() => { if (adFree(progress)) useAd(progress); progress.gonoe += Math.round(rate * 1800); saveProgress(progress); refreshWallet(); sfx.reveal(5); toast(`🤔 고뇌 +${Math.round(rate * 1800).toLocaleString()}`); renderRoom(); });
-  $('room-info').onclick = () => alertBox(`<h2>🤔 고민방</h2><p>철학자를 톡톡 두드리면 고뇌가 나와요.<br>가만히 둬도 쌓이고(최대 ${8}시간), 스테이지를 깰수록 더 빨리 쌓여요.</p><p><b>고민의 깊이</b>를 올리면 탭당 고뇌와 초당 고뇌가 함께 올라요.</p><p>고뇌는 🎴 카드·🧰 도구 뽑기에 써요. 고민방 주인은 도감에서 💗최애로 바꿀 수 있어요.</p>`);
+  $('room-info').onclick = () => alertBox(`<h2>${iconHtml('room')} 고민방</h2><p>철학자를 톡톡 두드리면 고뇌가 나와요.<br>가만히 둬도 쌓이고(최대 ${8}시간), 스테이지를 깰수록 더 빨리 쌓여요.</p><p><b>고민의 깊이</b>를 올리면 탭당 고뇌와 초당 고뇌가 함께 올라요.</p><p>고뇌는 🎴 카드·🧰 도구 뽑기에 써요. 고민방 주인은 도감에서 💗최애로 바꿀 수 있어요.</p>`);
   $('thinker').onclick = (ev) => {
     progress.gonoe += tapGain(progress);
     bump(progress, 'taps');
@@ -1035,12 +1040,12 @@ function renderGacha() {
   const rates = CARD_RATES.map((r) => `<span class="tier-chip t${r.tier}">${TIER_NAME[r.tier]} ${(r.rate * 100).toFixed(1)}%</span>`).join(' ');
   $('tab-gacha').innerHTML = `
     <div class="gacha-box master-box">
-      <div class="gb-head"><h2>✨ 거장 초대</h2><button class="info-btn" data-ginfo="m">i</button></div>
-      <div class="banner-art">${PHILOSOPHERS.filter((p) => p.tier === 7 && !p.hidden).map((p) => `<img src="${pedArt(p.id)}">`).join('')}</div>
+      <div class="gb-head"><h2>${iconHtml('gacha')} 거장 초대</h2><button class="info-btn" data-ginfo="m">i</button></div>
+      <div class="banner-art" style="background-image:url(${artUrl('memory-banner')})">${PHILOSOPHERS.filter((p) => p.tier === 7 && !p.hidden).map((p) => `<img src="${pedArt(p.id)}">`).join('')}</div>
       <div class="row">${pullBtn('m10', 'gold')}${pullBtn('m1', 'pink')}</div>
     </div>
     <div class="gacha-box card-box">
-      <div class="gb-head"><h2>🧠 기억 떠올리기</h2><button class="info-btn" data-ginfo="c">i</button></div>
+      <div class="gb-head"><h2>${iconHtml('codex')} 기억 떠올리기</h2><button class="info-btn" data-ginfo="c">i</button></div>
       <div class="row">${pullBtn('c1', 'pink')}${pullBtn('c10', 'gold')}${pullBtn('c10g', 'blue')}</div>
     </div>
     <div class="gacha-box tool-box">
@@ -1048,8 +1053,8 @@ function renderGacha() {
       <div class="row">${pullBtn('t1', 'mint')}${pullBtn('t10', 'gold')}${pullBtn('t10g', 'blue')}</div>
     </div>`;
   const INFO: Record<string, string> = {
-    m: `<h2>✨ 거장 초대</h2><p>💎 지혜석 10회 뽑기의 마지막 1장은 반드시 <b>거장 또는 근원</b>이에요.<br>🎫 초대장 1장으로 거장 이상 1명을 바로 불러올 수도 있어요.</p>`,
-    c: `<h2>🧠 기억 떠올리기</h2><p>고뇌를 써서 잊어버린 철학자의 <b>기억(카드)</b>을 떠올려요. <b>거장·근원</b>은 카드가 있어야 전투에서 조합할 수 있어요. 이야기에서 지나온 시대의 철학자만 떠올릴 수 있어요 (지금: ${[...openEras()].join(', ')}).</p><p>같은 카드가 모이면 레벨업(Lv.${CARD_MAX_LEVEL}까지) · 레벨당 공격력 +${CARD_ATK_PER_LEVEL * 100}%<br>그 뒤 ${AWAKEN_EVERY}장마다 <b>각성</b>(최대 ${AWAKEN_MAX}단계): 공격력 +15%, 스킬 강화<br>레벨이 오르면 일화가 열려요.</p><div class="rates-line">${rates}</div><p><b>천장</b>: 거장 이상이 안 나와도 ${PITY_LIMIT}회째엔 확정 · 지금 ${PITY_LIMIT - progress.pity}회 남음</p>`,
+    m: `<h2>${iconHtml('gacha')} 거장 초대</h2><p>💎 지혜석 10회 뽑기의 마지막 1장은 반드시 <b>거장 또는 근원</b>이에요.<br>🎫 초대장 1장으로 거장 이상 1명을 바로 불러올 수도 있어요.</p>`,
+    c: `<h2>${iconHtml('codex')} 기억 떠올리기</h2><p>고뇌를 써서 잊어버린 철학자의 <b>기억(카드)</b>을 떠올려요. <b>거장·근원</b>은 카드가 있어야 전투에서 조합할 수 있어요. 이야기에서 지나온 시대의 철학자만 떠올릴 수 있어요 (지금: ${[...openEras()].join(', ')}).</p><p>같은 카드가 모이면 레벨업(Lv.${CARD_MAX_LEVEL}까지) · 레벨당 공격력 +${CARD_ATK_PER_LEVEL * 100}%<br>그 뒤 ${AWAKEN_EVERY}장마다 <b>각성</b>(최대 ${AWAKEN_MAX}단계): 공격력 +15%, 스킬 강화<br>레벨이 오르면 일화가 열려요.</p><div class="rates-line">${rates}</div><p><b>천장</b>: 거장 이상이 안 나와도 ${PITY_LIMIT}회째엔 확정 · 지금 ${PITY_LIMIT - progress.pity}회 남음</p>`,
     t: `<h2>🧰 도구 상자</h2><p>뽑은 도구는 도감에서 철학자에게 장착해요.<br>그 도구의 주인에게 끼우면 <b>찰떡!</b> 공격력 +60%</p>`,
   };
   for (const b of $('tab-gacha').querySelectorAll<HTMLButtonElement>('[data-ginfo]')) b.onclick = () => alertBox(INFO[b.dataset.ginfo!]);
@@ -1140,7 +1145,7 @@ function renderShop() {
   const item = (x: (typeof SHOP)[number]) => {
     const sold = x.once && progress.purchases.includes(x.id);
     const active = x.sub === 'pass30' && passOn(progress) ? `<i class="tag-on">이용 중 · ${passDaysLeft(progress)}일</i>` : x.sub?.startsWith('adfree') && adFreeLabel(progress) && (x.sub === 'adfreeLife' ? adFreeLabel(progress) === '평생' : true) ? `<i class="tag-on">${adFreeLabel(progress)}</i>` : '';
-    return `<div class="shop-item ${sold ? 'sold' : ''} ${x.big ? 'big' : ''}">${x.tag ? `<i class="tag-hot">${x.tag}</i>` : ''}${active}<div class="shop-icon">${x.icon}</div><b>${x.name}</b><small>${x.desc}</small>
+    return `<div class="shop-item ${sold ? 'sold' : ''} ${x.big ? 'big' : ''}">${x.tag ? `<i class="tag-hot">${x.tag}</i>` : ''}${active}<div class="shop-icon">${iconHtml(x.tickets ? 'ticket' : x.gems ? 'gem' : x.gonoe ? 'coin' : 'codex', x.icon)}</div><b>${x.name}</b><small>${x.desc}</small>
       <button class="chunky ${x.costGems ? 'blue' : 'gold'}" data-buy="${x.id}" ${sold ? 'disabled' : ''}>${sold ? '구매 완료' : x.price}</button></div>`;
   };
   const fav = progress.favorite && progress.cards[progress.favorite] ? progress.favorite : PHILOSOPHERS.filter((p) => progress.cards[p.id]).sort((a, b) => b.tier - a.tier)[0]?.id;
@@ -1380,7 +1385,7 @@ function drawFx(w: number, fh: number) {
     ctx.globalAlpha = a;
     if (p.text) {
       const age = 1 - a, pop = age < 0.15 ? 1 + (0.15 - age) * 5 : 1;
-      ctx.font = `900 ${Math.max(10, cell * p.size * pop)}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = `900 ${Math.max(10, cell * p.size * pop)}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = Math.min(1, a * 1.8);
       ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = '#3b2a1e'; ctx.strokeText(p.text, p.x * cellX, p.y * cell);
       ctx.fillStyle = p.color; ctx.fillText(p.text, p.x * cellX, p.y * cell);
@@ -1405,7 +1410,7 @@ function drawFx(w: number, fh: number) {
     const grad = ctx.createLinearGradient(bx, 0, bx + bw, 0); grad.addColorStop(0, '#ff8f8f'); grad.addColorStop(1, '#ffb3c7');
     ctx.fillStyle = grad; ctx.beginPath(); ctx.roundRect(bx, by, Math.max(8, bw * r), cell * 0.42, 10); ctx.fill();
     if ((boss.shieldT ?? 0) > 0) { ctx.strokeStyle = '#ffd36b'; ctx.lineWidth = 3; ctx.stroke(); }
-    ctx.fillStyle = '#3b2a1e'; ctx.font = `${cell * 0.26}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#3b2a1e'; ctx.font = `${cell * 0.26}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(game?.raid ? `👑 ${boss.name} · 피해 ${Math.round(game.raidDamage).toLocaleString()} · ⏱${Math.ceil(game.raidLeft)}` : `👑 ${boss.name}  ${Math.ceil(r * 100)}%`, w / 2, by + cell * 0.22);
   }
   // 보스 등장 컷인
@@ -1427,15 +1432,15 @@ function drawFx(w: number, fh: number) {
     ctx.drawImage(monsterSprite2(era, 'boss'), ix, iy, bs, bs);
     const tx = w - slide * (w - cell * 3.3);
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
-    ctx.font = `${cell * 0.28}px "Jua", sans-serif`; ctx.fillStyle = '#fff'; ctx.fillText('WARNING · 도그마의 왕 출현', tx, bandY + cell * 0.55);
-    ctx.font = `${cell * 0.58}px "Jua", sans-serif`; ctx.lineWidth = 6; ctx.strokeStyle = c1; ctx.strokeText(bossIntro.name, tx, bandY + cell * 1.35);
+    ctx.font = `${cell * 0.28}px "Galmuri11", sans-serif`; ctx.fillStyle = '#fff'; ctx.fillText('WARNING · 도그마의 왕 출현', tx, bandY + cell * 0.55);
+    ctx.font = `${cell * 0.58}px "Galmuri11", sans-serif`; ctx.lineWidth = 6; ctx.strokeStyle = c1; ctx.strokeText(bossIntro.name, tx, bandY + cell * 1.35);
     ctx.fillStyle = '#fff'; ctx.fillText(bossIntro.name, tx, bandY + cell * 1.35);
     ctx.restore();
   }
   if (banner) {
     const s = Math.min(1, (2.2 - banner.t) * 6, banner.t * 3);
     ctx.save(); ctx.translate(w / 2, fh * 0.3); ctx.scale(s, s);
-    ctx.font = `${cell * 0.5}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${cell * 0.5}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const tw = ctx.measureText(banner.text).width + cell;
     ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.roundRect(-tw / 2, -cell * 0.45, tw, cell * 0.9, cell * 0.45); ctx.fill(); ctx.stroke();
@@ -1790,7 +1795,7 @@ function renderStory(box: HTMLElement) {
   const next = STORY.find((x) => !done.includes(x.id) && storyOpen(x)) ?? null;
   const heading = document.createElement('div');
   heading.className = 'journey-heading';
-  heading.innerHTML = '<h2>모험의 여정</h2><small>조금씩, 생각의 다음 칸으로</small>';
+  heading.innerHTML = '<h2>모험의 여정</h2><small>작은 철학자들의 대모험</small>';
   box.appendChild(heading);
   const wrap = document.createElement('div');
   wrap.className = 'journey';
@@ -1808,8 +1813,8 @@ function renderStory(box: HTMLElement) {
       const face = PHILOSOPHERS.find((p) => p.realName === st.memories[0])!;
       const side = ['c', 'r', 'c', 'l'][(k++) % 4];
       nodeList.unshift(`<div class="jnode ${side} ${cleared ? 'done' : now ? 'now' : open ? 'open' : 'lock'}" data-st="${st.id}">
-        ${now ? `<div class="j-me"><img src="${portrait(face.id)}" alt=""><span class="j-hero"></span><em>여기!</em></div>` : ''}
-        <button class="j-dot" ${open ? '' : 'disabled'} aria-label="${st.title}">${cleared ? `<img src="${portrait(face.id)}" alt=""><i class="j-star">★</i>` : open ? `<img src="${portrait(face.id)}" alt="">` : '<i class="j-lock">🔒</i>'}</button>
+        ${now ? '<div class="j-me"><em>여기!</em></div>' : ''}
+        <button class="j-dot" ${open ? '' : 'disabled'} aria-label="${st.title}">${cleared ? '<i class="j-check">✓</i>' : now ? `<img src="${portrait(face.id)}" alt="" class="j-current-face"><span class="j-stage-number">${ch.n ? `${ch.n}-${i + 1}` : i + 1}</span>` : open ? `<span class="j-stage-number">${ch.n ? `${ch.n}-${i + 1}` : i + 1}</span>` : `<i class="j-lock">${iconHtml('lock', '잠김')}</i>`}</button>
         <span class="j-name">${open ? st.title : '???'}</span><small class="j-num">${ch.n ? `${ch.n}-${i + 1}` : `튜토리얼 ${i + 1}`}</small></div>`);
     });
     const nodes = nodeList.join('');
@@ -1830,7 +1835,7 @@ function renderStory(box: HTMLElement) {
   bar.className = 'j-bar';
   const n = done.length, total = STORY.length;
   bar.innerHTML = `<div class="j-prog"><small>기억 ${n}/${total}</small><i style="--v:${n / total}"></i>${n >= total ? '<small>완주! 위에서 난이도를 골라 본편에 도전하세요</small>' : ''}</div>
-    <button id="j-go" class="chunky gold j-go" ${next ? '' : 'disabled'}><small>${next ? (next.chapter ? `${next.chapter}장 · ${next.when}` : '시작 튜토리얼') : ''}</small><b>${next ? `▶ ${next.title}` : '여정 완주'}</b></button>`;
+    <button id="j-go" class="chunky gold j-go" ${next ? '' : 'disabled'}><small>${next ? (next.chapter ? `${next.chapter}장 · ${next.when}` : '시작 튜토리얼') : ''}</small><b>${next ? `▶ 모험 시작 · ${next.title}` : '여정 완주'}</b></button>`;
   if (next) (bar.querySelector('#j-go') as HTMLButtonElement).onclick = () => startStory(next);
   const note = document.createElement('p');
   note.className = 'journey-note';
@@ -1851,7 +1856,7 @@ function renderStory(box: HTMLElement) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'j-road'); svg.setAttribute('width', String(wrap.clientWidth)); svg.setAttribute('height', String(wrap.scrollHeight));
     const d = pts.map(([x, y], i) => i ? `Q ${(pts[i - 1][0] + x) / 2 + (i % 2 ? 30 : -30)} ${(pts[i - 1][1] + y) / 2} ${x} ${y}` : `M ${x} ${y}`).join(' ');
-    svg.innerHTML = `<path d="${d}" stroke="#f9f7fc" stroke-width="10" fill="none" stroke-linecap="round" opacity=".85"/><path d="${d}" stroke="#b4a5c9" stroke-width="3" fill="none" stroke-dasharray="2 10" stroke-linecap="round"/>`;
+    svg.innerHTML = `<path d="${d}" stroke="#f9f7fc" stroke-width="5" fill="none" stroke-linecap="square" opacity=".7"/><path d="${d}" stroke="#b4a5c9" stroke-width="3" fill="none" stroke-dasharray="4 8" stroke-linecap="square"/>`;
     wrap.prepend(svg);
     const cur = wrap.querySelector('.jnode.now .j-dot') as HTMLElement | null;
     if (cur) wrap.scrollTop = cur.getBoundingClientRect().top - base.top + wrap.scrollTop - wrap.clientHeight * 0.5; else wrap.scrollTop = next ? wrap.scrollHeight : 0;
