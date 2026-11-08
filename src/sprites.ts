@@ -7,7 +7,7 @@ export const TIER_AURA = ['', '#64748b', '#38bdf8', '#22c55e', '#a855f7', '#f59e
 type Px = (x: number, y: number, w: number, h: number, c: string) => void;
 
 /** 도트 후처리: 위쪽 하이라이트 · 아래/오른쪽 음영 · 스티커 외곽선 → 2배 해상도로 출력 */
-function polish(src: HTMLCanvasElement, outline = [59, 42, 30]): HTMLCanvasElement {
+function polish(src: HTMLCanvasElement, outline = [75, 67, 94]): HTMLCanvasElement {
   const n = src.width;
   const sctx = src.getContext('2d')!;
   const img = sctx.getImageData(0, 0, n, n), d = img.data;
@@ -18,8 +18,8 @@ function polish(src: HTMLCanvasElement, outline = [59, 42, 30]): HTMLCanvasEleme
     const i = (y * n + x) * 4;
     if (A(x, y)) {
       let k = 1;
-      if (!A(x, y - 1)) k = 1.18;                       // 윗면 하이라이트
-      else if (!A(x, y + 1) || !A(x + 1, y)) k = 0.8;   // 아랫면·오른쪽 음영
+      if (!A(x, y - 1)) k = 1.08;                       // 윗면 하이라이트
+      else if (!A(x, y + 1) || !A(x + 1, y)) k = 0.9;   // 아랫면·오른쪽 음영
       o[i] = Math.min(255, d[i] * k); o[i + 1] = Math.min(255, d[i + 1] * k); o[i + 2] = Math.min(255, d[i + 2] * k); o[i + 3] = 255;
     } else if (A(x - 1, y) || A(x + 1, y) || A(x, y - 1) || A(x, y + 1)) {
       o[i] = outline[0]; o[i + 1] = outline[1]; o[i + 2] = outline[2]; o[i + 3] = 255;
@@ -62,8 +62,8 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
     if (p.tier >= 5) px(3, 20, 18, 1, p.tier === 7 ? '#22d3ee' : p.tier === 6 ? '#f43f5e' : '#fbbf24');
     if (p.tier === 7) { px(2, 19, 20, 1, '#fde047'); px(1, 4, 1, 2, '#e879f9'); px(22, 6, 1, 2, '#22d3ee'); px(2, 1, 1, 1, '#fde047'); }
 
-    const skin = ['#fde68a', '#fed7aa', '#fbcfe8', '#fef08a'][n % 4];
-    let robe = '#f1f5f9', trim = '#38bdf8';
+    const skin = ['#f4d5ba', '#f7ddc8', '#edd0b8', '#f6dfca'][n % 4];
+    let robe = '#f5f3fa', trim = '#92bdc4';
     if (p.era === '중세') { robe = '#78350f'; trim = '#fbbf24'; }
     else if (p.era === '근대') { robe = ['#1e3a8a', '#7f1d1d', '#14532d', '#312e81', '#4c1d95'][n % 5]; trim = '#fde047'; }
     else if (p.era === '현대') { robe = ['#18181b', '#334155', '#3f3f46', '#1e1b4b'][n % 4]; trim = '#e2e8f0'; }
@@ -86,8 +86,8 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
     if (is('예수')) { robe = '#f8fafc'; trim = '#dc2626'; }
     if (is('바울')) { robe = '#92400e'; trim = '#f8fafc'; }
     if (is('카를 마르크스')) { robe = '#991b1b'; trim = '#ef4444'; }
-    if (is('프리드리히 니체')) { robe = '#1e1b4b'; trim = '#f43f5e'; }
-    if (is('임마누엘 칸트')) { robe = '#1d4ed8'; trim = '#fbbf24'; }
+    if (is('프리드리히 니체')) { robe = '#695773'; trim = '#cba1b9'; }
+    if (is('임마누엘 칸트')) { robe = '#657997'; trim = '#e5d4a2'; }
 
     // 몸통
     if (is('디오게네스')) {

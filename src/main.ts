@@ -1,3 +1,4 @@
+import { journeyArt, drawPastelFloor } from './pastel-art';
 import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
 import { ACCOUNTS, login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
 import { STAGE_PATHS } from './paths';
@@ -526,13 +527,13 @@ function draw() {
   ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
   ctx.clearRect(0, 0, w, hTot);
   // 대기석 판 (필드 아래)
-  ctx.fillStyle = '#f3e3c3'; ctx.fillRect(0, fh, w, hTot - fh);
-  ctx.fillStyle = '#3b2a1e'; ctx.fillRect(0, fh - 1.5, w, 3);
+  ctx.fillStyle = '#e9e3f2'; ctx.fillRect(0, fh, w, hTot - fh);
+  ctx.fillStyle = '#b2a6c5'; ctx.fillRect(0, fh - 1, w, 2);
   ctx.font = `${Math.max(10, cell * 0.2)}px "Jua", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('대기석', cellX * 0.5, fh + cell * 0.6); ctx.fillText(`${BENCH - game.benchSlots().length}/${BENCH}`, cellX * 6.5, fh + cell * 0.6);
   // 대기석: 칸 대신 나무 벤치 한 줄
-  ctx.fillStyle = '#d9b98a'; ctx.beginPath(); ctx.roundRect(cellX * 0.95, fh + cell * 0.78, cellX * 5.1, cell * 0.16, cell * 0.08); ctx.fill();
-  ctx.fillStyle = '#b08a5a'; for (const lx of [1.2, 5.8]) ctx.fillRect(cellX * lx, fh + cell * 0.94, cell * 0.08, cell * 0.22);
+  ctx.fillStyle = '#c9bfdc'; ctx.beginPath(); ctx.roundRect(cellX * 0.95, fh + cell * 0.78, cellX * 5.1, cell * 0.16, cell * 0.08); ctx.fill();
+  ctx.fillStyle = '#a99bbb'; for (const lx of [1.2, 5.8]) ctx.fillRect(cellX * lx, fh + cell * 0.94, cell * 0.08, cell * 0.22);
   ctx.save();
   if (shake > 0) ctx.translate(rnd(-1, 1) * shake * 8, rnd(-1, 1) * shake * 8);
   ctx.imageSmoothingEnabled = false;
@@ -541,7 +542,7 @@ function draw() {
   const th = THEME[g.stage.era] ?? THEME['고대'];
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, fh); ctx.clip();
   ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(eraBackdrop(g.stage.era, w, fh), 0, 0, w, fh);
+  drawPastelFloor(ctx, g.stage.era, cellX, cell, GRID);
   ctx.imageSmoothingEnabled = false;
   // ---- 길: 굽이치는 두꺼운 길 + 테두리 ----
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
@@ -554,7 +555,7 @@ function draw() {
       ctx.stroke();
     }
   }
-  ctx.strokeStyle = th.roadLine; ctx.lineWidth = 2; ctx.setLineDash([4, 8]);
+  ctx.strokeStyle = th.roadLine; ctx.lineWidth = 1.5; ctx.setLineDash([3, 9]);
   for (const path of g.layout.paths) {
     ctx.beginPath();
     path.forEach(([px, py], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, (px + 0.5) * cellX, (py + 0.5) * cell));
@@ -617,8 +618,8 @@ function draw() {
     if (pedS < 1) ctx.restore();
     if (age < 22 && age > 12) { ctx.strokeStyle = `rgba(255,255,255,${(22 - age) / 10})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, foot, cell * (0.3 + (age - 12) * 0.03), cell * (0.1 + (age - 12) * 0.01), 0, 0, Math.PI * 2); ctx.stroke(); }
     if (p.tier >= 7) {
-      ctx.save(); ctx.globalAlpha = 0.35 + 0.2 * Math.sin(tick * 0.08);
-      ctx.fillStyle = `hsl(${(tick * 2) % 360},90%,60%)`;
+      ctx.save(); ctx.globalAlpha = 0.08;
+      ctx.fillStyle = '#b7a3ce';
       ctx.beginPath(); ctx.arc(cx, foot - cell * 0.45, cell * 0.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     // 스킨 효과: 주변을 도는 반짝이 (등급이 높을수록 많이)
@@ -839,7 +840,7 @@ function eraBackdrop(era: string, w: number, h: number): HTMLCanvasElement {
 
 /** 철학자 받침대: 시대별 원판 + 등급 후광 + 반짝이 (도트 자체는 그대로) */
 const PEDESTAL: Record<string, [string, string, string | null]> = {
-  고대: ['#e8925a', '#c96f3c', '#2a1810'], 동양: ['#f4f0e2', '#cfcab8', null], 중세: ['#eadcb8', '#b8954a', '#ca8a04'],
+  고대: ['#e1d9ed', '#beb2ce', null], 동양: ['#f4f0e2', '#cfcab8', null], 중세: ['#eadcb8', '#b8954a', '#ca8a04'],
   근대: ['#e9dcc2', '#b9a77f', null], 현대: ['#e4e7ee', '#a9b1bf', null],
 };
 function drawPedestal(cx: number, foot: number, p: { tier: number; era: string }, uid: number, X: CanvasRenderingContext2D = ctx, C: number = cell) {
@@ -847,8 +848,8 @@ function drawPedestal(cx: number, foot: number, p: { tier: number; era: string }
   const rw = C * 0.44, rh = C * 0.13;
   if (p.tier >= 3) { // 등급 후광
     const gr = X.createRadialGradient(cx, foot - C * 0.42, 0, cx, foot - C * 0.42, C * 0.62);
-    const a = 0.22 + 0.08 * Math.sin(tick * 0.06 + uid);
-    gr.addColorStop(0, hexA(TIER_AURA[p.tier], a + (p.tier >= 5 ? 0.15 : 0))); gr.addColorStop(1, hexA(TIER_AURA[p.tier], 0));
+    const a = 0.05;
+    gr.addColorStop(0, hexA(TIER_AURA[p.tier], a + (p.tier >= 5 ? 0.04 : 0))); gr.addColorStop(1, hexA(TIER_AURA[p.tier], 0));
     X.fillStyle = gr; X.beginPath(); X.arc(cx, foot - C * 0.42, C * 0.62, 0, Math.PI * 2); X.fill();
   }
   if (p.tier >= 7) { // 근원: 금테 두른 대리석 기둥 받침
@@ -860,7 +861,7 @@ function drawPedestal(cx: number, foot: number, p: { tier: number; era: string }
     X.fillStyle = '#fbbf24'; X.fillRect(cx - rw, foot + ch - 3, rw * 2, 3);
     X.fillStyle = '#fffdf8'; X.beginPath(); X.ellipse(cx, foot, rw, rh, 0, 0, Math.PI * 2); X.fill();
     X.strokeStyle = '#f59e0b'; X.lineWidth = 2; X.stroke();
-    X.strokeStyle = `hsla(${(tick * 2) % 360},90%,65%,.8)`; X.lineWidth = 1.5; X.beginPath(); X.ellipse(cx, foot, rw * 0.75, rh * 0.6, 0, 0, Math.PI * 2); X.stroke();
+    X.strokeStyle = '#b8a4c9'; X.lineWidth = 1.5; X.beginPath(); X.ellipse(cx, foot, rw * 0.75, rh * 0.6, 0, 0, Math.PI * 2); X.stroke();
   } else {
   X.fillStyle = 'rgba(42,24,16,.18)'; X.beginPath(); X.ellipse(cx, foot + rh * 0.9, rw * 1.05, rh * 0.9, 0, 0, Math.PI * 2); X.fill();
   X.fillStyle = side; X.beginPath(); X.ellipse(cx, foot + rh * 0.45, rw, rh, 0, 0, Math.PI * 2); X.fill();
@@ -869,11 +870,11 @@ function drawPedestal(cx: number, foot: number, p: { tier: number; era: string }
   if (p.era === '동양') { X.fillStyle = '#c8323a'; X.fillRect(cx + rw * 0.55, foot - rh * 0.2, C * 0.06, C * 0.06); }
   }
   if (p.tier >= 4) { // 반짝이
-    const n = p.tier >= 6 ? 3 : 2;
+    const n = 1;
     for (let k = 0; k < n; k++) {
       const ph = (tick * 0.04 + k * 2.1 + uid) % (Math.PI * 2), al = Math.max(0, Math.sin(ph));
       const sx = cx + Math.cos(k * 2.4 + uid) * C * 0.4, sy = foot - C * (0.5 + 0.25 * Math.sin(k * 1.7 + uid));
-      X.globalAlpha = al; X.fillStyle = p.tier >= 7 ? '#fff' : TIER_AURA[p.tier];
+      X.globalAlpha = al * 0.3; X.fillStyle = p.tier >= 7 ? '#fff' : TIER_AURA[p.tier];
       const s = C * 0.05; X.fillRect(sx - s / 2, sy - s * 1.5, s, s * 3); X.fillRect(sx - s * 1.5, sy - s / 2, s * 3, s); X.globalAlpha = 1;
     }
   }
@@ -906,20 +907,16 @@ function pedArt(id: string): string {
   const url = c.toDataURL(); heroCache.set(key, url); return url;
 }
 function eraSky(era: string): string {
-  const k = 'sky' + era; const hit = heroCache.get(k); if (hit) return hit;
-  const big = eraBackdrop(era, 560, 560), dpr = big.width / 560;
-  const c = document.createElement('canvas'); c.width = 420 * dpr; c.height = 280 * dpr;
-  c.getContext('2d')!.drawImage(big, 70 * dpr, 40 * dpr, 420 * dpr, 280 * dpr, 0, 0, c.width, c.height);
-  const url = c.toDataURL(); heroCache.set(k, url); return url;
+  return journeyArt(era);
 }
 function hexA(hex: string, a: number) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 
 const THEME: Record<string, { ground: string; speck: string; speck2: string; road: string; roadEdge: string; roadLine: string; decor: string[] }> = {
-  고대: { ground: '#f6ead2', speck: '#ecdcbc', speck2: '#fff6e4', road: '#fff3d6', roadEdge: '#b88a4f', roadLine: 'rgba(255,255,255,.5)', decor: ['column', 'olive', 'amphora'] },
-  중세: { ground: '#d9cdea', speck: '#cbbde0', speck2: '#e6dcf3', road: '#fbf5e6', roadEdge: '#a08458', roadLine: 'rgba(139,122,168,.6)', decor: ['candle', 'stone', 'banner'] },
-  동양: { ground: '#cdeeb5', speck: '#bde4a1', speck2: '#ddf5c9', road: '#fffdf6', roadEdge: '#9aa096', roadLine: 'rgba(255,255,255,.45)', decor: ['bamboo', 'pine', 'lantern'] },
-  근대: { ground: '#d4dde8', speck: '#c5d0dd', speck2: '#e2e9f1', road: '#fdf8ee', roadEdge: '#9a8462', roadLine: 'rgba(123,142,166,.7)', decor: ['gear', 'lamp', 'crate'] },
-  현대: { ground: '#e9d8ff', speck: '#dcc6ff', speck2: '#f3e9ff', road: '#fff0fa', roadEdge: '#b388ff', roadLine: 'rgba(236,72,153,.6)', decor: ['letter', 'crystal', 'screen'] },
+  고대: { ground: '#f6ead2', speck: '#ecdcbc', speck2: '#fff6e4', road: '#e1dbea', roadEdge: '#b2a6c5', roadLine: 'rgba(255,255,255,.5)', decor: ['column', 'olive', 'amphora'] },
+  중세: { ground: '#d9cdea', speck: '#cbbde0', speck2: '#e6dcf3', road: '#e2d9eb', roadEdge: '#b3a5c4', roadLine: 'rgba(139,122,168,.6)', decor: ['candle', 'stone', 'banner'] },
+  동양: { ground: '#cdeeb5', speck: '#bde4a1', speck2: '#ddf5c9', road: '#dce9e1', roadEdge: '#a3b7ac', roadLine: 'rgba(255,255,255,.45)', decor: ['bamboo', 'pine', 'lantern'] },
+  근대: { ground: '#d4dde8', speck: '#c5d0dd', speck2: '#e2e9f1', road: '#dce4f0', roadEdge: '#a4b1c5', roadLine: 'rgba(123,142,166,.7)', decor: ['gear', 'lamp', 'crate'] },
+  현대: { ground: '#e9d8ff', speck: '#dcc6ff', speck2: '#f3e9ff', road: '#eaddec', roadEdge: '#b9a7c5', roadLine: 'rgba(236,72,153,.6)', decor: ['letter', 'crystal', 'screen'] },
 };
 const hash = (n: number) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 function drawDecor(kind: string, x: number, y: number, c: number) {
@@ -1791,6 +1788,10 @@ function renderStory(box: HTMLElement) {
   }
   const done = progress.storyCleared ?? [];
   const next = STORY.find((x) => !done.includes(x.id) && storyOpen(x)) ?? null;
+  const heading = document.createElement('div');
+  heading.className = 'journey-heading';
+  heading.innerHTML = '<h2>모험의 여정</h2><small>조금씩, 생각의 다음 칸으로</small>';
+  box.appendChild(heading);
   const wrap = document.createElement('div');
   wrap.className = 'journey';
   // 아래에서 위로 올라가는 여정: 장마다 시대 배경 구역, 단계마다 길 위의 노드
@@ -1828,9 +1829,13 @@ function renderStory(box: HTMLElement) {
   const bar = document.createElement('div');
   bar.className = 'j-bar';
   const n = done.length, total = STORY.length;
-  bar.innerHTML = `<div class="j-prog"><small>여정 ${n}/${total}</small><i style="--v:${n / total}"></i>${n >= total ? '<small>완주! 위에서 난이도를 골라 본편에 도전하세요</small>' : ''}</div>
+  bar.innerHTML = `<div class="j-prog"><small>기억 ${n}/${total}</small><i style="--v:${n / total}"></i>${n >= total ? '<small>완주! 위에서 난이도를 골라 본편에 도전하세요</small>' : ''}</div>
     <button id="j-go" class="chunky gold j-go" ${next ? '' : 'disabled'}><small>${next ? (next.chapter ? `${next.chapter}장 · ${next.when}` : '시작 튜토리얼') : ''}</small><b>${next ? `▶ ${next.title}` : '여정 완주'}</b></button>`;
   if (next) (bar.querySelector('#j-go') as HTMLButtonElement).onclick = () => startStory(next);
+  const note = document.createElement('p');
+  note.className = 'journey-note';
+  note.textContent = '도그마는 단단하고, 내 멘탈은 말랑하다.';
+  bar.appendChild(note);
   box.appendChild(bar);
   if (STORY.filter((x) => x.chapter === 0).some((x) => !done.includes(x.id))) {
     const skip = document.createElement('button');
@@ -1846,7 +1851,7 @@ function renderStory(box: HTMLElement) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'j-road'); svg.setAttribute('width', String(wrap.clientWidth)); svg.setAttribute('height', String(wrap.scrollHeight));
     const d = pts.map(([x, y], i) => i ? `Q ${(pts[i - 1][0] + x) / 2 + (i % 2 ? 30 : -30)} ${(pts[i - 1][1] + y) / 2} ${x} ${y}` : `M ${x} ${y}`).join(' ');
-    svg.innerHTML = `<path d="${d}" stroke="#fffaf3" stroke-width="16" fill="none" stroke-linecap="round" opacity=".85"/><path d="${d}" stroke="#c9a27e" stroke-width="3.5" fill="none" stroke-dasharray="2 10" stroke-linecap="round"/>`;
+    svg.innerHTML = `<path d="${d}" stroke="#f9f7fc" stroke-width="10" fill="none" stroke-linecap="round" opacity=".85"/><path d="${d}" stroke="#b4a5c9" stroke-width="3" fill="none" stroke-dasharray="2 10" stroke-linecap="round"/>`;
     wrap.prepend(svg);
     const cur = wrap.querySelector('.jnode.now .j-dot') as HTMLElement | null;
     if (cur) wrap.scrollTop = cur.getBoundingClientRect().top - base.top + wrap.scrollTop - wrap.clientHeight * 0.5; else wrap.scrollTop = next ? wrap.scrollHeight : 0;
