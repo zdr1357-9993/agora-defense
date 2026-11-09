@@ -1,5 +1,12 @@
 // Generated production art, bundled with Vite content hashes.
 export const ART_SOURCES = {
+  'arena-ancient-v2': new URL('./assets/arena-ancient-v2.webp', import.meta.url).href,
+  'arena-east-v2': new URL('./assets/arena-east-v2.webp', import.meta.url).href,
+  'arena-medieval-v2': new URL('./assets/arena-medieval-v2.webp', import.meta.url).href,
+  'arena-modern-v2': new URL('./assets/arena-modern-v2.webp', import.meta.url).href,
+  'arena-contemporary-v2': new URL('./assets/arena-contemporary-v2.webp', import.meta.url).href,
+  'arena-bodhi-v2': new URL('./assets/arena-bodhi-v2.webp', import.meta.url).href,
+  'raid-bosses-v2': new URL('./assets/raid-bosses-v2.webp', import.meta.url).href,
   'greek-01': new URL('./assets/greek-01.webp', import.meta.url).href,
   'greek-02': new URL('./assets/greek-02.webp', import.meta.url).href,
   'greek-03': new URL('./assets/greek-03.webp', import.meta.url).href,

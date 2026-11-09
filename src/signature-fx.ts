@@ -16,7 +16,7 @@ export function drawSignatureEffect(ctx: CanvasRenderingContext2D, id: string, p
   const frame = Math.min(3, Math.floor(phase * 4)), row = p.row % 8;
   const sx = Math.round(frame * image.naturalWidth / 4), sy = Math.round(row * image.naturalHeight / 8);
   const sw = Math.round((frame + 1) * image.naturalWidth / 4) - sx, sh = Math.round((row + 1) * image.naturalHeight / 8) - sy;
-  const pulse = Math.sin(phase * Math.PI), power = skill ? 1 : .72;
+  const pulse = Math.sin(phase * Math.PI), power = skill ? 1 : .48;
   let px = x, py = y - unit * .45, rotation = 0;
   if (p.gesture === 'throw') {
     const t = Math.min(1, phase * 1.35); px += (tx - x) * t; py += (ty - y) * t - Math.sin(t * Math.PI) * unit * .45;
@@ -28,7 +28,7 @@ export function drawSignatureEffect(ctx: CanvasRenderingContext2D, id: string, p
   else { px += (p.variant % 2 ? -1 : 1) * pulse * unit * .2; py -= pulse * unit * .1; }
   const size = unit * (p.motif === 'books' ? .95 : .78) * power;
   ctx.save(); ctx.imageSmoothingEnabled = false;
-  ctx.globalAlpha = Math.min(1, phase * 10, (1 - phase) * 6) * (skill ? .95 : .7);
+  ctx.globalAlpha = Math.min(1, phase * 10, (1 - phase) * 6) * (skill ? .95 : .6);
   ctx.translate(px, py); ctx.rotate(rotation);
   ctx.drawImage(image, sx, sy, sw, sh, -size / 2, -size / 2, size, size);
   ctx.restore();

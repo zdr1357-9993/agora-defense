@@ -1,7 +1,7 @@
 import atlasIds from './character-atlas.json';
 import { ART_SOURCES } from './artwork-sources';
 
-export const RELEASE = '20261109v1';
+export const RELEASE = '20261109v2';
 export type ArtName = keyof typeof ART_SOURCES;
 const images = new Map<ArtName, HTMLImageElement>();
 const tiles = new Map<string, HTMLCanvasElement>();
@@ -88,4 +88,18 @@ export function artworkEnemy(era: string, kind: string) {
   const row = ['고대', '동양', '중세', '근대', '현대'].indexOf(era);
   const col = ['normal', 'fast', 'tank', 'swarm', 'boss'].indexOf(kind);
   return tile('enemies', Math.max(0, col), Math.max(0, row), 5, 5);
+}
+
+export const RAID_BOSS_NAMES = [
+  ['동굴의 그림자 군주', '아테네 배심원단'],
+  ['면죄부 대상인', '마녀사냥꾼'],
+  ['형식주의 대감', '과거시험 암기귀신'],
+  ['절대왕정 집행관', '리바이어던'],
+  ['허무의 사도', '알고리즘 확증편향 괴물'],
+] as const;
+/** Named raid bosses have their own cell; story antagonists retain their era's silhouette. */
+export function artworkBoss(era: string, name: string, final = false) {
+  let row = ['고대','중세','동양','근대','현대'].indexOf(era), col = final ? 1 : 0;
+  RAID_BOSS_NAMES.forEach((pair,r) => { const c = (pair as readonly string[]).indexOf(name); if (c >= 0) { row=r; col=c; } });
+  return tile('raid-bosses-v2', col, Math.max(0,row), 2, 5);
 }

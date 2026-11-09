@@ -5,7 +5,7 @@ import {
 
 import { ITEM_BONUS, isOwner } from './items';
 import { DIFF, type Difficulty } from './difficulty';
-import { SKILLS, type Skill } from './skills';
+import { SKILLS, skillMode, type Skill } from './skills';
 import { homeBonus } from './affinity';
 import { N, STAGE_PATHS, pathCells, pathLength, pointAt, type Layout } from './paths';
 
@@ -46,6 +46,7 @@ export type FxEvent =
   | { type: 'hit'; x: number; y: number; dmg: number; big: boolean; uid?: number }
   | { type: 'kill'; x: number; y: number; gold: number; boss: boolean }
   | { type: 'shot'; uid: number; tx?: number; ty?: number }
+  | { type: 'ability'; uid: number; kind: Skill['kind']; mode: 'onHit' | 'trigger'; tx: number; ty: number }
   | { type: 'morph'; x: number; y: number; tier: number }
   | { type: 'boss'; name: string }
   | { type: 'bossSkill'; text: string }
@@ -359,6 +360,7 @@ export class Game {
     const [ex, ey] = this.enemyPos(e);
     this.fx.push({ type: 'hit', x: ex, y: ey, dmg: dealt, big: dmg > 150, uid: e.uid });
     if (!skill) return;
+    if (src && dealt > 0 && skillMode(skill.kind) === 'onHit') this.ability(src, skill, ex, ey);
     const fx = (kind: string, extra: Partial<{ tx: number; ty: number; r: number }> = {}) => this.fx.push({ type: 'skill', kind, x: ex, y: ey, ...extra });
     if (skill.kind === 'slow') fx('slow');
     if (skill.kind === 'splash') fx('splash', { r: 1.2 });
@@ -366,10 +368,10 @@ export class Game {
     if (skill.kind === 'dot') fx('dot');
     switch (skill.kind) {
       case 'slow': e.slowT = 1.5; e.slowV = Math.max(e.slowV ?? 0, skill.v); break;
-      case 'stun': if (!e.boss && Math.random() < skill.v) { e.stunT = 0.8; fx('stun'); if (src) this.say(src); } break;
+      case 'stun': if (!e.boss && Math.random() < skill.v) { e.stunT = 0.8; fx('stun'); if (src) { this.ability(src, skill, ex, ey); this.say(src); } } break;
       case 'vuln': e.vulnT = 3; e.vulnV = Math.max(e.vulnT > 0 ? e.vulnV ?? 0 : 0, skill.v); break;
       case 'dot': e.dotT = 3; e.dotV = skill.v; break;
-      case 'execute': if (!e.boss && e.hp > 0 && e.hp / e.maxHp <= skill.v) { e.hp = 0; fx('execute'); if (src) this.say(src); } break;
+      case 'execute': if (!e.boss && e.hp > 0 && e.hp / e.maxHp <= skill.v) { e.hp = 0; fx('execute'); if (src) { this.ability(src, skill, ex, ey); this.say(src); } } break;
       case 'splash': for (const o of this.enemies) if (o !== e) { const [ox, oy] = this.enemyPos(o); if (Math.hypot(ox - ex, oy - ey) <= 1.2) this.damage(o, dmg * skill.v); } break;
       case 'chain': {
         const others = this.enemies.filter((o) => o !== e && o.hp > 0).map((o) => { const [ox, oy] = this.enemyPos(o); return { o, d: Math.hypot(ox - ex, oy - ey) }; })
@@ -379,8 +381,13 @@ export class Game {
         break;
       }
       case 'stack': if (src) src.stacks = Math.min(1 / skill.v, (src.stacks ?? 0) + 1); break;
-      case 'gold': if (e.hp <= 0) { this.gold += skill.v; if (src) this.say(src, 10); } break;
+      case 'gold': if (e.hp <= 0) { this.gold += skill.v; if (src) { this.ability(src, skill, ex, ey); this.say(src, 10); } } break;
     }
+  }
+
+  private ability(t: Tower, skill: Skill, tx: number, ty: number) {
+    const mode = skillMode(skill.kind);
+    if (mode !== 'passive') this.fx.push({ type: 'ability', uid: t.uid, kind: skill.kind, mode, tx, ty });
   }
 
   /** 주변 8칸 오라 합산 */
@@ -456,15 +463,15 @@ export class Game {
       let dmg = st.dmg * (1 + UPGRADE.perLevel * t.level) * im.dmg * this.meta.cardMult(t.philId) * (1 + (atk.get(t.uid) ?? 0)) * this.home(t).mult;
       if (best.boss && t.philId === this.stage.counter) dmg *= COUNTER_MULT;
       if (skill) {
-        if (skill.kind === 'crit' && Math.random() < skill.v) { dmg *= 2; this.fx.push({ type: 'skill', kind: 'crit', x: tx, y: ty }); this.say(t); }
-        if (skill.kind === 'third' && t.shots % skill.v === 0) { dmg *= skill.v2 ?? 2; this.fx.push({ type: 'skill', kind: 'crit', x: tx, y: ty }); this.say(t); }
+        if (skill.kind === 'crit' && Math.random() < skill.v) { dmg *= 2; this.fx.push({ type: 'skill', kind: 'crit', x: tx, y: ty }); this.ability(t, skill, shotX, shotY); this.say(t); }
+        if (skill.kind === 'third' && t.shots % skill.v === 0) { dmg *= skill.v2 ?? 2; this.fx.push({ type: 'skill', kind: 'crit', x: tx, y: ty }); this.ability(t, skill, shotX, shotY); this.say(t); }
         if (skill.kind === 'boss' && best.boss) dmg *= 1 + skill.v;
         if (skill.kind === 'stack') dmg *= 1 + (t.stacks ?? 0) * skill.v;
         if (skill.kind === 'lonely' && !this.fielded().some((o) => o !== t && Math.abs(o.cx - t.cx) <= 1 && Math.abs(o.cy - t.cy) <= 1)) dmg *= 1 + skill.v;
       }
       const color = p.tier >= 7 ? 'rainbow' : p.tier >= 5 ? 'gold' : '';
       this.bullets.push({ x: tx, y: ty, target: best.uid, dmg, text: '', color, src: t.uid, skill });
-      if (skill?.kind === 'multi' && Math.random() < skill.v) { this.bullets.push({ x: tx, y: ty - 0.3, target: best.uid, dmg, text: '', color, src: t.uid, skill }); this.say(t); }
+      if (skill?.kind === 'multi' && Math.random() < skill.v) { this.bullets.push({ x: tx, y: ty - 0.3, target: best.uid, dmg, text: '', color, src: t.uid, skill }); this.ability(t, skill, shotX, shotY); this.say(t); }
       // 상시 효과(오라·둔화 등)는 가끔 한마디
       if (skill && PASSIVE.has(skill.kind)) this.say(t, 14);
     }
