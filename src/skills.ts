@@ -10,6 +10,15 @@ export type SkillKind =
 
 export interface Skill { kind: SkillKind; v: number; v2?: number }
 
+/** Presentation follows the engine's actual trigger, never dialogue timing. */
+export type SkillMode = 'passive' | 'onHit' | 'trigger';
+export function skillMode(kind: SkillKind): SkillMode {
+  if (['auraAtk', 'auraSpeed', 'globalSlow', 'boss', 'lonely'].includes(kind)) return 'passive';
+  if (['slow', 'splash', 'chain', 'vuln', 'dot', 'stack'].includes(kind)) return 'onHit';
+  return 'trigger';
+}
+export const skillModeLabel = (s: Skill | undefined) => !s ? '기본 공격' : ({ passive: '상시 패시브', onHit: '명중 패시브', trigger: '조건부 발동' }[skillMode(s.kind)]);
+
 const S = (kind: SkillKind, v: number, v2?: number): Skill => ({ kind, v, v2 });
 
 export const SKILLS: Record<string, Skill> = {

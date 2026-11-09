@@ -1,7 +1,7 @@
 import { canWearSkin, revealAdminCollection } from './ui-policy';
 import { signatureProfile, signaturePose, drawSignatureEffect, type SignatureCast } from './signature-fx';
 import { wrapCanvasText } from './text-layout';
-import { artUrl, artImage, iconHtml } from './artwork';
+import { artUrl, artImage, iconHtml, artworkBoss } from './artwork';
 import { journeyArt, drawPastelFloor, arenaArt, drawWaitingBench, GREEK_BACKDROPS } from './pastel-art';
 import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
 import { ACCOUNTS, login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
@@ -13,7 +13,7 @@ import {
   homage, statsOf, TYPE_ICON, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, CAT_NAME, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, UPGRADE, type Stage, type Recipe,
 } from './data';
 import { philosopherSprite, skinnedSprite, SKINS, monsterSprite, monsterSprite2, itemSprite, TIER_AURA } from './sprites';
-import { SKILLS } from './skills';
+import { SKILLS, skillMode, skillModeLabel } from './skills';
 import { sfx, isMuted, toggleMute } from './sfx';
 import { daily, bump, MISSIONS, ALL_CLEAR, ATTEND, claimable, claimMission, missionDone, rewardText, canAttend, attend, attendStreak, adFree, adFreeLabel, passOn, passDaysLeft, claimPass, PASS_DAILY, adsLeft, useAd, give, RAID_PER_DAY } from './live';
 import { cloudSignUp, cloudLogin, cloudLoad, cloudSave, flush as cloudFlush, cloudLogout, cloudState, cloudMsg } from './cloud';
@@ -284,7 +284,7 @@ function resize() {
   // 필드가 먼저: 상단·하단 버튼을 뺀 높이에서 아래 패널 최소 높이(104px)만 남기고 필드에 준다
   const battle = $('battle');
   const gap = parseFloat(getComputedStyle(battle).rowGap) || 8, pad = parseFloat(getComputedStyle(battle).paddingTop) + parseFloat(getComputedStyle(battle).paddingBottom);
-  const fixed = ['hud', 'cats', 'selbar', 'actions', 'dock'].reduce((a, id) => a + $(id).offsetHeight, 0) + gap * 5 + pad;
+  const fixed = ['hud', 'cats', 'boss-status', 'battle-quote', 'selbar', 'actions', 'dock'].reduce((a, id) => a + $(id).offsetHeight, 0) + gap * 5 + pad;
   const H = Math.max(150, battle.clientHeight - fixed - (parseFloat(frameStyle.paddingTop) || 0) - (parseFloat(frameStyle.paddingBottom) || 0) - (parseFloat(frameStyle.borderTopWidth) || 0) - (parseFloat(frameStyle.borderBottomWidth) || 0));
   if (!W || !battle.clientHeight) return;
   // 세로에 맞춰 칸 크기를 정하고, 가로는 화면 폭까지 넓힌다 (칸이 최대 1.5배까지 옆으로 길어짐)
@@ -309,7 +309,7 @@ new ResizeObserver(resize).observe($('battle'));
 
 function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   if (story) { const base = STAGES.find((x) => x.id === story.base)!; s = { ...base, name: story.title, boss10: story.boss, boss20: story.boss, story: story.when }; }
-  spawnAt.clear(); signatureCasts.clear(); signatureLast.clear();
+  spawnAt.clear(); signatureCasts.clear(); signatureLast.clear(); speeches.clear(); quoteQueue.length = 0; quoteLeft = 0; $('battle-quote').textContent = '철학자의 한마디 · 전투를 시작해 보세요';
   $('field-wrap').style.backgroundImage = '';
   eraWipe(s.era, story ? story.title : s.name, story ? story.when : '');
   game = new Game(s, {
@@ -500,7 +500,7 @@ function updateUI() {
     if (selected) {
       const p = PHIL.get(selected.philId)!;
       info.className = `scard t${p.tier}`;
-      info.innerHTML = `<div class="sc-face"><img src="${pedArt(p.id)}"></div><div class="sc-body"><div class="sc-name"><span class="tier-chip t${p.tier}">${TIER_NAME[p.tier]}</span>${selected.level ? `<span class="tag lv">+${selected.level}</span>` : ''}<b>${p.name}</b></div><div class="sc-skill"><b>✦ ${p.skill}</b> ${p.skillDesc}</div></div>`;
+      info.innerHTML = `<div class="sc-face"><img src="${pedArt(p.id)}"></div><div class="sc-body"><div class="sc-name"><span class="tier-chip t${p.tier}">${TIER_NAME[p.tier]}</span>${selected.level ? `<span class="tag lv">+${selected.level}</span>` : ''}<b>${p.name}</b></div><div class="sc-skill"><span class="skill-mode">${skillModeLabel(g.skillOf(p.id))}</span> <b>${p.skill}</b> ${p.skillDesc}</div></div>`;
     } else {
       const nk = g.waveKind(), nkName = { normal: g.stage.enemyEarly, fast: '빠른 도그마', tank: '단단한 도그마', swarm: '도그마 떼', boss: g.bossName() }[nk];
       const nkTip = { normal: '기본 무리', fast: '느리게 만드는 철학자가 좋아요', tank: '한 방이 센 철학자가 좋아요', swarm: '범위 공격이 좋아요', boss: '강화를 미리 해 두세요' }[nk];
@@ -544,7 +544,7 @@ function draw() {
   ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = '#f3eee8'; ctx.fillRect(0, 0, fullW, fullH);
-  const scenery = arenaArt(g.stage.era, progress.battleBackdrop);
+  const scenery = arenaArt(g.stage.era, progress.battleBackdrop, g.storyId);
   if (scenery) ctx.drawImage(scenery, 0, 0, fullW, fullH);
   ctx.setTransform(scaleX, 0, 0, scaleY, insetX * scaleX, insetY * scaleY);
   // An actual illustrated bench sits under the five waiting positions.
@@ -601,11 +601,17 @@ function draw() {
     const st = statsOf(selected.philId);
     ctx.save(); ctx.beginPath();
     ctx.ellipse((selected.cx + 0.5) * cellX, (selected.cy + 0.5) * cell, (st.range + g.itemMult(selected).range) * cellX, (st.range + g.itemMult(selected).range) * cell, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(251,191,36,.10)'; ctx.fill();
-    ctx.strokeStyle = 'rgba(251,191,36,.6)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); ctx.stroke();
+    ctx.fillStyle = 'rgba(110,133,125,.035)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(84,112,104,.45)'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 5]); ctx.stroke();
     ctx.restore();
-    ctx.fillStyle = 'rgba(56,189,248,.28)';
-    for (const [x, y] of g.emptyCells()) { ctx.beginPath(); ctx.arc((x + 0.5) * cellX, (y + 0.62) * cell, cell * 0.16, 0, Math.PI * 2); ctx.fill(); }
+    // Four small pixel corners communicate a destination without a fake button.
+    ctx.fillStyle = 'rgba(68,103,90,.48)';
+    for (const [x, y] of g.emptyCells()) {
+      const l = (x + .22) * cellX, r = (x + .78) * cellX, top = (y + .24) * cell, bottom = (y + .76) * cell;
+      for (const [px, py, dx, dy] of [[l,top,1,1],[r,top,-1,1],[l,bottom,1,-1],[r,bottom,-1,-1]]) {
+        ctx.fillRect(px - (dx < 0 ? 4 : 0), py, 5, 1.5); ctx.fillRect(px, py - (dy < 0 ? 4 : 0), 1.5, 5);
+      }
+    }
   }
 
   // ---- 오라 철학자: 선택했을 때만 영향 범위를 보여준다 (항상 그리면 배경이 겹쳐 보임) ----
@@ -624,11 +630,11 @@ function draw() {
   ctx.restore(); // 필드 클립 끝 → 대기석 철학자도 그린다
   for (const t of towers) {
     const p = PHIL.get(t.philId)!;
-    const cx = (t.cx + 0.5) * cellX, foot = (t.cy + 0.86) * cell;
+    const cx = (t.cx + 0.5) * cellX, foot = (t.cy + 0.72) * cell;
     const isSel = t === selected;
-    if (isSel) { ctx.fillStyle = 'rgba(251,191,36,.55)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
+    if (isSel) { ctx.fillStyle = 'rgba(118,158,141,.2)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
     const hk = g.home(t).kind;
-    if (hk) { ctx.fillStyle = hk === 'star' ? 'rgba(255,211,107,.75)' : 'rgba(167,236,210,.6)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.15, 0, 0, Math.PI * 2); ctx.fill(); }
+    if (hk && isSel) { ctx.fillStyle = 'rgba(167,198,180,.18)'; ctx.beginPath(); ctx.ellipse(cx, foot, cell * 0.42, cell * 0.15, 0, 0, Math.PI * 2); ctx.fill(); }
     if (!spawnAt.has(t.uid)) spawnAt.set(t.uid, tick);
     const age = tick - spawnAt.get(t.uid)!;
     const pedS = Math.min(1, age / 8), drop = age < 22 ? Math.max(0, 1 - (age - 6) / 14) : 0;
@@ -649,7 +655,7 @@ function draw() {
       ctx.beginPath(); ctx.arc(cx + Math.cos(an) * cell * 0.38, foot - cell * 0.45 + Math.sin(an) * cell * 0.18, cell * 0.045, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
     }
     const bob = Math.sin((tick + t.cx * 9 + t.cy * 5) * 0.1) * cell * 0.03;
-    const sz = cell * (p.tier >= 6 ? 1.08 : 0.96);
+    const sz = cell * (p.tier >= 6 ? .86 : .78);
     const rc = recoil.get(t.uid) ?? 0;
     const cast = signatureCasts.get(t.uid);
     const pose = cast ? signaturePose(p.id, cast.age / cast.duration) : {angle:0,lift:0};
@@ -664,27 +670,34 @@ function draw() {
       ctx.fillText('💤', cx + cell * 0.28, foot - cell * 0.9 + Math.sin(tick * 0.15) * 3);
     }
     if (cast && t.cy < GRID) drawSignatureEffect(ctx, p.id, cast.age / cast.duration, cx, foot, cast.tx * cellX, cast.ty * cell, cell, cast.skill);
-    // Full names stay visible beneath every philosopher, including the waiting bench.
+    // Stable opaque nameplates: full name in the selected detail panel, readable battle name below every unit.
     {
-      const nm = p.name;
-      const fs = Math.max(7.5, Math.min(9.5, cell * .18, cellX * 1.45 / Array.from(nm).length));
-      ctx.font = `${fs}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const nw = ctx.measureText(nm).width + 8, ny = foot + fs * 0.35 + cell * 0.07;
-      ctx.fillStyle = isSel ? '#f9e9b7' : 'rgba(255,253,247,.78)'; ctx.strokeStyle = '#b8a9c7'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.roundRect(cx - nw / 2, ny - fs * 0.62, nw, fs * 1.24, fs * 0.6); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#3b2a1e'; ctx.fillText(nm, cx, ny + 0.5);
+      const nm = shortName(p.name), fs = Math.max(9, Math.min(10.5, cellX / 4.8));
+      ctx.font = `700 ${fs}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const lines = wrapCanvasText(nm, cellX - 6, text => ctx.measureText(text).width);
+      const nw = Math.min(cellX - 2, Math.max(...lines.map(text => ctx.measureText(text).width)) + 6);
+      const nh = lines.length * (fs+1) + 3, top = foot + cell * .055;
+      ctx.fillStyle = isSel ? '#e0eee3' : '#fffdf7'; ctx.strokeStyle = isSel ? '#557c69' : '#c3b8cb'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(cx - nw / 2, top, nw, nh, 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#392f47'; lines.forEach((line,i) => ctx.fillText(line,cx,top+3+(i+.5)*(fs+1)));
     }
-    // 조합 표시: 재료 짝은 금빛 고리, 조합 가능은 ✦ 배지
-    if (selected && t !== selected && partnerIds.has(t.philId)) {
-      const pr = 0.5 + 0.5 * Math.sin(tick * 0.15);
-      ctx.strokeStyle = `rgba(255,190,60,${0.55 + pr * 0.4})`; ctx.lineWidth = 3 + pr * 2;
-      ctx.beginPath(); ctx.ellipse(cx, foot - cell * 0.02, cell * 0.42, cell * 0.16, 0, 0, Math.PI * 2); ctx.stroke();
+    // A quiet paper tab replaces the pulsing ring underneath synthesis partners.
+    if (readyIds.has(t.philId) && !isSel) {
+      const ax = cx + cellX * .26, ay = foot - cell * .68;
+      ctx.fillStyle = selected && partnerIds.has(t.philId) ? '#d5e8da' : '#eee4f0';
+      ctx.strokeStyle = '#7d6b87'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(ax-5,ay-5,10,10,2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#51455d'; ctx.font = '9px sans-serif'; ctx.fillText('+',ax,ay+.5);
     }
-    if (readyIds.has(t.philId) && !(selected === t)) {
-      const sx2 = (t.cx + 0.82) * cellX, sy2 = (t.cy + 0.18) * cell + Math.sin(tick * 0.12 + t.uid) * 2, sr = cell * 0.12;
-      ctx.fillStyle = '#ff5f8f'; ctx.beginPath(); ctx.arc(sx2, sy2, sr, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.font = `${sr * 1.4}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('✦', sx2, sy2 + 0.5);
+    // Continuous support is a tiny stationary status badge, not an attack animation.
+    const support = g.skillOf(p.id);
+    if (support && skillMode(support.kind) === 'passive' && t.cy < GRID && !(t.stunT && t.stunT > 0)) {
+      const enabled = support.kind !== 'lonely' || !g.fielded().some(o => o !== t && Math.abs(o.cx-t.cx)<=1 && Math.abs(o.cy-t.cy)<=1);
+      if (enabled) {
+        const bx = cx + cellX*.29, by = foot-cell*.4;
+        ctx.fillStyle='#edf4ed'; ctx.fillRect(bx-5,by-5,10,10); ctx.strokeStyle='#577a66'; ctx.strokeRect(bx-5,by-5,10,10);
+        ctx.fillStyle='#3b5a49'; ctx.font='8px sans-serif'; ctx.fillText(({auraAtk:'↑',auraSpeed:'»',globalSlow:'◷',boss:'B',lonely:'1'} as Record<string,string>)[support.kind],bx,by+.5);
+      }
     }
     // 등급 배지
     const bx = (t.cx + 0.2) * cellX, by = (t.cy + 0.2) * cell, br = cell * 0.13;
@@ -716,8 +729,9 @@ function draw() {
     const hf = hitFlash.get(e.uid) ?? 0;
     const jx = hf > 0.3 ? (hash(e.uid + tick) - 0.5) * cell * 0.12 * hf : 0;
     const squash = 1 + hf * 0.22;
-    ctx.drawImage(monsterSprite2(g.stage.era, e.boss ? 'boss' : e.kind, g.wave >= 15), x + jx - (esz * squash) / 2, y - esz / 2 - walk + esz * (1 - 1 / squash), esz * squash, esz / squash);
-    if (hf > 0.05) { ctx.save(); ctx.globalAlpha = hf * 0.7; ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(whiteSprite(monsterSprite2(g.stage.era, e.boss ? 'boss' : e.kind, g.wave >= 15)), x + jx - (esz * squash) / 2, y - esz / 2 - walk + esz * (1 - 1 / squash), esz * squash, esz / squash); ctx.restore(); }
+    const enemyArt = e.boss ? artworkBoss(g.stage.era, e.name, e.name === g.stage.boss20) ?? monsterSprite2(g.stage.era, 'boss') : monsterSprite2(g.stage.era, e.kind, g.wave >= 15);
+    ctx.drawImage(enemyArt, x + jx - (esz * squash) / 2, y - esz / 2 - walk + esz * (1 - 1 / squash), esz * squash, esz / squash);
+    if (hf > 0.05) { ctx.save(); ctx.globalAlpha = hf * 0.7; ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(whiteSprite(enemyArt), x + jx - (esz * squash) / 2, y - esz / 2 - walk + esz * (1 - 1 / squash), esz * squash, esz / squash); ctx.restore(); }
     if ((e.shieldT ?? 0) > 0) { ctx.strokeStyle = 'rgba(255,211,107,.9)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - walk, esz * 0.6, 0, Math.PI * 2); ctx.stroke(); }
     if ((e.slowT ?? 0) > 0) { ctx.fillStyle = 'rgba(169,216,255,.35)'; ctx.beginPath(); ctx.arc(x, y - walk, esz * 0.45, 0, Math.PI * 2); ctx.fill(); }
     if ((e.stunT ?? 0) > 0) { ctx.font = `${cell * 0.25}px sans-serif`; ctx.fillText('💫', x, y - esz / 2 - walk); }
@@ -745,29 +759,7 @@ function draw() {
     ctx.strokeStyle = '#3b2a1e'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
-  // Full quotes wrap across multiple lines instead of being cut at 16 characters.
-  ctx.font = `${Math.max(10, cell * .19)}px "Galmuri11", sans-serif`;
-  let previousBubbleBottom = -1;
-  for (const [uid, sp] of [...speeches].slice(-3)) {
-    const t = g.towers.find((x) => x.uid === uid);
-    if (!t) { speeches.delete(uid); continue; }
-    const maxTextWidth = Math.min(cellX * 4.7, Math.max(126, cellX * 3.1));
-    const lines = wrapCanvasText(sp.text, maxTextWidth, text => ctx.measureText(text).width);
-    const lineHeight = Math.max(14, cell * .25);
-    const tw = Math.max(...lines.map(text => ctx.measureText(text).width)) + 20;
-    const th = lines.length * lineHeight + 14;
-    let x = (t.cx + .5) * cellX;
-    x = Math.max(cellX + tw / 2 + 2, Math.min(w - cellX - tw / 2 - 2, x));
-    let top = Math.max(cell * 1.05, t.cy * cell - th - 8);
-    if (top < previousBubbleBottom + 6 && previousBubbleBottom >= 0) top = previousBubbleBottom + 6;
-    top = Math.min(cell * (GRID - 1) - th - 4, top); previousBubbleBottom = top + th;
-    ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, sp.t / .35));
-    ctx.fillStyle = '#fffdf6'; ctx.strokeStyle = '#b3a1c1'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect(x - tw / 2, top, tw, th, 5); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#514569'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    lines.forEach((text, i) => ctx.fillText(text, x, top + 7 + (i + .5) * lineHeight));
-    ctx.restore();
-  }
+  // Dialogue is rendered below the canvas so neither road monsters nor names are covered.
 
   if (g.noticeTime > 0) {
     ctx.save(); ctx.globalAlpha = Math.min(1, g.noticeTime);
@@ -1335,18 +1327,22 @@ function consumeFx(g: Game) {
     }
     if (f.type === 'shot') {
       recoil.set(f.uid, 1);
+    }
+    else if (f.type === 'ability') {
       const t = g.towers.find(t => t.uid === f.uid);
-      if (t && !signatureCasts.has(t.uid) && signatureCasts.size < 10 && tick - (signatureLast.get(t.uid) ?? -100) > 22) {
+      const current = signatureCasts.get(f.uid);
+      const gap = f.mode === 'trigger' ? 5 : 45;
+      if (t && (!current || (f.mode === 'trigger' && !current.skill)) && (signatureCasts.size < 6 || current) && tick - (signatureLast.get(t.uid) ?? -100) > gap) {
         signatureLast.set(t.uid, tick);
-        signatureCasts.set(t.uid, { uid:t.uid, id:t.philId, age:0, duration:signatureProfile(t.philId).duration, tx:f.tx ?? t.cx+1, ty:f.ty ?? t.cy, skill:false });
+        signatureCasts.set(t.uid, { uid:t.uid, id:t.philId, age:0, duration:signatureProfile(t.philId).duration, tx:f.tx, ty:f.ty, skill:f.mode === 'trigger' });
       }
     }
     else if (f.type === 'hit') {
       if (f.uid !== undefined) hitFlash.set(f.uid, 1);
       shapes.push({ kind: 'impact', x: f.x, y: f.y, r: f.big ? 0.55 : 0.32, life: 0.16, max: 0.16 });
-      if (f.big) shake = Math.max(shake, 0.12);
-      for (let i = 0; i < (f.big ? 7 : 3); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-2.5, 2.5), vy: rnd(-3, -0.5), life: 0.35, max: 0.35, color: f.big ? '#ffd36b' : '#ffffff', size: rnd(0.04, 0.08), star: f.big });
-      particles.push({ x: f.x + rnd(-0.15, 0.15), y: f.y - 0.3, vx: 0, vy: -1.2, life: 0.7, max: 0.7, color: f.big ? '#ffd36b' : '#ffffff', size: f.big ? 0.36 : 0.24, text: fmt(f.dmg) + (f.big ? '!' : '') });
+      // Damage does not move the camera or flood the field with light.
+      for (let i = 0; i < (f.big ? 3 : 1); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-2.5, 2.5), vy: rnd(-3, -0.5), life: 0.35, max: 0.35, color: f.big ? '#ffd36b' : '#ffffff', size: rnd(0.04, 0.08), star: f.big });
+      if (f.big && particles.filter(p => p.text).length < 8) particles.push({ x: f.x + rnd(-0.15, 0.15), y: f.y - 0.3, vx: 0, vy: -1.2, life: 0.7, max: 0.7, color: f.big ? '#ffd36b' : '#ffffff', size: f.big ? 0.36 : 0.24, text: fmt(f.dmg) + (f.big ? '!' : '') });
     } else if (f.type === 'kill') {
       const shard = ERA_SHARD[g.stage.era] ?? PASTEL;
       for (let i = 0; i < (f.boss ? 44 : 14); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-3.2, 3.2), vy: rnd(-4, 0.5), life: 0.7, max: 0.7, color: shard[i % shard.length], size: rnd(0.05, 0.12), sq: true, rot: rnd(0, 6), g: 7 });
@@ -1355,19 +1351,31 @@ function consumeFx(g: Game) {
       if (f.boss) { shake = 0.6; banner = { text: '🎉 논파 성공!', t: 1.8 }; }
     } else if (f.type === 'morph') {
       if (f.tier >= 5) sfx.synth(f.tier - 1); else sfx.merge();
-      for (let i = 0; i < 24 + f.tier * 6; i++) { const a = (i / 24) * Math.PI * 2; particles.push({ x: f.x, y: f.y, vx: Math.cos(a) * rnd(1.5, 3), vy: Math.sin(a) * rnd(1.5, 3), life: 0.7, max: 0.7, color: f.tier >= 5 ? PASTEL[i % 5] : '#fff3b0', size: rnd(0.06, 0.11), star: true }); }
-      if (f.tier >= 5) shake = 0.35;
+      // Short pixel confetti, no floor floodlight, glow ring or camera shake.
+      for (let i = 0; i < 8; i++) particles.push({x:f.x,y:f.y-.25,vx:rnd(-.65,.65),vy:rnd(-1.2,-.4),life:.42,max:.42,color:['#a7c8ae','#c4b4d1','#e6cf9f'][i%3],size:.045,sq:true});
     } else if (f.type === 'boss') { bossIntro = { name: f.name, t: 2.6 }; shake = 0.4; sfx.boss(); }
     else if (f.type === 'bossSkill' && f.text) { banner = { text: f.text, t: 1.6 }; shake = 0.25; sfx.bossSkill(); }
-    else if (f.type === 'say') { speeches.set(f.uid, { text: f.text, t: Math.min(8, Math.max(3.8, Array.from(f.text).length * .13)) }); const cast = signatureCasts.get(f.uid); if (cast) { cast.skill = true; cast.age = 0; } }
+    else if (f.type === 'say') {
+      speeches.set(f.uid, {text:f.text,t:6});
+      const current = g.towers.find(t => t.uid === f.uid);
+      if (current) {
+        const text = `${PHIL.get(current.philId)!.name} · ${f.text}`;
+        if (quoteLeft <= 0) { $('battle-quote').textContent = text; $('battle-quote').scrollTop = 0; quoteLeft = 6; }
+        else if (!quoteQueue.includes(text) && quoteQueue.length < 6) quoteQueue.push(text);
+      }
+    }
     else if (f.type === 'ticket') { banner = { text: `${f.why}! 🎟 무료 소환권 +${f.n}`, t: 2 }; sfx.reveal(5); }
     else if (f.type === 'stun') { const t = g.towers.find((x) => x.uid === f.uid); if (t) for (let i = 0; i < 8; i++) particles.push({ x: t.cx + 0.5, y: t.cy + 0.3, vx: rnd(-1, 1), vy: rnd(-2, -0.5), life: 0.6, max: 0.6, color: '#c7a6ff', size: 0.07 }); }
   }
 }
 const speeches = new Map<number, { text: string; t: number }>();
+const quoteQueue: string[] = [];
+let quoteLeft = 0;
 const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
 
 function updateFx(dt: number) {
+  quoteLeft = Math.max(0, quoteLeft - dt / speed);
+  if (!quoteLeft && quoteQueue.length) { $('battle-quote').textContent = quoteQueue.shift()!; $('battle-quote').scrollTop = 0; quoteLeft = 6; }
   for (const [uid, cast] of signatureCasts) { cast.age += dt / speed; if (cast.age >= cast.duration) signatureCasts.delete(uid); }
   for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; if (!p.text) p.vy += 6 * dt; p.life -= dt; }
   for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
@@ -1400,7 +1408,7 @@ function drawShapes() {
     ctx.save(); ctx.globalAlpha = a;
     switch (s.kind) {
       case 'impact': { // 타격 순간 섬광 + 방사선
-        const R = (s.r ?? 0.3) * cell;
+        const R = (s.r ?? 0.3) * cell * .45; ctx.globalAlpha *= .5;
         ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(X, Y, R * (1 - k * 0.5), 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2.5;
         for (let i = 0; i < 6; i++) { const an = i * 1.047 + s.x * 3; ctx.beginPath(); ctx.moveTo(X + Math.cos(an) * R * (0.6 + k), Y + Math.sin(an) * R * (0.6 + k)); ctx.lineTo(X + Math.cos(an) * R * (1.3 + k * 1.6), Y + Math.sin(an) * R * (1.3 + k * 1.6)); ctx.stroke(); }
@@ -1464,18 +1472,15 @@ function drawFx(w: number, fh: number) {
   const v = ctx.createRadialGradient(w / 2, fh / 2, fh * 0.35, w / 2, fh / 2, w * 0.75);
   v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(59,42,30,.18)');
   ctx.fillStyle = v; ctx.fillRect(0, 0, w, fh);
-  // 대형 보스 HP바 (상단)
-  const boss = game?.enemies.find((e) => e.boss);
+  // Boss health belongs outside the road; the top lane must stay visible.
+  const boss = game?.enemies.find(e => e.boss);
+  const status = $('boss-status');
   if (boss) {
-    const bw = w - cell * 1.2, bx = cell * 0.6, by = cell * 0.18, r = Math.max(0, boss.hp / boss.maxHp);
-    ctx.fillStyle = '#3b2a1e'; ctx.beginPath(); ctx.roundRect(bx - 3, by - 3, bw + 6, cell * 0.42 + 6, 12); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.roundRect(bx, by, bw, cell * 0.42, 10); ctx.fill();
-    const grad = ctx.createLinearGradient(bx, 0, bx + bw, 0); grad.addColorStop(0, '#ff8f8f'); grad.addColorStop(1, '#ffb3c7');
-    ctx.fillStyle = grad; ctx.beginPath(); ctx.roundRect(bx, by, Math.max(8, bw * r), cell * 0.42, 10); ctx.fill();
-    if ((boss.shieldT ?? 0) > 0) { ctx.strokeStyle = '#ffd36b'; ctx.lineWidth = 3; ctx.stroke(); }
-    ctx.fillStyle = '#3b2a1e'; ctx.font = `${cell * 0.26}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(game?.raid ? `👑 ${boss.name} · 피해 ${Math.round(game.raidDamage).toLocaleString()} · ⏱${Math.ceil(game.raidLeft)}` : `👑 ${boss.name}  ${Math.ceil(r * 100)}%`, w / 2, by + cell * 0.22);
-  }
+    const ratio = Math.max(0,boss.hp/boss.maxHp);
+    status.style.setProperty('--boss-hp', `${ratio*100}%`);
+    status.classList.add('has-boss');
+    status.textContent = `${boss.name} · ${Math.ceil(ratio*100)}%${game?.raid ? ` · ${Math.ceil(game.raidLeft)}초` : ''}${(boss.shieldT??0)>0 ? ' · 보호막' : ''}`;
+  } else { status.classList.remove('has-boss'); status.textContent='보스는 10웨이브마다 등장해요'; }
   // 보스 등장 컷인
   if (bossIntro) {
     const T = 2.6 - bossIntro.t, slide = 1 - Math.pow(1 - Math.min(1, T * 3.2), 3), out = Math.min(1, bossIntro.t * 3);
@@ -1492,7 +1497,7 @@ function drawFx(w: number, fh: number) {
     const bs = cell * 2.9, ix = -bs + slide * (bs + cell * 0.25), iy = bandY - cell * 0.55 + Math.sin(T * 9) * 2;
     const glow = ctx.createRadialGradient(ix + bs / 2, iy + bs / 2, 0, ix + bs / 2, iy + bs / 2, bs * 0.7);
     glow.addColorStop(0, c3); glow.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = glow; ctx.fillRect(ix - bs * 0.2, iy - bs * 0.2, bs * 1.4, bs * 1.4);
-    ctx.drawImage(monsterSprite2(era, 'boss'), ix, iy, bs, bs);
+    ctx.drawImage(artworkBoss(era,bossIntro.name,true) ?? monsterSprite2(era, 'boss'), ix, iy, bs, bs);
     const tx = w - slide * (w - cell * 3.3);
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
     ctx.font = `${cell * 0.28}px "Galmuri11", sans-serif`; ctx.fillStyle = '#fff'; ctx.fillText('WARNING · 도그마의 왕 출현', tx, bandY + cell * 0.55);
@@ -1542,12 +1547,12 @@ document.addEventListener('touchend', (e) => {
   }
   lastTouchEnd = now;
 }, { passive: false });
-document.addEventListener('gesturestart', (e) => e.preventDefault());
+// Browser pinch zoom stays available for reading.
 document.addEventListener('dblclick', (e) => e.preventDefault());
 
 // ---------- 시작 ----------
 const backdropSelect = $('backdrop-select') as HTMLSelectElement;
-backdropSelect.onchange = () => { progress.battleBackdrop = backdropSelect.value; saveProgress(progress); toast('배경 시안을 바꿨어요'); };
+backdropSelect.onchange = () => { progress.battleBackdrop = backdropSelect.value; saveProgress(progress); toast('고대 배경을 바꿨어요 · 다른 시대는 전용 배경을 사용해요'); };
 $('admin-fx').onclick = () => openSignaturePreview();
 $('open-recipes').onclick = () => recipeSheet();
 $('open-rates').onclick = rateSheet;
@@ -1583,7 +1588,7 @@ function enter(acc: Account) {
   progress = loadProgress();
   if (isNew && acc.role === 'veteran') { seedVeteran(progress); saveProgress(progress); }
   bootQA();
-  backdropSelect.value = progress.battleBackdrop ?? 'greek-01';
+  backdropSelect.value = progress.battleBackdrop ?? 'era';
   spriteUrl.clear();
   $('who').textContent = `👤 ${acc.id}${acc.role === 'master' ? ' 👑' : ''}`;
   $('admin-bar').classList.toggle('hidden', acc.role !== 'master');
@@ -1628,7 +1633,7 @@ async function syncCloud(id: string, pw: string) {
     if (remote && (freshDevice || (remote.savedAt ?? 0) > (progress.savedAt ?? 0))) {
       progress = adoptProgress(remote);
       bootQA();
-      backdropSelect.value = progress.battleBackdrop ?? 'greek-01';
+      backdropSelect.value = progress.battleBackdrop ?? 'era';
       spriteUrl.clear(); renderHome(); refreshWallet();
       toast('☁️ 서버에 저장된 진행을 불러왔어요');
     } else { cloudSave(progress); void cloudFlush(); }
@@ -2183,13 +2188,14 @@ function openSignaturePreview() {
   const canvas = overlay.querySelector<HTMLCanvasElement>('canvas')!, x = canvas.getContext('2d')!;
   let playing = false, frame = 0, start = 0;
   const drawPreview = (phase: number) => {
-    const id = select.value, p = PHIL.get(id)!, profile = signatureProfile(id), pose = signaturePose(id,phase);
+    const id = select.value, p = PHIL.get(id)!, profile = signatureProfile(id), mode = SKILLS[p.realName] ? skillMode(SKILLS[p.realName].kind) : 'onHit', pose = mode === 'passive' ? {angle:0,lift:0} : signaturePose(id,phase);
     x.fillStyle = '#faf4e8'; x.fillRect(0,0,640,400); x.imageSmoothingEnabled = false;
     x.fillStyle = '#d7ccdf'; x.fillRect(44,322,540,2);
     x.save(); x.translate(200,290-pose.lift*120); x.rotate(pose.angle); x.drawImage(spriteFor(id),-72,-132,144,144); x.restore();
-    drawSignatureEffect(x,id,phase,200,280,480,210,150,true);
+    if (mode !== 'passive') drawSignatureEffect(x,id,phase,200,280,480,210,150,mode === 'trigger');
+    else { x.fillStyle='#edf4ed'; x.fillRect(270,200,26,26); x.fillStyle='#3b5a49'; x.font='20px sans-serif'; x.fillText('↑',276,220); }
     x.font = '20px Galmuri11,sans-serif'; x.fillStyle = '#675674'; x.textAlign = 'center'; x.fillText(p.name,200,355);
-    overlay.querySelector('.signature-preview-caption')!.textContent = `${p.name} · ${profile.motif} · ${profile.gesture} · 4프레임 도트 + 동작 궤적`;
+    overlay.querySelector('.signature-preview-caption')!.textContent = `${p.name} · ${profile.motif} · ${profile.gesture} · ${skillModeLabel(SKILLS[p.realName])} · 기본 공격과 구분`;
   };
   const animate = (now: number) => { if (!overlay.isConnected) return; if (playing) { const phase = ((now-start)%1500)/1500; slider.value=String(Math.floor(phase*99)); drawPreview(phase); } frame=requestAnimationFrame(animate); };
   select.onchange = () => drawPreview(Number(slider.value)/100);
