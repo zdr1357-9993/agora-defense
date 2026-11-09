@@ -1,5 +1,5 @@
 import { ENEMY_ROLES, ENEMY_NAMES } from './enemy-designs';
-import { canWearSkin, revealAdminCollection } from './ui-policy';
+import { canWearSkin, revealAdminCollection, modernUnlockStatus } from './ui-policy';
 import { signatureProfile, signaturePose, drawSignatureEffect, type SignatureCast } from './signature-fx';
 import { wrapCanvasText } from './text-layout';
 import { artUrl, artImage, iconHtml, artworkBoss } from './artwork';
@@ -73,14 +73,17 @@ function show(id: 'home' | 'battle') {
 }
 
 let diffId = 'easy';
+const modernUnlocked = () => QA_MODE || modernUnlockStatus(progress.cleared).unlocked;
+const modernLockText = () => { const status = modernUnlockStatus(progress.cleared); return `현대 해금 · 이전 5개 시대 어려움 ${status.completed}/${status.total} 클리어`; };
 /** 스테이지별 난이도 해금: 쉬움은 항상, 다음 단계는 앞 단계를 깨야 */
 const diffUnlocked = (stageId: string, id: string) => {
   if (QA_MODE) return true;
+  if (stageId === 'S6' && !modernUnlocked()) return false;
   const i = DIFFICULTIES.findIndex((d) => d.id === id);
   if (i <= 1) return i === 0 || easyAllCleared(); // 보통은 스토리(쉬움)를 다 깨면 열림
   return progress.cleared.includes(clearKey(stageId, DIFFICULTIES[i - 1].id));
 };
-const isUnlocked = (s: Stage) => QA_MODE || !s.unlockAfter || progress.cleared.includes(s.unlockAfter);
+const isUnlocked = (s: Stage) => s.id === 'S6' ? modernUnlocked() : QA_MODE || !s.unlockAfter || progress.cleared.includes(s.unlockAfter);
 
 // =============== 홈: 스테이지 지도 ===============
 /** 쉬움을 모든 스테이지에서 깨야 난이도 탭이 열린다 (신규 유저는 쉬움만) */
@@ -126,7 +129,7 @@ function renderHome() {
     const row = document.createElement('div');
     if (!isUnlocked(s)) {
       row.className = 'srow locked';
-      row.innerHTML = `<span class="sname">🔒 ???</span><small>${STAGES.find((x) => x.id === s.unlockAfter)?.name} 클리어 시</small>`;
+      row.innerHTML = `<span class="sname">🔒 ${s.id === 'S6' ? '현대 · 연결된 세계의 광장' : '???'}</span><small>${s.id === 'S6' ? modernLockText() : `${STAGES.find((x) => x.id === s.unlockAfter)?.name} 클리어 시`}</small>`;
       box.appendChild(row); continue;
     }
     const open = diffUnlocked(s.id, diffId);
@@ -309,6 +312,7 @@ window.addEventListener('orientationchange', () => setTimeout(() => { setAppHeig
 new ResizeObserver(resize).observe($('battle'));
 
 function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
+  if ((story?.base === 'S6' || (!story && s.id === 'S6')) && !modernUnlocked()) { toast(modernLockText()); return; }
   if (story) { const base = STAGES.find((x) => x.id === story.base)!; s = { ...base, name: story.title, boss10: story.boss, boss20: story.boss, story: story.when }; }
   spawnAt.clear(); signatureCasts.clear(); signatureLast.clear(); speeches.clear(); quoteQueue.length = 0; quoteLeft = 0; $('battle-quote').textContent = '철학자의 한마디 · 전투를 시작해 보세요';
   $('field-wrap').style.backgroundImage = '';
@@ -395,11 +399,11 @@ function endBattle(opt: { double?: boolean; next?: boolean } = {}) {
   show('home');
   switchTab('stages');
   // ▶ 다음: 스토리는 기억 공개가 끝난 뒤 다음 사건으로, 본편은 바로 다음 판
-  if (nextStage) setTimeout(() => startBattle(nextStage!), 50);
+  if (nextStage && (nextStage.id !== 'S6' || modernUnlocked())) setTimeout(() => startBattle(nextStage!), 50);
   if (wasStory) pendingNextStory = nextStory!;
 }
 let pendingNextStory: StoryStage | null = null;
-function startStory(st: StoryStage) { startBattle(STAGES[0], undefined, st); playDialogue(st.intro, st, () => updateUI(), undefined, true); }
+function startStory(st: StoryStage) { if (st.base === 'S6' && !modernUnlocked()) { toast(modernLockText()); return; } startBattle(STAGES[0], undefined, st); playDialogue(st.intro, st, () => updateUI(), undefined, true); }
 
 canvas.addEventListener('pointerdown', (ev) => {
   if (!game) return;
@@ -1863,7 +1867,7 @@ function openEras(): Set<string> {
   return new Set(CHAPTERS.filter((c) => c.n <= upto).map((c) => c.era));
 }
 setCardFilter((p) => openEras().has(p.era));
-const storyOpen = (st: StoryStage) => { const i = STORY.indexOf(st); return QA_MODE || i === 0 || (progress.storyCleared ?? []).includes(STORY[i - 1].id); };
+const storyOpen = (st: StoryStage) => { const i = STORY.indexOf(st); return (st.base !== 'S6' || modernUnlocked()) && (QA_MODE || i === 0 || (progress.storyCleared ?? []).includes(STORY[i - 1].id)); };
 let storyChapter = -1;
 /** 설정에서 '처음부터 튜토리얼'을 눌렀을 때 (이미 1장을 진행한 계정도 튜토리얼을 다시 열어 둔다) */
 let replayTutorial = false;
@@ -1873,7 +1877,7 @@ function renderStory(box: HTMLElement) {
     progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), 'A1','A2','A3','A4','A5'])]; saveProgress(progress);
   }
   const done = progress.storyCleared ?? [];
-  const next = STORY.find(st => !done.includes(st.id) && storyOpen(st)) ?? STORY[STORY.length - 1];
+  const next = STORY.find(st => !done.includes(st.id) && storyOpen(st)) ?? STORY.find(st => !done.includes(st.id)) ?? STORY[STORY.length - 1];
   const chapter = CHAPTERS.find(ch => ch.n === storyChapter) ?? CHAPTERS.find(ch => ch.n === next.chapter)!;
   storyChapter = chapter.n;
   const stages = STORY.filter(st => st.chapter === chapter.n);
@@ -1884,7 +1888,7 @@ function renderStory(box: HTMLElement) {
   const heading = document.createElement('div'); heading.className = 'journey-heading';
   heading.innerHTML = '<h2>모험의 여정</h2><small>지도를 눌러 목적지를 고르고, 준비되면 출발해요</small>'; box.appendChild(heading);
   const chapters = document.createElement('nav'); chapters.className = 'journey-chapters'; chapters.setAttribute('aria-label','시대 선택');
-  chapters.innerHTML = CHAPTERS.map(ch => `<button data-chapter="${ch.n}" aria-pressed="${ch.n === chapter.n}">${ch.n ? `${ch.n}장 ${ch.era}` : '시작'}</button>`).join('');
+  chapters.innerHTML = CHAPTERS.map(ch => `<button data-chapter="${ch.n}" aria-pressed="${ch.n === chapter.n}">${ch.era === '현대' && !modernUnlocked() ? '🔒 ' : ''}${ch.n ? `${ch.n}장 ${ch.era}` : '시작'}</button>`).join('');
   for (const button of chapters.querySelectorAll<HTMLButtonElement>('button')) button.onclick = () => { storyChapter = Number(button.dataset.chapter); journeySelectedId = ''; renderHome(); };
   box.appendChild(chapters);
   const wrap = document.createElement('div'); wrap.className = 'journey roam-map'; wrap.setAttribute('aria-label',`${chapter.title} 여정 지도`);
@@ -1906,12 +1910,12 @@ function renderStory(box: HTMLElement) {
     if (open) { traveler.style.left = positions[index][0]+'%'; traveler.style.top = positions[index][1]+'%'; if (!initial) { traveler.classList.remove('walking'); void traveler.offsetWidth; traveler.classList.add('walking'); } }
     else if (initial) { const first = Math.max(0, stages.findIndex(storyOpen)); traveler.style.left = positions[first][0]+'%'; traveler.style.top = positions[first][1]+'%'; }
     const go = bar.querySelector<HTMLButtonElement>('#j-go')!;
-    go.disabled = !open; go.innerHTML = `<small>${open ? st.when : '앞선 기억을 먼저 되찾아 주세요'}</small><b>${open ? `▶ ${done.includes(st.id) ? '다시 떠나기' : '여기로 출발'} · ${st.title}` : '아직 도착할 수 없어요'}</b>`;
-    bar.querySelector('.destination-status')!.textContent = open ? `목적지 · ${st.title}` : '잠긴 지점이에요. 앞선 여정을 마치면 길이 열려요.';
+    go.disabled = !open; go.innerHTML = `<small>${open ? st.when : st.base === 'S6' && !modernUnlocked() ? modernLockText() : '앞선 기억을 먼저 되찾아 주세요'}</small><b>${open ? `▶ ${done.includes(st.id) ? '다시 떠나기' : '여기로 출발'} · ${st.title}` : '아직 도착할 수 없어요'}</b>`;
+    bar.querySelector('.destination-status')!.textContent = open ? `목적지 · ${st.title}` : st.base === 'S6' && !modernUnlocked() ? modernLockText() : '잠긴 지점이에요. 앞선 여정을 마치면 길이 열려요.';
   };
   wrap.onclick = event => { const node = (event.target as HTMLElement).closest<HTMLElement>('.roam-node'); if (node) update(STORY_MAP.get(node.dataset.st!)!); };
   bar.querySelector<HTMLButtonElement>('#j-go')!.onclick = () => { if (storyOpen(selectedStage)) startStory(selectedStage); };
-  bar.querySelector<HTMLButtonElement>('.journey-info')!.onclick = () => { if (storyOpen(selectedStage)) storyInfo(selectedStage); else toast('앞선 여정을 마치면 자세한 기억이 열려요'); };
+  bar.querySelector<HTMLButtonElement>('.journey-info')!.onclick = () => { if (storyOpen(selectedStage)) storyInfo(selectedStage); else toast(selectedStage.base === 'S6' && !modernUnlocked() ? modernLockText() : '앞선 여정을 마치면 자세한 기억이 열려요'); };
   bar.querySelector<HTMLButtonElement>('.journey-current')!.onclick = () => { storyChapter = next.chapter; journeySelectedId = next.id; renderHome(); };
   update(selectedStage,true);
   if (STORY.filter(st => st.chapter === 0).some(st => !done.includes(st.id))) {
@@ -2116,7 +2120,7 @@ function raidTierText(d: number) {
   return `등급 <b>${['🥉 입문', '🥈 수련', '🥇 숙련', '🏅 대가', '👑 현자', '✨ 전설'][k]}</b>${k < RAID_TIERS.length ? ` · 다음 등급까지 ${(RAID_TIERS[k] - Math.round(d)).toLocaleString()}` : ''}`;
 }
 /** 요일마다 바뀌는 레이드 보스 */
-function raidBoss() { const s = STAGES[new Date().getDay() % STAGES.length]; return { stage: s, name: `${s.boss20}` }; }
+function raidBoss() { const pool = STAGES.filter(s => s.id !== 'S6' || modernUnlocked()); const s = pool[new Date().getDay() % pool.length]; return { stage: s, name: `${s.boss20}` }; }
 function startRaid() {
   const d = daily(progress);
   if (!QA_MODE && d.raidsLeft <= 0) { toast('오늘 레이드 도전을 다 썼어요. 내일 다시!'); return; }
