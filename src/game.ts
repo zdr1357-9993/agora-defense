@@ -333,7 +333,8 @@ export class Game {
       }
       case 'S3': e.shieldT = 1.5; this.fx.push({ type: 'bossSkill', text: '📜 암기 보호막! 잠시 무적' }); break;
       case 'S4': for (const t of this.fielded()) if (Math.random() < 0.35) stun(t, 1.2); this.fx.push({ type: 'bossSkill', text: '🐋 리바이어던의 포효! 일부가 얼어붙었다' }); break;
-      case 'S5': e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.06); this.fx.push({ type: 'bossSkill', text: '📱 확증편향! 보스 체력 회복' }); break;
+      case 'S6': e.shieldT = 1.5; this.fx.push({type:'bossSkill',text:'필터버블! 반대 의견이 잠시 차단됐다'}); break;
+      case 'S5': e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.06); this.fx.push({ type: 'bossSkill', text: '📻 자기확신! 보스 체력 회복' }); break;
     }
   }
 

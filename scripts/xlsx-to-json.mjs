@@ -1,13 +1,13 @@
 // data/agora_master.xlsx (원본) → src/data/*.json (게임용) 변환
 // 엑셀만 고치고 `npm run data` (dev/build 시 자동 실행)
 import XLSX from 'xlsx';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 
 const wb = XLSX.readFile('data/agora_master.xlsx');
 const rows = (name) => XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: null });
 
 const philosophers = rows('Philosophers').map((r) => ({
-  id: r.phil_id, name: r.name_kr, tier: Number(r.tier), era: r.era, school: r.school,
+  id: r.phil_id, name: r.name_kr, tier: Number(r.tier), era: r.era === '현대' ? '근현대' : r.era, school: r.school,
   quote: r.atk_quote, skill: r.skill_name, skillDesc: r.skill_desc, lore: r.lore_humor,
   hidden: r.hidden === 'Y',
 }));
@@ -30,10 +30,14 @@ for (const c of combat) {
 }
 const rates = rows('Rates').map((r) => ({ tier: Number(r.tier), rate: Number(r.summon_rate) }));
 const stages = rows('Stages').map((r) => ({
-  id: r.stage_id, era: r.era, name: r.name, unlockAfter: r.unlock_after || null,
+  id: r.stage_id, era: r.era === '현대' ? '근현대' : r.era, name: r.name, unlockAfter: r.unlock_after || null,
   enemyEarly: r.enemy_early, enemyLate: r.enemy_late, boss10: r.boss_10, boss20: r.boss_20,
   counter: r.counter_phil, story: r.story,
 }));
+
+const expansion = JSON.parse(readFileSync('data/modern-expansion.json', 'utf8'));
+for (const stage of stages) Object.assign(stage, expansion.overrides[stage.id] ?? {});
+stages.push(expansion.stage);
 
 // 검증 (combat 검증은 위에서 errors에 쌓임)
 const byId = new Map(philosophers.map((p) => [p.id, p]));

@@ -1,6 +1,6 @@
 import { eraArtUrl, artImage, type ArtName } from './artwork';
-const ERAS = ['고대', '동양', '중세', '근대', '현대'];
-const ARENAS: ArtName[] = ['arena-ancient-v2', 'arena-east-v2', 'arena-medieval-v2', 'arena-modern-v2', 'arena-contemporary-v2'];
+const ERAS = ['고대', '동양', '중세', '근대', '근현대', '현대'];
+const ARENAS: ArtName[] = ['arena-ancient-v2', 'arena-east-v2', 'arena-medieval-v2', 'arena-modern-v2', 'arena-contemporary-v2', 'arena-present-v3'];
 export function journeyArt(era: string): string { return eraArtUrl(era); }
 export const GREEK_BACKDROPS = [['greek-01', '올리브 아고라'], ['greek-02', '에게해 항구'], ['greek-03', '월계수 학당'], ['greek-04', '노을 신전'], ['greek-05', '낙서 공책 아고라']] as const;
 export function arenaArtName(era: string, concept = 'era', storyId?: string): ArtName {
@@ -12,7 +12,7 @@ export function arenaArtName(era: string, concept = 'era', storyId?: string): Ar
 export function arenaArt(era: string, concept = 'era', storyId?: string) { return artImage(arenaArtName(era,concept,storyId)); }
 export function drawWaitingBench(x: CanvasRenderingContext2D, era: string, left: number, top: number, width: number, height: number) {
   const image = artImage('waiting-benches'); if (!image) return;
-  const row = Math.max(0, ERAS.indexOf(era));
+  const row = Math.min(4, Math.max(0, ERAS.indexOf(era)));
   const sy = Math.round(row * image.naturalHeight / 5), bottom = Math.round((row + 1) * image.naturalHeight / 5);
   x.drawImage(image, 0, sy, image.naturalWidth, bottom - sy, left, top, width, height);
 }

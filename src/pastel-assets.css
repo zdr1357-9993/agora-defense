@@ -253,3 +253,10 @@ button:focus-visible,select:focus-visible { outline:3px solid #577b69; outline-o
 
 #boss-status { flex:none; min-height:25px; padding:4px 8px; background:#f4eff7; border:1px solid #cec1d5; color:#4c4057; font-size:11px; line-height:16px; text-align:center; }
 #boss-status.has-boss { background:linear-gradient(to right,#efc3ca var(--boss-hp),#fffdf7 var(--boss-hp)); border-color:#9c7882; color:#3e2f3b; }
+
+/* Six eras, four silhouettes: identify an enemy without relying on color. */
+.enemy-guide { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.enemy-guide figure { display:flex;align-items:center;gap:7px;margin:0;padding:7px;background:#fffdf7;border:1px solid #cbbfd3;border-radius:4px; }
+.enemy-guide img { width:44px;height:44px;image-rendering:pixelated; }
+.enemy-guide figcaption { min-width:0; }.enemy-guide b { display:block;font-size:12px; }.enemy-guide small { display:block;font-size:10px;line-height:1.6;color:#61516c; }
+.journey-chapters { overflow-x:auto;scrollbar-width:thin; }

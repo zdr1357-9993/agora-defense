@@ -27,6 +27,7 @@ export const STAGE_PATHS: Record<string, StagePaths> = {
     layoutFor: (w) => (w >= 20 ? RING_FAST : RING),
     notice: (w) => (w === 20 ? '🏭 산업혁명! 적의 속도가 빨라진다' : null),
   },
+  S6: {caption:'정보가 양방향으로 흐르는 네트워크 순환로',layoutFor:()=>RING_BOTH},
   S5: {
     caption: '10웨이브마다 도는 방향이 뒤집히는 언어의 미궁',
     layoutFor: (w) => (Math.floor(w / 10) % 2 ? RING_REV : RING),

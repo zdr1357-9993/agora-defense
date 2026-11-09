@@ -1,3 +1,4 @@
+import { ENEMY_ROLES, ENEMY_NAMES } from './enemy-designs';
 import { canWearSkin, revealAdminCollection } from './ui-policy';
 import { signatureProfile, signaturePose, drawSignatureEffect, type SignatureCast } from './signature-fx';
 import { wrapCanvasText } from './text-layout';
@@ -84,7 +85,7 @@ const isUnlocked = (s: Stage) => QA_MODE || !s.unlockAfter || progress.cleared.i
 // =============== 홈: 스테이지 지도 ===============
 /** 쉬움을 모든 스테이지에서 깨야 난이도 탭이 열린다 (신규 유저는 쉬움만) */
 /** 쉬움 = 스토리. 스토리를 끝까지 깨면 난이도 탭(보통 이상 본편)이 열린다 */
-const easyAllCleared = () => STORY.every((s) => (progress.storyCleared ?? []).includes(s.id));
+const easyAllCleared = () => (progress.storyCleared ?? []).includes('P20') || STORY.every((s) => (progress.storyCleared ?? []).includes(s.id));
 function stageInfo(s: Stage) {
   const hero = PHIL.get(s.counter)!;
   const marks = DIFFICULTIES.map((d) => `<span class="${progress.cleared.includes(clearKey(s.id, d.id)) ? 'on' : ''}">${d.icon}</span>`).join('');
@@ -94,9 +95,9 @@ function stageInfo(s: Stage) {
       <div>🗺 ${STAGE_PATHS[s.id].caption}</div>
       <div>👑 최종 보스 <b>${s.boss20}</b> · 10웨이브마다 <b>${s.boss10}</b></div>
       <div>⚔ 보스 카운터 <b>${hero.name}</b> (보스에게 피해 3배)</div>
-      <div>🏠 강해지는 철학자 <b>${(STAGE_STARS[s.id] ?? []).map((n) => PHILOSOPHERS.find((p) => p.realName === n)?.name ?? n).join(', ')}</b> +${STAR_BONUS * 100}%<br>${s.era} 철학자 모두 +${ERA_BONUS * 100}%</div>
+      <div>🏠 강해지는 철학자 <b>${(STAGE_STARS[s.id] ?? []).map((n) => PHILOSOPHERS.find((p) => p.realName === n)?.name ?? n).join(', ')}</b> +${STAR_BONUS * 100}%<br>${s.era === '현대' ? '근현대의 기억을 가진' : s.era} 철학자 모두 +${ERA_BONUS * 100}%</div>
       <div>🏅 클리어 ${marks}</div>
-    </div>`);
+    </div><h3>이 시대의 도그마</h3><div class="enemy-guide">${ENEMY_ROLES.map((role,i)=>`<figure><img src="${monsterUrl(s.era,role.kind)}" alt="${role.label}"><figcaption><b>${ENEMY_NAMES[s.era]?.[i] ?? role.label}</b><small>${role.label} · ${role.tip}</small></figcaption></figure>`).join('')}</div>`);
 }
 function renderHome() {
   const box = $('stages');
@@ -176,7 +177,7 @@ function renderCodex() {
 
 const CARD_BG: Record<string, string> = {
   고대: 'linear-gradient(180deg,#bfe3ff,#f5ecd8)', 중세: 'linear-gradient(180deg,#c7b8e8,#e7e5e4)', 동양: 'linear-gradient(180deg,#d9f99d,#fef3c7)',
-  근대: 'linear-gradient(180deg,#cbd5e1,#f1f5f9)', 현대: 'linear-gradient(180deg,#f5d0fe,#e0e7ff)', 히든: 'linear-gradient(180deg,#fef9c3,#fff)',
+  근대: 'linear-gradient(180deg,#cbd5e1,#f1f5f9)', 근현대: 'linear-gradient(180deg,#f5d0fe,#e0e7ff)', 현대: 'linear-gradient(180deg,#dceee7,#f7f2df)', 히든: 'linear-gradient(180deg,#fef9c3,#fff)',
 };
 function cardHtml(id: string) {
   const p = PHIL.get(id)!;
@@ -840,7 +841,7 @@ function eraBackdrop(era: string, w: number, h: number): HTMLCanvasElement {
     x.fillStyle = 'rgba(90,60,30,.3)';
     for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2; x.beginPath(); x.moveTo(cx + Math.cos(a) * R * 1.2, cy + Math.sin(a) * R * 1.2); x.lineTo(cx + Math.cos(a + 0.4) * R * 0.25, cy + Math.sin(a + 0.4) * R * 0.25); x.lineTo(cx + Math.cos(a - 0.4) * R * 0.25, cy + Math.sin(a - 0.4) * R * 0.25); x.fill(); }
     x.strokeStyle = 'rgba(90,60,30,.4)'; x.lineWidth = 2; x.strokeRect(u * 1.08, u * 1.08, w - u * 2.16, h - u * 2.16);
-  } else if (era === '현대') {
+  } else if (era === '근현대') {
     grad('#eef0f6', '#dfe3ee');
     const shapes: [string, number, number, number][] = [['rgba(239,68,68,.13)', 0.18, 0.2, 0.9], ['rgba(37,99,235,.12)', 0.8, 0.75, 1.1], ['rgba(250,204,21,.18)', 0.75, 0.18, 0.6]];
     for (const [col, fx, fy, r] of shapes) { x.fillStyle = col; x.beginPath(); x.arc(w * fx, h * fy, u * r, 0, Math.PI * 2); x.fill(); }
@@ -861,7 +862,7 @@ function eraBackdrop(era: string, w: number, h: number): HTMLCanvasElement {
 /** 철학자 받침대: 시대별 원판 + 등급 후광 + 반짝이 (도트 자체는 그대로) */
 const PEDESTAL: Record<string, [string, string, string | null]> = {
   고대: ['#e1d9ed', '#beb2ce', null], 동양: ['#f4f0e2', '#cfcab8', null], 중세: ['#eadcb8', '#b8954a', '#ca8a04'],
-  근대: ['#e9dcc2', '#b9a77f', null], 현대: ['#e4e7ee', '#a9b1bf', null],
+  근대: ['#e9dcc2', '#b9a77f', null], 근현대: ['#e4e7ee', '#a9b1bf', null],
 };
 function drawPedestal(cx: number, foot: number, p: { tier: number; era: string }, uid: number, X: CanvasRenderingContext2D = ctx, C: number = cell) {
   if (artImage('characters-1')) {
@@ -940,7 +941,7 @@ const THEME: Record<string, { ground: string; speck: string; speck2: string; roa
   중세: { ground: '#d9cdea', speck: '#cbbde0', speck2: '#e6dcf3', road: '#e2d9eb', roadEdge: '#b3a5c4', roadLine: 'rgba(139,122,168,.6)', decor: ['candle', 'stone', 'banner'] },
   동양: { ground: '#cdeeb5', speck: '#bde4a1', speck2: '#ddf5c9', road: '#dce9e1', roadEdge: '#a3b7ac', roadLine: 'rgba(255,255,255,.45)', decor: ['bamboo', 'pine', 'lantern'] },
   근대: { ground: '#d4dde8', speck: '#c5d0dd', speck2: '#e2e9f1', road: '#dce4f0', roadEdge: '#a4b1c5', roadLine: 'rgba(123,142,166,.7)', decor: ['gear', 'lamp', 'crate'] },
-  현대: { ground: '#e9d8ff', speck: '#dcc6ff', speck2: '#f3e9ff', road: '#eaddec', roadEdge: '#b9a7c5', roadLine: 'rgba(236,72,153,.6)', decor: ['letter', 'crystal', 'screen'] },
+  근현대: { ground: '#e9d8ff', speck: '#dcc6ff', speck2: '#f3e9ff', road: '#eaddec', roadEdge: '#b9a7c5', roadLine: 'rgba(236,72,153,.6)', decor: ['letter', 'crystal', 'screen'] },
 };
 const hash = (n: number) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 function drawDecor(kind: string, x: number, y: number, c: number) {
@@ -1298,8 +1299,9 @@ interface Shape { kind: string; x: number; y: number; tx?: number; ty?: number; 
 const shapes: Shape[] = [];
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; text?: string; star?: boolean; sq?: boolean; rot?: number; g?: number }
 const hitFlash = new Map<number, number>();
-const BOSS_BAND: Record<string, [string, string, string]> = { 고대: ['#7a3318', '#d9773f', 'rgba(255,211,107,.7)'], 중세: ['#4c1d1d', '#991b1b', 'rgba(251,191,36,.7)'], 동양: ['#1c1917', '#3f3f46', 'rgba(229,72,77,.7)'], 근대: ['#1e293b', '#1e3a8a', 'rgba(147,197,253,.7)'], 현대: ['#3b0764', '#7e22ce', 'rgba(34,211,238,.7)'] };
-const ERA_SHARD: Record<string, string[]> = { 고대: ['#e8925a', '#2a1810', '#fff3d6', '#f5c04a'], 중세: ['#ca8a04', '#7f1d1d', '#fde68a', '#94a3b8'], 동양: ['#1c1917', '#c8323a', '#f6f2e4', '#6b7280'], 근대: ['#b45309', '#64748b', '#fde68a', '#e2d4b8'], 현대: ['#a855f7', '#22d3ee', '#f43f5e', '#fde047'] };
+const BOSS_BAND: Record<string, [string, string, string]> = { 고대: ['#7a3318', '#d9773f', 'rgba(255,211,107,.7)'], 중세: ['#4c1d1d', '#991b1b', 'rgba(251,191,36,.7)'], 동양: ['#1c1917', '#3f3f46', 'rgba(229,72,77,.7)'], 근대: ['#1e293b', '#1e3a8a', 'rgba(147,197,253,.7)'], 근현대: ['#3b0764', '#7e22ce', 'rgba(34,211,238,.7)'] };
+BOSS_BAND['현대'] = ['#385c59','#6e9f93','rgba(178,218,204,.7)'];
+const ERA_SHARD: Record<string, string[]> = { 고대: ['#e8925a', '#2a1810', '#fff3d6', '#f5c04a'], 중세: ['#ca8a04', '#7f1d1d', '#fde68a', '#94a3b8'], 동양: ['#1c1917', '#c8323a', '#f6f2e4', '#6b7280'], 근대: ['#b45309', '#64748b', '#fde68a', '#e2d4b8'], 근현대: ['#a855f7', '#22d3ee', '#f43f5e', '#fde047'] };
 const particles: Particle[] = [];
 const recoil = new Map<number, number>();
 const signatureCasts = new Map<number, SignatureCast>();
@@ -1309,6 +1311,10 @@ let banner: { text: string; t: number } | null = null;
 let bossIntro: { name: string; t: number } | null = null;
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 const PASTEL = ['#ffb3c7', '#ffd36b', '#a7ecd2', '#a9d8ff', '#c7a6ff'];
+
+ERA_SHARD['현대'] = ['#a7cbb9','#b6b0cf','#e5d7ad'];
+
+THEME['현대'] = {...THEME['근현대'],ground:'#e4f0e9',road:'#e1eee7',roadEdge:'#9fb8b0'};
 
 function soundFor(f: FxEvent) {
   if (f.type === 'hit') sfx.hit();
@@ -1853,7 +1859,7 @@ function openEras(): Set<string> {
   if (isAdmin()) return new Set(PHILOSOPHERS.map(p => p.era));
   const done = progress.storyCleared ?? [];
   const next = STORY.find((s) => !done.includes(s.id));
-  const upto = QA_MODE || !next ? 5 : next.chapter;
+  const upto = QA_MODE || !next ? Math.max(...CHAPTERS.map(c=>c.n)) : next.chapter;
   return new Set(CHAPTERS.filter((c) => c.n <= upto).map((c) => c.era));
 }
 setCardFilter((p) => openEras().has(p.era));
@@ -2050,7 +2056,7 @@ $('replay-start').onclick = () => {
 
 // =============== 결과 화면: 보상 · 📺2배 · ▶다음 (한 판 더 하게 만드는 동선) ===============
 /** 시대 전환 연출: 시대 화풍이 종이처럼 쓸고 지나가며 이름이 뜬다 */
-const ERA_LABEL: Record<string, string> = { 고대: '고대 · 그리스', 중세: '중세 · 신앙의 시대', 동양: '동양 · 백가쟁명', 근대: '근대 · 이성의 시대', 현대: '현대 · 언어와 실존' };
+const ERA_LABEL: Record<string, string> = { 고대: '고대 · 그리스', 중세: '중세 · 신앙의 시대', 동양: '동양 · 백가쟁명', 근대: '근대 · 이성의 시대', 근현대: '근현대 · 언어와 실존', 현대: '현대 · 연결과 책임' };
 let lastEra = '';
 function eraWipe(era: string, title: string, when: string) {
   const changed = era !== lastEra; lastEra = era;

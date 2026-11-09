@@ -101,7 +101,7 @@ const SCENES: Record<string, (c: CanvasRenderingContext2D, r: () => number) => v
     const books = ['#f87171', '#60a5fa', '#fbbf24', '#34d399'];
     books.forEach((b, i) => { c.fillStyle = b; c.fillRect(14 + i * 3, 200 - i * 12, 60 - i * 6, 11); });
   },
-  현대(c, r) {
+  근현대(c, r) {
     sky(c, '#f6c8ef', '#dde4ff');
     // 별 + 추상 도형
     for (let i = 0; i < 18; i++) sparkle(c, r() * W, r() * 120, 2 + r() * 4, 'rgba(255,255,255,.9)');

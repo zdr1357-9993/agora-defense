@@ -9,11 +9,12 @@ export const STAGE_STARS: Record<string, string[]> = {
   S3: ['대성지성 공자', '노자', '장자'],
   S4: ['임마누엘 칸트', '데이비드 흄', '르네 데카르트'],
   S5: ['루트비히 비트겐슈타인', '고틀로프 프레게', '자크 데리다'],
+  S6: ['델포이의 소크라테스', '한나 아렌트', '루트비히 비트겐슈타인'],
 };
 
-/** 스테이지 시대와 철학자 도트 시대가 맞는지 (현대 스테이지는 현대 인물) */
+/** 시대 보너스. 새 현대 장은 근현대의 기억을 이어 받아 같은 보너스를 준다. */
 export function homeBonus(stageId: string, stageEra: string, realName: string, philEra: string): { mult: number; kind: '' | 'era' | 'star' } {
   if (STAGE_STARS[stageId]?.includes(realName)) return { mult: 1 + STAR_BONUS, kind: 'star' };
-  if (philEra === stageEra) return { mult: 1 + ERA_BONUS, kind: 'era' };
+  if (philEra === stageEra || (stageEra === '현대' && philEra === '근현대')) return { mult: 1 + ERA_BONUS, kind: 'era' };
   return { mult: 1, kind: '' };
 }

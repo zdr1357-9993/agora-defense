@@ -62,7 +62,7 @@ export const SUMMON_RATES = ratesJson as { tier: number; rate: number }[];
 export const PHIL = new Map(PHILOSOPHERS.map((p) => [p.id, p]));
 export const CAT_ICON: Record<string, string> = { C001: '🔥', C002: '💎', C003: '🌀', C004: '⚙️', C005: '🪞' };
 export const CAT_NAME: Record<string, string> = Object.fromEntries(CATALYSTS.map((c) => [c.id, c.name.replace(/^\S*\s/, '').trim()]));
-export const ERA_ICON: Record<string, string> = { 고대: '🏛', 중세: '⛪', 동양: '🏯', 근대: '⚙️', 현대: '📡', 히든: '✨' };
+export const ERA_ICON: Record<string, string> = { 고대: '🏛', 중세: '⛪', 동양: '🏯', 근대: '⚙️', 근현대: '📻', 현대: '🌐', 히든: '✨' };
 /** 등급 이름 (1 흔함 ~ 7 근원). 흔함만 소환되고 그 위는 전부 조합으로 만든다 */
 export const TIER_NAME = ['', '흔함', '안흔함', '특별', '희귀', '전설', '거장', '근원'];
 export const MAX_TIER = 7;
