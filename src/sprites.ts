@@ -68,7 +68,7 @@ export function philosopherSprite(p: Philosopher): HTMLCanvasElement {
     let robe = '#f5f3fa', trim = '#92bdc4';
     if (p.era === '중세') { robe = '#78350f'; trim = '#fbbf24'; }
     else if (p.era === '근대') { robe = ['#1e3a8a', '#7f1d1d', '#14532d', '#312e81', '#4c1d95'][n % 5]; trim = '#fde047'; }
-    else if (p.era === '현대') { robe = ['#18181b', '#334155', '#3f3f46', '#1e1b4b'][n % 4]; trim = '#e2e8f0'; }
+    else if (p.era === '근현대') { robe = ['#18181b', '#334155', '#3f3f46', '#1e1b4b'][n % 4]; trim = '#e2e8f0'; }
     const east = p.era === '동양';
     const islam = p.school === '이슬람철학' || is('마이모니데스');
     if (east && !['도가', '불교'].includes(p.school)) { robe = n % 2 ? '#1e3a5f' : '#e7e5e4'; trim = '#0f172a'; }
@@ -206,7 +206,7 @@ const STAGE_PAL: Record<string, [string, string, string]> = {
   중세: ['#7f1d1d', '#fde047', '#f97316'],
   동양: ['#334155', '#f8fafc', '#22c55e'],
   근대: ['#475569', '#22d3ee', '#f59e0b'],
-  현대: ['#18181b', '#f43f5e', '#a855f7'],
+  근현대: ['#18181b', '#f43f5e', '#a855f7'],
 };
 const monsterCache = new Map<string, HTMLCanvasElement>();
 export function monsterSprite(era: string, kind: 'early' | 'late' | 'boss'): HTMLCanvasElement {
@@ -412,7 +412,7 @@ export function monsterSprite2(era: string, kind: MKind, late = false): HTMLCanv
           px(6, 18, 3, 4, '#1e40af'); px(13, 18, 3, 4, '#1e40af');
         },
       },
-      현대: {
+      근현대: {
         normal: () => { // 글리치 슬라임
           px(5, 9, 14, 11, '#a855f7'); px(7, 7, 10, 2, '#a855f7'); px(3, 12, 2, 2, '#22d3ee'); px(19, 14, 2, 2, '#f43f5e'); px(5, 15, 14, 1, '#22d3ee');
           eye(8, 11, px); eye(14, 11, px); px(10, 16, 4, 1, '#1c1917'); px(16, 8, 3, 1, '#f43f5e');

@@ -8,7 +8,7 @@ try {
   const {arenaArtName} = await server.ssrLoadModule('/src/pastel-art.ts');
   for(const p of PHILOSOPHERS) assert.ok(SKILLS[p.realName],`Missing skill: ${p.name}`);
   const names=new Set(STAGES.map(s=>arenaArtName(s.era,'greek-01')));
-  assert.equal(names.size,5,'A saved Greek choice must not replace other eras');
+  assert.equal(names.size,STAGES.length,'A saved Greek choice must not replace other eras');
   assert.equal(arenaArtName('동양','greek-03'),'arena-east-v2');
   assert.equal(arenaArtName('동양','era','P7'),'arena-bodhi-v2');
   const originalRandom=Math.random;

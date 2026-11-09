@@ -1,7 +1,7 @@
 import atlasIds from './character-atlas.json';
 import { ART_SOURCES } from './artwork-sources';
 
-export const RELEASE = '20261109v2';
+export const RELEASE = '20261109v3';
 export type ArtName = keyof typeof ART_SOURCES;
 const images = new Map<ArtName, HTMLImageElement>();
 const tiles = new Map<string, HTMLCanvasElement>();
@@ -10,7 +10,7 @@ const characterCells = new Map<string, [number, number]>();
 atlasIds.forEach((ids, sheet) => ids.forEach((id, cell) => characterCells.set(id, [sheet + 1, cell])));
 
 export const ERA_ART: Record<string, ArtName> = {
-  고대: 'map-ancient', 동양: 'map-east', 중세: 'map-medieval', 근대: 'map-modern', 현대: 'map-contemporary', 히든: 'map-contemporary',
+  고대: 'map-ancient', 동양: 'map-east', 중세: 'map-medieval', 근대: 'map-modern', 근현대: 'map-contemporary', 현대: 'arena-present-v3', 히든: 'map-contemporary',
 };
 export const artUrl = (name: ArtName) => ART_SOURCES[name];
 export const eraArtUrl = (era: string) => artUrl(ERA_ART[era] ?? 'map-ancient');
@@ -40,9 +40,12 @@ function tile(name: ArtName, column: number, row: number, columns = 4, rows = 4)
   const key = `${name}/${column}/${row}/${columns}/${rows}`;
   if (tiles.has(key)) return tiles.get(key);
   const source = images.get(name); if (!source) return;
-  const sx = Math.round(column * source.naturalWidth / columns), sy = Math.round(row * source.naturalHeight / rows);
+  // Measured gutters prevent a neighboring row's feet from leaking into enemies.
+  const enemyCuts = [0, 304, 578, 815, 1068, 1304, 1536];
+  const sx = Math.round(column * source.naturalWidth / columns);
+  const sy = name === 'enemies-v3' ? Math.round(enemyCuts[row] * source.naturalHeight / 1536) : Math.round(row * source.naturalHeight / rows);
   const sw = Math.round((column + 1) * source.naturalWidth / columns) - sx;
-  const sh = Math.round((row + 1) * source.naturalHeight / rows) - sy;
+  const sh = (name === 'enemies-v3' ? Math.round(enemyCuts[row + 1] * source.naturalHeight / 1536) : Math.round((row + 1) * source.naturalHeight / rows)) - sy;
   const raw = document.createElement('canvas'); raw.width = sw; raw.height = sh;
   const r = raw.getContext('2d', { willReadFrequently: true })!;
   r.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
@@ -85,7 +88,9 @@ export function iconHtml(id: string, label = '') {
   return url ? `<img class="pixel-icon" src="${url}" alt="${label}">` : label;
 }
 export function artworkEnemy(era: string, kind: string) {
-  const row = ['고대', '동양', '중세', '근대', '현대'].indexOf(era);
+  const eras = ['고대', '동양', '중세', '근대', '근현대', '현대'];
+  if (kind !== 'boss') return tile('enemies-v3', Math.max(0,['normal','fast','tank','swarm'].indexOf(kind)), Math.max(0,eras.indexOf(era)),4,6);
+  const row = Math.min(4,Math.max(0,eras.indexOf(era)));
   const col = ['normal', 'fast', 'tank', 'swarm', 'boss'].indexOf(kind);
   return tile('enemies', Math.max(0, col), Math.max(0, row), 5, 5);
 }
@@ -95,11 +100,12 @@ export const RAID_BOSS_NAMES = [
   ['면죄부 대상인', '마녀사냥꾼'],
   ['형식주의 대감', '과거시험 암기귀신'],
   ['절대왕정 집행관', '리바이어던'],
-  ['허무의 사도', '알고리즘 확증편향 괴물'],
+  ['허무의 사도', '언어게임의 심판'],
 ] as const;
 /** Named raid bosses have their own cell; story antagonists retain their era's silhouette. */
 export function artworkBoss(era: string, name: string, final = false) {
-  let row = ['고대','중세','동양','근대','현대'].indexOf(era), col = final ? 1 : 0;
+  if (era === '현대') return tile('present-bosses-v3', name === '필터버블 관리자' ? 0 : 1, 0, 2, 1);
+  let row = ['고대','중세','동양','근대','근현대'].indexOf(era), col = final ? 1 : 0;
   RAID_BOSS_NAMES.forEach((pair,r) => { const c = (pair as readonly string[]).indexOf(name); if (c >= 0) { row=r; col=c; } });
   return tile('raid-bosses-v2', col, Math.max(0,row), 2, 5);
 }
