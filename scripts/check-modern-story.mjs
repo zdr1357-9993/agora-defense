@@ -13,7 +13,11 @@ try {
  assert.ok(!PHILOSOPHERS.some(p=>p.era==='현대'),'Existing philosophers keep historical era; no invented contemporary roster');
  const unique=new Set(STORY.map(s=>s.id));assert.equal(unique.size,29);
  const modern=STORY.filter(s=>s.chapter===6);assert.deepEqual(modern.map(s=>s.id),['P21','P22','P23','P24']);
- assert.equal(STORY[STORY.indexOf(modern[0])-1].id,'P20','Legacy finale opens new chapter');
+ assert.equal(STORY[STORY.indexOf(modern[0])-1].id,'P20','Modern story follows the legacy finale');
+ const {modernUnlockStatus,MODERN_PREREQUISITES}=await server.ssrLoadModule('/src/ui-policy.ts');
+ for(let mask=0;mask<32;mask++){const cleared=MODERN_PREREQUISITES.filter((_,i)=>mask&(1<<i)).map(id=>`${id}:hard`);const state=modernUnlockStatus(cleared);assert.equal(state.unlocked,mask===31);assert.equal(state.completed,cleared.length);assert.equal(state.missing.length,5-cleared.length);}
+ assert.equal(modernUnlockStatus(['S6:hard','S1:normal','S5']).unlocked,false);
+ assert.equal(modernUnlockStatus(MODERN_PREREQUISITES.map(id=>`${id}:hard`)).unlocked,true,'No S6 hard clear required to unlock S6');
  for(const st of STORY){assert.ok(STAGES.some(s=>s.id===st.base));for(const name of st.memories)assert.ok(PHILOSOPHERS.some(p=>p.realName===name),`Unknown reward ${name}`);assert.ok(st.intro.length&&st.outro.length);}
  for(const st of STAGES){const g=new Game(st);assert.ok(STAGE_PATHS[st.id].layoutFor(30).paths.length);g.raid={hp:50000,time:90,name:st.boss20};g.startRaid();g.update(5);assert.ok(g.fx.some(f=>f.type==='bossSkill'),`Missing raid ability ${st.id}`);}
  assert.equal(homeBonus('S5','근현대','카를 마르크스','근현대').mult,1.25);
