@@ -1,7 +1,7 @@
 import atlasIds from './character-atlas.json';
 import { ART_SOURCES } from './artwork-sources';
 
-export const RELEASE = '20261109v4';
+export const RELEASE = '20261110v1';
 export type ArtName = keyof typeof ART_SOURCES;
 const images = new Map<ArtName, HTMLImageElement>();
 const tiles = new Map<string, HTMLCanvasElement>();
@@ -10,7 +10,7 @@ const characterCells = new Map<string, [number, number]>();
 atlasIds.forEach((ids, sheet) => ids.forEach((id, cell) => characterCells.set(id, [sheet + 1, cell])));
 
 export const ERA_ART: Record<string, ArtName> = {
-  고대: 'map-ancient', 동양: 'map-east', 중세: 'map-medieval', 근대: 'map-modern', 근현대: 'map-contemporary', 현대: 'arena-present-v3', 히든: 'map-contemporary',
+  고대: 'map-ancient', 동양: 'map-east', 중세: 'map-medieval', 근대: 'map-modern', 근현대: 'map-contemporary', 현대: 'map-present-v5', 히든: 'map-contemporary',
 };
 export const artUrl = (name: ArtName) => ART_SOURCES[name];
 export const eraArtUrl = (era: string) => artUrl(ERA_ART[era] ?? 'map-ancient');
