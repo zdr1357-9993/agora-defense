@@ -1,7 +1,7 @@
 import atlasIds from './character-atlas.json';
 import { ART_SOURCES } from './artwork-sources';
 
-export const RELEASE = '20261110v2';
+export const RELEASE = '20261110v3';
 export type ArtName = keyof typeof ART_SOURCES;
 const images = new Map<ArtName, HTMLImageElement>();
 const tiles = new Map<string, HTMLCanvasElement>();
@@ -66,6 +66,9 @@ function tile(name: ArtName, column: number, row: number, columns = 4, rows = 4)
 }
 
 export function artworkCharacter(id: string) {
+  const additions=['T315','T415','T416','T417','T511','T614','T615','T702'];
+  const n=additions.indexOf(id);
+  if(n>=0 && images.has('characters-v3')) return tile('characters-v3',n%4,Math.floor(n/4),4,2);
   const variants: Record<string, [number, number]> = { T701: [0, 0], T108: [1, 0], T704: [0, 1], T106: [1, 1] };
   const variant = variants[id];
   if (variant && images.has('sage-variants')) return tile('sage-variants', variant[0], variant[1], 2, 2);

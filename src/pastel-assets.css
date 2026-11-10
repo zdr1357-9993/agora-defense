@@ -348,3 +348,23 @@ button:focus-visible,select:focus-visible { outline:3px solid #577b69; outline-o
 @keyframes spotlightSettle { from {opacity:1;transform:scale(.8);} to {opacity:.55;transform:scale(1.1);} }
 @media(max-height:700px) { .result-board.memory-reveal { gap:6px;padding:10px; }.memory-spotlight {height:160px;}.result-board .spotlight-card.gcard img {width:82px;height:82px;}.result-board .gcard img {width:36px;height:36px;}.result-board .gcard b {font-size:10px;}.result-board .memory-caption h2 {font-size:15px;} }
 @media(prefers-reduced-motion:reduce) { .result-board *, .result-board *::before { animation:none !important;transition:none !important; } }
+/* 59-card ladder: compact ranks and quantities, generous reading surfaces. */
+.codex-tabs { flex-wrap:wrap; gap:6px; }
+.codex-tabs .tier-chip { min-height:32px; padding:5px 10px; }
+.recipe-filters { display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:8px;margin:8px 0; }
+.recipe-filters label { display:flex;flex-direction:column;gap:4px;font-size:11px;color:#53465e; }
+.recipe-filters input,.recipe-filters select { width:100%;min-width:0;height:36px;border:1px solid #b7a9c3;background:#fffdf7;border-radius:5px;padding:6px;color:#392f47;font:inherit;font-size:12px; }
+.rs-list .req[hidden] { display:none; }
+.rs-list .req { flex-wrap:wrap; row-gap:7px; padding:12px 32px 12px 8px; }
+.req .rf small { white-space:normal;line-height:1.4; }
+.req .rf .recipe-rank { font:9px Galmuri11,sans-serif;color:#53465e;background:#eee7f3;border-radius:3px;padding:2px 4px;margin-top:3px; }
+.recipe-cost { background:#f0ecf6;border-radius:6px;padding:10px;font-size:12px;line-height:1.7; }
+.rd-mats { flex-direction:row;flex-wrap:wrap;gap:8px; }
+.rd-mats>div { flex:1 1 140px;min-width:0;opacity:1;background:#f7f3ed; }
+.rd-mats b { font-size:13px;color:#392f47; }
+.rd-mats small { color:#594a62; }
+.rd-mats b,.rd-mats small { white-space:normal;word-break:keep-all;line-height:1.5; }
+.collection-archive { margin:16px 0;padding:12px;background:#f0edf4;border:1px solid #c8bed1;border-radius:6px;color:#53465e;font-size:12px; }
+.collection-archive summary { cursor:pointer;font-weight:bold;min-height:28px; }
+.collection-archive p { line-height:1.7; }
+.collection-archive>div { display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid #d8d0df; }

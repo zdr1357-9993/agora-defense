@@ -1,5 +1,5 @@
 import {
-  PHIL, PHILOSOPHERS, RECIPES, statsOf, COUNTER_MULT, UPGRADE,
+  PHIL, PHILOSOPHERS, RECIPES, statsOf, COUNTER_MULT, UPGRADE, SUMMON_RATES, gradeRank,
   type Recipe, type Stage,
 } from './data';
 
@@ -168,11 +168,17 @@ export class Game {
     if (!this.canSummon()) return null;
     if (this.tickets > 0) this.tickets--; else { this.gold -= this.summonCost; this.summonCost += SUMMON_STEP; }
     const pool = this.summonPool.length ? this.summonPool : PHILOSOPHERS.filter((p) => p.tier === 1 && !p.hidden).map((p) => p.id);
-    return this.place(pick(pool));
+    // Renormalize over eligible grades; an owned awakened card can appear from
+    // the first summon. Never roll an unavailable grade then silently substitute.
+    const bands=SUMMON_RATES.map(r=>({...r,ids:pool.filter(id=>gradeRank(PHIL.get(id)!)===gradeRank(r))})).filter(r=>r.ids.length);
+    let roll=Math.random()*bands.reduce((n,r)=>n+r.rate,0);
+    let band=bands[bands.length-1];
+    for(const r of bands){if(roll<r.rate){band=r;break;}roll-=r.rate;}
+    return band ? this.place(pick(band.ids)) : null;
   }
 
   /** 판매 금액: 기본 소환비의 35% × 등급마다 2.2배 */
-  sellValue(t: Tower) { return Math.round(SUMMON_COST * 0.35 * 2.2 ** (PHIL.get(t.philId)!.tier - 1)); }
+  sellValue(t: Tower) { return Math.round(SUMMON_COST * 0.35 * 2.2 ** (gradeRank(PHIL.get(t.philId)!) - 1)); }
   sell(t: Tower) {
     this.gold += this.sellValue(t);
     this.towers = this.towers.filter((x) => x !== t);
@@ -213,7 +219,7 @@ export class Game {
   upgradeCost(t: Tower) {
     const p = PHIL.get(t.philId)!;
     if (p.tier < UPGRADE.minTier || t.level >= UPGRADE.maxLevel) return null;
-    return UPGRADE.baseCost[p.tier] * (t.level + 1);
+    return Math.round(UPGRADE.baseCost[p.tier] * (p.plus ? 1.5 : 1) * (t.level + 1));
   }
 
   upgrade(t: Tower) {
