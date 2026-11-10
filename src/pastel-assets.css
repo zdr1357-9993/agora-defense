@@ -260,3 +260,12 @@ button:focus-visible,select:focus-visible { outline:3px solid #577b69; outline-o
 .enemy-guide img { width:44px;height:44px;image-rendering:pixelated; }
 .enemy-guide figcaption { min-width:0; }.enemy-guide b { display:block;font-size:12px; }.enemy-guide small { display:block;font-size:10px;line-height:1.6;color:#61516c; }
 .journey-chapters { overflow-x:auto;scrollbar-width:thin; }
+
+/* ---- 20261110 화면 정리: HUD 잘림 · 안내 줄 통합 · 필드 확대 ---- */
+#hud { flex: none; min-height: 34px; box-sizing: border-box; align-items: center; }
+#battle-quote { display: none; }
+#boss-status { height: 34px; min-height: 0; box-sizing: border-box; padding: 2px 8px; line-height: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#boss-status.has-boss { display: block; line-height: 28px; font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+@media (max-height: 720px) { #selbar { height: 70px; } }
+/* 상단 지갑 줄은 스크롤해도 항상 보이게 */
+#home .hub-top { position: sticky; top: 0; z-index: 5; background: #f0eaf9; box-shadow: 0 6px 6px -6px rgba(81,69,105,.25); margin: 0 -8px; padding-left: 8px; padding-right: 8px; }

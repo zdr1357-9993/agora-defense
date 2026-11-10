@@ -677,14 +677,15 @@ function draw() {
     if (cast && t.cy < GRID) drawSignatureEffect(ctx, p.id, cast.age / cast.duration, cx, foot, cast.tx * cellX, cast.ty * cell, cell, cast.skill);
     // Stable opaque nameplates: full name in the selected detail panel, readable battle name below every unit.
     {
-      const nm = shortName(p.name), fs = Math.max(9, Math.min(10.5, cellX / 4.8));
+      // 한 줄 고정: 긴 이름은 글자를 줄이고, 그래도 넘치면 가로로만 살짝 눌러 칸 안에 넣는다 (아래 칸 얼굴을 가리지 않게)
+      const nm = shortName(p.name), chars = Array.from(nm).length, room = cellX - 5;
+      const fs = Math.max(7.5, Math.min(10.5, cellX / 4.8, room / chars));
       ctx.font = `700 ${fs}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const lines = wrapCanvasText(nm, cellX - 6, text => ctx.measureText(text).width);
-      const nw = Math.min(cellX - 2, Math.max(...lines.map(text => ctx.measureText(text).width)) + 6);
-      const nh = lines.length * (fs+1) + 3, top = foot + cell * .055;
+      const tw = ctx.measureText(nm).width, squeeze = Math.min(1, room / tw);
+      const nw = Math.min(cellX - 1, tw * squeeze + 5), nh = fs + 4, top = foot + cell * .055;
       ctx.fillStyle = isSel ? '#e0eee3' : '#fffdf7'; ctx.strokeStyle = isSel ? '#557c69' : '#c3b8cb'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.roundRect(cx - nw / 2, top, nw, nh, 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#392f47'; lines.forEach((line,i) => ctx.fillText(line,cx,top+3+(i+.5)*(fs+1)));
+      ctx.fillStyle = '#392f47'; ctx.save(); ctx.translate(cx, top + nh / 2 + .5); ctx.scale(squeeze, 1); ctx.fillText(nm, 0, 0); ctx.restore();
     }
     // A quiet paper tab replaces the pulsing ring underneath synthesis partners.
     if (readyIds.has(t.philId) && !isSel) {
@@ -1490,7 +1491,7 @@ function drawFx(w: number, fh: number) {
     status.style.setProperty('--boss-hp', `${ratio*100}%`);
     status.classList.add('has-boss');
     status.textContent = `${boss.name} · ${Math.ceil(ratio*100)}%${game?.raid ? ` · ${Math.ceil(game.raidLeft)}초` : ''}${(boss.shieldT??0)>0 ? ' · 보호막' : ''}`;
-  } else { status.classList.remove('has-boss'); status.textContent='보스는 10웨이브마다 등장해요'; }
+  } else { status.classList.remove('has-boss'); const q = $('battle-quote').textContent || ''; if (status.textContent !== q) status.textContent = q; }
   // 보스 등장 컷인
   if (bossIntro) {
     const T = 2.6 - bossIntro.t, slide = 1 - Math.pow(1 - Math.min(1, T * 3.2), 3), out = Math.min(1, bossIntro.t * 3);
