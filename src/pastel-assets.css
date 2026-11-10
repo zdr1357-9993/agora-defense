@@ -269,3 +269,34 @@ button:focus-visible,select:focus-visible { outline:3px solid #577b69; outline-o
 @media (max-height: 720px) { #selbar { height: 70px; } }
 /* 상단 지갑 줄은 스크롤해도 항상 보이게 */
 #home .hub-top { position: sticky; top: 0; z-index: 5; background: #f0eaf9; box-shadow: 0 6px 6px -6px rgba(81,69,105,.25); margin: 0 -8px; padding-left: 8px; padding-right: 8px; }
+
+/* 20261110v1: keep the compact HUD; full dialogue is one tap away. */
+#battle-status-row { display:flex; gap:6px; flex:none; min-width:0; }
+#battle-status-row #boss-status { flex:1; min-width:0; }
+#battle-log { flex:none; min-width:48px; min-height:34px; padding:3px 7px; font-size:11px; box-shadow:none; background:#fffdf7; }
+.battle-dialogue-log { max-height:52dvh; overflow-y:auto; overscroll-behavior:contain; text-align:left; }
+.battle-dialogue-log p { white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.8; padding:10px 0; border-bottom:1px solid #e4dae9; }
+.card-section { padding:9px 10px; border:1px solid #d7cadf; border-radius:4px; background:#fffdf8; }
+.card-section summary { cursor:pointer; font-size:12px; line-height:1.6; color:#514569; font-weight:700; }
+.card-section[open] summary { margin-bottom:9px; }
+.pcard .pc-skill { font-size:13px; line-height:1.8; }
+.pcard .pc-combat,.pcard .pc-lore { font-size:12px; line-height:1.7; }
+.pcard .pc-recipe { font-size:12px; line-height:1.7; overflow-wrap:anywhere; }
+/* Ten cards remain legible on a phone; no perpetual legendary pulse. */
+.memory-reveal .cards:not(.single) { grid-template-columns:repeat(3,minmax(0,1fr)); max-height:57dvh; }
+.memory-reveal .gcard b { margin:4px 0 2px; padding:0 2px; background:none; border-radius:0; box-shadow:none; font-size:12px; line-height:1.5; }
+.memory-reveal .gcard.legend,.memory-reveal .gcard.mythic { animation:memoryCard .3s ease-out both; }
+.memory-reveal .gcard img { image-rendering:pixelated; }
+.roam-map.journey { background-position:center; background-size:100% 100%; }
+.roam-map .roam-node { z-index:2; }
+.journey-traveler { z-index:3; }
+.journey-traveler span { white-space:nowrap; width:max-content; }
+/* The detail card uses the same quiet era art, without legacy clay frames. */
+.pcard[class*="tc"] { background:#fffcf6 !important; border:1px solid #c8b8d2; border-left-width:1px; border-radius:6px; box-shadow:0 3px 0 #d9cde1; }
+.pcard .pc-art { border:1px solid #d1c4d9; border-radius:4px; background-size:100% 100%; background-position:center; }
+.pcard .pc-art img { animation:none; filter:none; }
+.pcard .pc-quote,.pcard .pc-skill,.pcard .pc-combat,.pcard .pc-growth,.pcard .pc-lines { border:1px solid #dfd4e4; border-radius:4px; box-shadow:none; background:#fffdf8; }
+.pcard .pc-head { flex-wrap:wrap; gap:6px; }
+.pcard .pc-head b { min-width:0; overflow-wrap:anywhere; }
+.pcard .pc-era { font-size:11px; white-space:normal; }
+.battle-dialogue-log p { text-align:left; }

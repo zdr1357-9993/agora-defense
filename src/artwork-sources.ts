@@ -1,5 +1,6 @@
 // Generated production art, bundled with Vite content hashes.
 export const ART_SOURCES = {
+  'map-present-v5': new URL('./assets/map-present-v5.webp', import.meta.url).href,
   'enemies-v3': new URL('./assets/enemies-v3.webp', import.meta.url).href,
   'arena-present-v3': new URL('./assets/arena-present-v3.webp', import.meta.url).href,
   'present-bosses-v3': new URL('./assets/present-bosses-v3.webp', import.meta.url).href,

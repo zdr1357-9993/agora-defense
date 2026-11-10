@@ -178,29 +178,25 @@ function renderCodex() {
   box.appendChild(grid);
 }
 
-const CARD_BG: Record<string, string> = {
-  고대: 'linear-gradient(180deg,#bfe3ff,#f5ecd8)', 중세: 'linear-gradient(180deg,#c7b8e8,#e7e5e4)', 동양: 'linear-gradient(180deg,#d9f99d,#fef3c7)',
-  근대: 'linear-gradient(180deg,#cbd5e1,#f1f5f9)', 근현대: 'linear-gradient(180deg,#f5d0fe,#e0e7ff)', 현대: 'linear-gradient(180deg,#dceee7,#f7f2df)', 히든: 'linear-gradient(180deg,#fef9c3,#fff)',
-};
 function cardHtml(id: string) {
   const p = PHIL.get(id)!;
   const recipes = RECIPES.filter((r) => r.result === id);
   const st = statsOf(id);
   const bar = (v: number, max: number) => `<span class="sbar"><i style="width:${Math.min(100, (v / max) * 100)}%"></i></span>`;
   return `<div class="pcard tc${p.tier}">
-    <div class="pc-head"><span class="pc-tier tier-chip t${p.tier}">${TIER_NAME[p.tier]}</span><b>${p.name}</b><span class="pc-era">${ERA_ICON[p.era] ?? ''} ${p.school}</span></div>
-    <div class="pc-art" style="background:${CARD_BG[p.era] ?? CARD_BG['고대']}"><img src="${portrait(id)}"></div>
+    <div class="pc-head"><span class="pc-tier tier-chip t${p.tier}">${TIER_NAME[p.tier]}</span><b>${p.name}</b><span class="pc-era">${ERA_ICON[p.era] ?? ''} ${p.era} · ${p.school}</span></div>
+    <div class="pc-art" style="background-color:#f5f0e7;background-image:url('${journeyArt(p.era)}')"><img src="${portrait(id)}"></div>
     <div class="pc-quote">“${p.quote}”</div>
     <div class="pc-skill"><b>✦ ${p.skill}</b><span>${p.skillDesc}</span></div>
     <div class="pc-combat"><b>${TYPE_ICON[st.type]} ${st.type}</b> · 노리는 대상 <b>${st.target}</b><small>${st.note}</small></div>
-    <div class="pc-stats2">
+    <details class="card-section"><summary>전투 능력치 자세히 보기</summary><div class="pc-stats2">
       <div>⚔ 위력 ${bar(st.dmg, 1800)}<em>${Math.round(st.dmg)}</em></div>
       <div>◎ 사거리 ${bar(st.range, 3.5)}<em>${st.range}칸</em></div>
       <div>⏱ 공속 ${bar(1 / st.cooldown, 2.2)}<em>${(1 / st.cooldown).toFixed(2)}/초</em></div>
       <div>📈 초당 피해 ${bar(st.dmg / st.cooldown, 3200)}<em>${Math.round(st.dmg / st.cooldown)}</em></div>
-    </div>
+    </div></details>
     <div class="pc-lore">${p.lore}</div>
-    ${recipes.map((r) => `<div class="pc-recipe">⚗ ${r.materials.map((m) => PHIL.get(m)!.name).join(' + ')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''}<small>${r.logic}</small></div>`).join('')}
+    ${recipes.length ? `<details class="card-section"><summary>만드는 방법 · 조합 ${recipes.length}개</summary>${recipes.map((r) => `<div class="pc-recipe">⚗ ${r.materials.map((m) => PHIL.get(m)!.name).join(' + ')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''}<small>${r.logic}</small></div>`).join('')}</details>` : '<p class="hint">기본 소환으로 만나는 철학자예요.</p>'}
     <div class="pc-foot">AGORA · ${TIER_NAME[p.tier]}</div>
   </div>`;
 }
@@ -288,7 +284,8 @@ function resize() {
   // 필드가 먼저: 상단·하단 버튼을 뺀 높이에서 아래 패널 최소 높이(104px)만 남기고 필드에 준다
   const battle = $('battle');
   const gap = parseFloat(getComputedStyle(battle).rowGap) || 8, pad = parseFloat(getComputedStyle(battle).paddingTop) + parseFloat(getComputedStyle(battle).paddingBottom);
-  const fixed = ['hud', 'cats', 'boss-status', 'battle-quote', 'selbar', 'actions', 'dock'].reduce((a, id) => a + $(id).offsetHeight, 0) + gap * 5 + pad;
+  const fixedIds = ['hud', 'cats', 'battle-status-row', 'battle-quote', 'selbar', 'actions', 'dock'];
+  const fixed = fixedIds.reduce((a, id) => a + $(id).offsetHeight, 0) + gap * fixedIds.filter(id => $(id).offsetHeight > 0).length + pad;
   const H = Math.max(150, battle.clientHeight - fixed - (parseFloat(frameStyle.paddingTop) || 0) - (parseFloat(frameStyle.paddingBottom) || 0) - (parseFloat(frameStyle.borderTopWidth) || 0) - (parseFloat(frameStyle.borderBottomWidth) || 0));
   if (!W || !battle.clientHeight) return;
   // 세로에 맞춰 칸 크기를 정하고, 가로는 화면 폭까지 넓힌다 (칸이 최대 1.5배까지 옆으로 길어짐)
@@ -314,7 +311,7 @@ new ResizeObserver(resize).observe($('battle'));
 function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   if ((story?.base === 'S6' || (!story && s.id === 'S6')) && !modernUnlocked()) { toast(modernLockText()); return; }
   if (story) { const base = STAGES.find((x) => x.id === story.base)!; s = { ...base, name: story.title, boss10: story.boss, boss20: story.boss, story: story.when }; }
-  spawnAt.clear(); signatureCasts.clear(); signatureLast.clear(); speeches.clear(); quoteQueue.length = 0; quoteLeft = 0; $('battle-quote').textContent = '철학자의 한마디 · 전투를 시작해 보세요';
+  spawnAt.clear(); signatureCasts.clear(); signatureLast.clear(); speeches.clear(); quoteQueue.length = 0; battleDialogue.length = 0; quoteLeft = 0; $('battle-quote').textContent = '철학자의 한마디 · 전투를 시작해 보세요';
   $('field-wrap').style.backgroundImage = '';
   eraWipe(s.era, story ? story.title : s.name, story ? story.when : '');
   game = new Game(s, {
@@ -1371,6 +1368,7 @@ function consumeFx(g: Game) {
       const current = g.towers.find(t => t.uid === f.uid);
       if (current) {
         const text = `${PHIL.get(current.philId)!.name} · ${f.text}`;
+        if (battleDialogue[battleDialogue.length - 1] !== text) { battleDialogue.push(text); if (battleDialogue.length > 30) battleDialogue.shift(); }
         if (quoteLeft <= 0) { $('battle-quote').textContent = text; $('battle-quote').scrollTop = 0; quoteLeft = 6; }
         else if (!quoteQueue.includes(text) && quoteQueue.length < 6) quoteQueue.push(text);
       }
@@ -1381,6 +1379,7 @@ function consumeFx(g: Game) {
 }
 const speeches = new Map<number, { text: string; t: number }>();
 const quoteQueue: string[] = [];
+const battleDialogue: string[] = [];
 let quoteLeft = 0;
 const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
 
@@ -1534,7 +1533,7 @@ let uiTimer = 0;
 function loop(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000) * speed;
   last = now;
-  if (game) {
+  if (game && !document.querySelector('.battle-dialogue-log')) {
     game.update(dt);
     consumeFx(game);
     updateFx(dt);
@@ -1570,6 +1569,10 @@ $('open-rates').onclick = rateSheet;
 for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.onclick = () => { sfx.click(); switchTab(b.dataset.tab!); };
 for (const id of ['mute', 'mute-b']) { const b = document.getElementById(id); if (b) { b.textContent = isMuted() ? '🔇' : '🔊'; b.onclick = () => { const mu = toggleMute(); for (const x of ['mute', 'mute-b']) { const e = document.getElementById(x); if (e) e.textContent = mu ? '🔇' : '🔊'; } }; } }
 $('b-recipes').onclick = () => recipeSheet();
+$('battle-log').onclick = () => {
+  const escape = (text: string) => text.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+  alertBox(`<h2>철학자들의 한마디</h2><p class="hint">최근 대사를 최대 30개까지 모았어요. 읽는 동안 전투는 잠시 멈춰요.</p><div class="battle-dialogue-log">${battleDialogue.length ? battleDialogue.map(text => `<p>${escape(text)}</p>`).join('') : '<p>아직 대사가 없어요. 철학자들이 입을 열면 여기에 기록돼요.</p>'}</div>`);
+};
 $('tut-again').onclick = () => { $('settings').classList.add('hidden'); progress.battleTutDone = false; progress.tabTut = []; pageTutStart(currentTab); saveProgress(progress); toast('🎓 화면마다, 그리고 다음 전투에서 튜토리얼이 다시 나와요'); };
 $('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); progress = loadProgress(); bootQA(); renderHome(); switchTab('stages'); } };
 function bootQA() { if (isAdmin() && revealAdminCollection(progress, PHILOSOPHERS.map(p => p.id))) saveProgress(progress); if (QA_MODE && !progress.purchases.includes('qa')) { progress.gonoe += QA_GONOE; progress.gems += QA_GEMS; progress.tickets += 5; progress.purchases.push('qa'); saveProgress(progress); } }
@@ -1893,7 +1896,7 @@ function renderStory(box: HTMLElement) {
   for (const button of chapters.querySelectorAll<HTMLButtonElement>('button')) button.onclick = () => { storyChapter = Number(button.dataset.chapter); journeySelectedId = ''; renderHome(); };
   box.appendChild(chapters);
   const wrap = document.createElement('div'); wrap.className = 'journey roam-map'; wrap.setAttribute('aria-label',`${chapter.title} 여정 지도`);
-  wrap.style.backgroundImage = `url(${artUrl('greek-01')})`;
+  wrap.style.backgroundImage = `url(${journeyArt(chapter.era)})`;
   const points = positions.map(([x,y],i) => i ? `Q ${(positions[i-1][0]+x)/2} ${positions[i-1][1]} ${x} ${y}` : `M ${x} ${y}`).join(' ');
   wrap.innerHTML = `<svg class="roam-road" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${points}" fill="none" stroke="#a899b0" stroke-width="7" opacity=".35"/><path d="${points}" fill="none" stroke="#fff8e8" stroke-width="5.7"/><path d="${points}" fill="none" stroke="#d2bda2" stroke-width=".5" stroke-dasharray="1.5 2"/></svg>
     <div class="roam-chapter-title"><small>${chapter.n ? `${chapter.n}장 · ${chapter.era}` : '시작 튜토리얼'}</small><b>${chapter.title}</b></div>
