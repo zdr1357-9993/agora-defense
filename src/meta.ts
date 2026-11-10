@@ -1,5 +1,5 @@
 // 고민방(방치·탭) + 철학자 카드/도구 뽑기 + 상점
-import { PHILOSOPHERS } from './data';
+import { PHILOSOPHERS, gradeRank } from './data';
 import { ITEMS } from './items';
 import type { Progress } from './save';
 import { grantSub, passOn } from './live';
@@ -34,8 +34,11 @@ export const TOOL_COST = 150, TOOL_COST_10 = 1350;
 
 /** 철학자 카드 등급 확률 (히든 제외) */
 export const CARD_RATES = [
-  { tier: 1, rate: 0.36 }, { tier: 2, rate: 0.26 }, { tier: 3, rate: 0.18 }, { tier: 4, rate: 0.11 },
-  { tier: 5, rate: 0.06 }, { tier: 6, rate: 0.025 }, { tier: 7, rate: 0.005 },
+  { tier: 1, rate: 0.36 }, { tier: 2, rate: 0.26 },
+  { tier: 3, rate: .09 }, { tier: 3, plus:true, rate:.09 },
+  { tier: 4, rate:.07 }, { tier:4, plus:true, rate:.04 },
+  { tier: 5, rate:.035 }, { tier:5, plus:true, rate:.025 },
+  { tier: 6, rate:.02 }, { tier:6, plus:true, rate:.005 }, { tier: 7, rate: 0.005 },
 ];
 /** 거장 이상(6·7등급) */
 export const MASTER_TIER = 6;
@@ -48,12 +51,15 @@ const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 let cardFilter: (p: (typeof PHILOSOPHERS)[number]) => boolean = () => true;
 export function setCardFilter(f: typeof cardFilter) { cardFilter = f; }
 export function drawCard(minTier = 1, anyEra = false): string {
-  const rates = CARD_RATES.filter((c) => c.tier >= minTier);
-  let r = Math.random() * rates.reduce((a, c) => a + c.rate, 0), tier = rates[rates.length - 1].tier;
-  for (const c of rates) { if (r < c.rate) { tier = c.tier; break; } r -= c.rate; }
-  const all = PHILOSOPHERS.filter((p) => p.tier === tier && !p.hidden);
-  const ok = anyEra ? all : all.filter(cardFilter);
-  return pick(ok.length ? ok : all).id;
+  const eligible=PHILOSOPHERS.filter(p=>!p.hidden && (anyEra || cardFilter(p)));
+  const rates = CARD_RATES.filter(c=>c.tier>=minTier && eligible.some(p=>gradeRank(p)===gradeRank(c)));
+  // A guaranteed master must still pay out before the first master era opens.
+  // Only that guarantee may awaken a card from an unopened era.
+  if(!rates.length && !anyEra && minTier>=MASTER_TIER) return drawCard(minTier,true);
+  if(!rates.length) throw new Error('열린 등급에 뽑을 수 있는 카드가 없습니다.');
+  let r = Math.random() * rates.reduce((a, c) => a + c.rate, 0), band = rates[rates.length - 1];
+  for (const c of rates) { if (r < c.rate) { band = c; break; } r -= c.rate; }
+  return pick(eligible.filter(p=>gradeRank(p)===gradeRank(band))).id;
 }
 export function drawTool(): string { return pick(ITEMS).id; }
 

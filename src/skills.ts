@@ -22,6 +22,13 @@ export const skillModeLabel = (s: Skill | undefined) => !s ? '기본 공격' : (
 const S = (kind: SkillKind, v: number, v2?: number): Skill => ({ kind, v, v2 });
 
 export const SKILLS: Record<string, Skill> = {
+  '육구연': S('auraSpeed', .14),
+  '율곡 이이': S('auraAtk', .18),
+  '제러미 벤담': S('gold', 4),
+  '페르디낭 드 소쉬르': S('chain', 3),
+  '발터 벤야민': S('splash', .8),
+  '존 롤스': S('auraAtk', .3),
+  '쾨니히스베르크의 칸트': S('globalSlow', .3),
   // 1성
   탈레스: S('auraSpeed', 0.1), 헤라클레이토스: S('crit', 0.25), 피타고라스: S('auraAtk', 0.08),
   플라톤: S('splash', 0.5), 아리스토텔레스: S('third', 3, 2), 노자: S('slow', 0.25),
@@ -40,7 +47,7 @@ export const SKILLS: Record<string, Skill> = {
   '에마뉘엘 레비나스': S('boss', 0.7), '테오도어 아도르노': S('splash', 0.6), '니시다 기타로': S('auraAtk', 0.25),
   '다산 정약용': S('boss', 0.6), 바울: S('auraAtk', 0.3),
   // 6성
-  '델포이의 소크라테스': S('auraAtk', 0.35), '임마누엘 칸트': S('globalSlow', 0.3), '자크 데리다': S('execute', 0.2),
+  '델포이의 소크라테스': S('auraAtk', 0.35), '임마누엘 칸트': S('globalSlow', 0.15), '자크 데리다': S('execute', 0.2),
   '대성지성 공자': S('auraAtk', 0.4), '고타마 붓다': S('auraSpeed', 0.35), 예수: S('auraAtk', 0.5),
   '알베르 카뮈': S('stack', 0.04),
   // v2 조합표로 새로 들어온 철학자

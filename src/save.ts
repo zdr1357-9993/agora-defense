@@ -1,5 +1,6 @@
 // 진행 상황 저장 (브라우저 localStorage, 실패해도 게임은 계속)
 import legacyIds from './legacy_ids.json';
+import { PHILOSOPHERS } from './data';
 const BASE_KEY = 'agora_progress_v3';
 let account = 'guest';
 /** 로그인한 계정별로 저장 칸을 나눈다 */
@@ -60,7 +61,14 @@ export interface Progress {
   likedRecipes?: string[];
 }
 
-const fresh = (): Progress => ({ cleared: [], seen: [], gonoe: 300, idleAt: Date.now(), cards: { T101: 1 }, items: {}, loadout: {}, tapLevel: 0, gems: 100, pity: 0, tickets: 0, purchases: [], firstClears: [], tutorialDone: false, skins: [], skinOn: {}, oneToolBest: {}, idv2: true });
+const fresh = (): Progress => ({ cleared: [], seen: [], gonoe: 300, idleAt: Date.now(), cards: { T106: 1 }, items: {}, loadout: {}, tapLevel: 0, gems: 100, pity: 0, tickets: 0, purchases: [], firstClears: [], tutorialDone: false, skins: [], skinOn: {}, oneToolBest: {}, idv2: true });
+
+/** Keep removed cards, XP, equipment, skins and favorites verbatim for the archive.
+ * Only give a starter if the save has no active card; safe on local/cloud re-load. */
+export function ensureActiveStarter(p: Progress): Progress {
+  if (!PHILOSOPHERS.some(x=>(p.cards[x.id]??0)>0)) p.cards.T106 = 1;
+  return p;
+}
 
 /** 조합표 v2로 철학자 ID가 바뀌었다: 예전 카드·도감·장착을 새 ID로 옮긴다 (재화·클리어는 그대로) */
 function migrate(p: Progress): Progress {
@@ -86,7 +94,7 @@ export function hasSave() { try { return !!localStorage.getItem(KEY_OF()); } cat
 export function loadProgress(): Progress {
   try {
     const raw = localStorage.getItem(KEY_OF());
-    if (raw) return migrate({ ...fresh(), ...JSON.parse(raw) });
+    if (raw) return ensureActiveStarter(migrate({ ...fresh(), ...JSON.parse(raw) }));
   } catch { /* 저장소 사용 불가 */ }
   return fresh();
 }
@@ -101,7 +109,7 @@ export function saveProgress(p: Progress) {
 }
 /** 서버에서 받은 진행 상황을 이 기기 저장에 덮어쓴다 */
 export function adoptProgress(remote: Progress): Progress {
-  const p = { ...loadProgress(), ...remote };
+  const p = ensureActiveStarter(migrate({ ...loadProgress(), ...remote }));
   try { localStorage.setItem(KEY_OF(), JSON.stringify(p)); } catch { /* 무시 */ }
   return p;
 }

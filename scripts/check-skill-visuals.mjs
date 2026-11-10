@@ -52,5 +52,5 @@ try {
       assert.ok(!g.fx.some(f=>f.type==='ability'),`Unexpected cast on failure: ${kind}`);
     }
   } finally {Math.random=originalRandom;}
-  console.log('PASS: 80 actual skill definitions; passive/on-hit/trigger events; failed proc and dialogue isolation; era mapping and saved Greek override migration');
+  console.log(`PASS: ${PHILOSOPHERS.length} actual skill definitions; passive/on-hit/trigger events; failed proc and dialogue isolation; era mapping and saved Greek override migration`);
 } finally {await server.close();}

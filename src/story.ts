@@ -42,7 +42,7 @@ export const CHAPTERS = [
 
 /** 처음부터 소환되는 흔함 */
 /** 시작 튜토리얼(아고라 광장)을 마치면 소환되는 흔함: 그리스 여섯 명. 동양의 셋은 2장에서 그 사람을 만나야 열린다 */
-export const START_POOL = ['탈레스', '피타고라스', '헤라클레이토스', '파르메니데스', '데모크리토스', '소크라테스'];
+export const START_POOL = ['소크라테스', '플라톤', '아리스토텔레스', '데모크리토스'];
 
 export const STORY: StoryStage[] = [
   // ---------- 시작 튜토리얼: 아고라 광장 (이기든 지든 한 번 해 보면 다음으로) ----------
@@ -335,5 +335,34 @@ export const STORY: StoryStage[] = [
   },
   ...MODERN_STORY,
 ];
+
+// Collection rewards/pools follow the 59-card ladder. Historical NPCs remain in
+// the narrative; meeting one does not require making them a collectible card.
+const rewardAliases: Record<string,string> = {
+ '탈레스':'소크라테스', '피타고라스':'플라톤', '헤라클레이토스':'아리스토텔레스',
+ '파르메니데스':'데모크리토스', '아낙시만드로스':'에피쿠로스', '제논':'피론',
+ '프로타고라스':'세네카', '한비자':'육구연', '히파티아':'아우구스티누스',
+ '키케로':'세네카', '이븐 루시드':'아리스토텔레스', '이븐 시나':'플로티노스',
+ '미셸 드 몽테뉴':'피론', '토머스 홉스':'존 로크', '에마뉘엘 레비나스':'존 롤스',
+};
+for (const st of STORY) {
+ st.memories=st.memories.map(n=>rewardAliases[n]??n);
+ if(st.unlock)st.unlock=st.unlock.map(n=>rewardAliases[n]??n);
+ if(st.pool) st.pool=[...new Set(st.pool.map(n=>rewardAliases[n]??n))];
+}
+const tutorialPool=['소크라테스','데모크리토스','아리스토텔레스','플라톤'];
+STORY.filter(s=>s.chapter===0).forEach((st,i)=>{st.pool=tutorialPool.slice(0,Math.min(4,i+2));});
+STORY[0].intro[1]=['나','소크라테스… 데모크리토스… 정말 나타났어!'];
+STORY[1].intro[1]=['나','소크라테스와 데모크리토스를 모으면 피론! 질문과 판단 유보로 이어지는구나.'];
+STORY[1].outro=[['나','1성에서 2성, 그리고 3성+… 조합은 항상 더 높은 단계로 이어지는구나.']];
+STORY[3].intro[2]=['나','이제 기본 조합에는 촉매가 필요 없네. 철학자 재료만 모으면 돼!'];
+STORY[4].outro[0]=['소크라테스','훌륭하네! 이제 서양의 기본 철학자 네 명을 떠올릴 수 있을 걸세.'];
+// Origin memories awaken as the journey progresses; owning one enables its
+// exceptionally rare in-battle summon even before the full ladder is reached.
+STORY.find(s=>s.id==='P4')!.memories.push('델포이의 소크라테스','루트비히 비트겐슈타인');
+STORY.find(s=>s.id==='P7')!.memories.push('고타마 붓다');
+STORY.find(s=>s.id==='P8')!.memories.push('대성지성 공자');
+STORY.find(s=>s.id==='P12')!.memories.push('예수');
+STORY.find(s=>s.id==='P16')!.memories.push('쾨니히스베르크의 칸트');
 
 export const STORY_MAP = new Map(STORY.map((s) => [s.id, s]));

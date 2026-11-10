@@ -1,0 +1,2134 @@
+{
+  "version": "20261110v3",
+  "philosophers": [
+    {
+      "id": "T106",
+      "name": "소크라테스",
+      "tier": 1,
+      "era": "고대",
+      "school": "고전철학",
+      "quote": "그런데 그게 정말 정의일까?",
+      "skill": "등에의 질문",
+      "skillDesc": null,
+      "lore": "아테네 광장에서 아무에게나 말을 걸어 질문을 던지던 시절의 소크라테스.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": -399,
+      "materialCost": 1
+    },
+    {
+      "id": "T207",
+      "name": "플라톤",
+      "tier": 1,
+      "era": "고대",
+      "school": "관념론",
+      "quote": "현실은 동굴의 그림자일 뿐!",
+      "skill": "이데아계 소환",
+      "skillDesc": "5초마다 하늘에서 완전한 삼각형 낙하 (광역 딜)",
+      "lore": "프로 레슬링 선수 출신으로 '플라톤'은 '어깨깡패'라는 뜻이다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": -380,
+      "materialCost": 1
+    },
+    {
+      "id": "T301",
+      "name": "아리스토텔레스",
+      "tier": 1,
+      "era": "고대",
+      "school": "경험론",
+      "quote": "소크라테스는 죽는다!",
+      "skill": "삼단논법 기관총",
+      "skillDesc": "3타마다 확정 치명타 및 상태이상 해제",
+      "lore": "산책하며 강의하는 소요학파를 창시해 제자들의 다리를 혹사시켰다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": -350,
+      "materialCost": 1
+    },
+    {
+      "id": "T105",
+      "name": "데모크리토스",
+      "tier": 1,
+      "era": "고대",
+      "school": "원자론",
+      "quote": "모든 것은 원자와 허공뿐!",
+      "skill": "원자 분열",
+      "skillDesc": null,
+      "lore": "세계를 쪼갤 수 없는 원자와 빈 공간으로 설명했다. '웃는 철학자'라 불렸다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": -400,
+      "materialCost": 1
+    },
+    {
+      "id": "T108",
+      "name": "공자",
+      "tier": 1,
+      "era": "동양",
+      "school": "유학",
+      "quote": "배우고 때때로 익히면 기쁘지 아니한가!",
+      "skill": "주유천하",
+      "skillDesc": null,
+      "lore": "벼슬을 얻지 못하고 제자들과 여러 나라를 떠돌던 시절의 공자.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": -479,
+      "materialCost": 1
+    },
+    {
+      "id": "T107",
+      "name": "노자",
+      "tier": 1,
+      "era": "동양",
+      "school": "도가",
+      "quote": "도를 도라 하면 도가 아니다!",
+      "skill": "무위자연",
+      "skillDesc": "공격속도 +15%",
+      "lore": "책 한 권 남기고 소를 타고 서쪽으로 사라졌다. 퇴사 후 잠적의 원조.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": -500,
+      "materialCost": 1
+    },
+    {
+      "id": "T109",
+      "name": "싯다르타",
+      "tier": 1,
+      "era": "동양",
+      "school": "불교",
+      "quote": "모든 것은 괴로움이다.",
+      "skill": "출가",
+      "skillDesc": null,
+      "lore": "왕궁을 떠나 수행을 시작한 석가족의 왕자. 아직 깨닫기 전의 붓다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": -450,
+      "materialCost": 1
+    },
+    {
+      "id": "T212",
+      "name": "맹자",
+      "tier": 2,
+      "era": "동양",
+      "school": "유학",
+      "quote": "사람의 본성은 선하다!",
+      "skill": "호연지기",
+      "skillDesc": null,
+      "lore": "공자의 손자 자사의 학통을 이었다. 어머니가 세 번 이사한 '맹모삼천'으로 유명하다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": -300,
+      "materialCost": 2
+    },
+    {
+      "id": "T213",
+      "name": "순자",
+      "tier": 2,
+      "era": "동양",
+      "school": "유학",
+      "quote": "사람의 본성은 악하니 배워서 고쳐야 한다!",
+      "skill": "성악설",
+      "skillDesc": null,
+      "lore": "맹자의 성선설에 맞서 예와 배움을 강조했다. 한비자와 이사의 스승.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": -250,
+      "materialCost": 2
+    },
+    {
+      "id": "T211",
+      "name": "장자",
+      "tier": 2,
+      "era": "동양",
+      "school": "도가",
+      "quote": "내가 나비인가, 나비가 나인가!",
+      "skill": "호접몽",
+      "skillDesc": "15% 확률로 두 번 타격",
+      "lore": "아내가 죽자 항아리를 두드리며 노래했다. 장례식 매너 0점.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": -300,
+      "materialCost": 2
+    },
+    {
+      "id": "T309",
+      "name": "나가르주나",
+      "tier": 2,
+      "era": "동양",
+      "school": "불교",
+      "quote": "모든 것은 공(空)하다!",
+      "skill": "공의 변증",
+      "skillDesc": "적 방어력 무시",
+      "lore": "있다고도 없다고도 하지 않는 사구부정으로 토론 상대를 모두 기권시켰다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 200,
+      "materialCost": 3
+    },
+    {
+      "id": "T306",
+      "name": "플로티노스",
+      "tier": 2,
+      "era": "고대",
+      "school": "신플라톤주의",
+      "quote": "모든 것은 일자에서 흘러나온다.",
+      "skill": "유출",
+      "skillDesc": null,
+      "lore": "신플라톤주의의 창시자. 제자 포르피리오스가 그의 글을 「엔네아데스」로 엮었다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 270,
+      "materialCost": 2
+    },
+    {
+      "id": "T210",
+      "name": "피론",
+      "tier": 2,
+      "era": "고대",
+      "school": "회의주의",
+      "quote": "판단을 멈추라!",
+      "skill": "판단 중지",
+      "skillDesc": null,
+      "lore": "알렉산드로스 원정에 동행해 인도의 수행자들을 만났다. 회의주의의 시조.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": -275,
+      "materialCost": 2
+    },
+    {
+      "id": "T209",
+      "name": "에피쿠로스",
+      "tier": 2,
+      "era": "고대",
+      "school": "에피쿠로스학파",
+      "quote": "죽음은 우리에게 아무것도 아니다.",
+      "skill": "정원의 평온",
+      "skillDesc": null,
+      "lore": "아테네 교외 '정원'에서 친구들과 소박한 쾌락을 나누는 공동체를 이끌었다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": -300,
+      "materialCost": 2
+    },
+    {
+      "id": "T303",
+      "name": "세네카",
+      "tier": 2,
+      "era": "고대",
+      "school": "스토아학파",
+      "quote": "삶은 짧은 게 아니라 우리가 낭비하는 것이다.",
+      "skill": "루킬리우스에게",
+      "skillDesc": null,
+      "lore": "네로 황제의 스승. 편지 속에서 에피쿠로스를 자주 인용했다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 60,
+      "materialCost": 2
+    },
+    {
+      "id": "T308",
+      "name": "아우구스티누스",
+      "tier": 3,
+      "era": "중세",
+      "school": "관념론",
+      "quote": "주여, 저에게 순결을 주소서… 아직 말고요!",
+      "skill": "시간의 고백록",
+      "skillDesc": "과거/현재/미래 스택을 쌓아 10초마다 폭발 딜",
+      "lore": "젊은 시절 방탕하게 놀다 어머니의 눈물과 회심으로 성인이 되었다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 400,
+      "materialCost": 4
+    },
+    {
+      "id": "T311",
+      "name": "원효",
+      "tier": 3,
+      "era": "동양",
+      "school": "불교",
+      "quote": "모든 것은 마음이 지어낸다!",
+      "skill": "화쟁",
+      "skillDesc": "서로 다른 학파가 주변에 많을수록 공격력 증가",
+      "lore": "해골물을 마시고 깨달아 당나라 유학을 접고 귀국했다. 유학 포기의 원조.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 670,
+      "materialCost": 5
+    },
+    {
+      "name": "육구연",
+      "era": "동양",
+      "school": "심학",
+      "quote": "우주가 곧 내 마음이다.",
+      "skill": "본심의 등불",
+      "skillDesc": "",
+      "lore": "책보다 내 마음부터 살피는 중. 마음속에도 검색창이 있을까?",
+      "id": "T315",
+      "tier": 3,
+      "plus": false,
+      "thoughtYear": 1185,
+      "hidden": false,
+      "materialCost": 4
+    },
+    {
+      "id": "T401",
+      "name": "토마스 아퀴나스",
+      "tier": 3,
+      "era": "중세",
+      "school": "스콜라철학",
+      "quote": "은총은 자연을 완성한다.",
+      "skill": "신학대전",
+      "skillDesc": null,
+      "lore": "아리스토텔레스를 그리스도교 신학에 녹인 「신학대전」의 저자.",
+      "hidden": false,
+      "plus": true,
+      "thoughtYear": 1270,
+      "materialCost": 6
+    },
+    {
+      "id": "T312",
+      "name": "주희",
+      "tier": 3,
+      "era": "동양",
+      "school": "유학",
+      "quote": "성즉리(性卽理)!",
+      "skill": "격물치지",
+      "skillDesc": "같은 적을 맞힐수록 피해 증가",
+      "lore": "사서에 주석을 다느라 평생을 보냈다. 각주 장인.",
+      "hidden": false,
+      "plus": true,
+      "thoughtYear": 1190,
+      "materialCost": 4
+    },
+    {
+      "id": "T402",
+      "name": "오컴의 윌리엄",
+      "tier": 3,
+      "era": "중세",
+      "school": "경험론",
+      "quote": "불필요한 존재를 늘리지 마라!",
+      "skill": "오컴의 면도날",
+      "skillDesc": "적 몬스터의 보호막과 버프를 한 방에 절단",
+      "lore": "복잡한 스콜라 형이상학을 면도날로 깔끔하게 밀어버렸다.",
+      "hidden": false,
+      "plus": true,
+      "thoughtYear": 1320,
+      "materialCost": 6
+    },
+    {
+      "id": "T405",
+      "name": "르네 데카르트",
+      "tier": 4,
+      "era": "근대",
+      "school": "합리론",
+      "quote": "나는 생각한다, 고로 존재한다!",
+      "skill": "방법적 회의와 좌표계",
+      "skillDesc": "맵 전체를 X-Y 좌표로 묶어 명중률 100% 및 치명타 +30%",
+      "lore": "오전 11시까지 늦잠 자며 천장의 파리를 보고 해석기하학을 창시했다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1641,
+      "materialCost": 6
+    },
+    {
+      "id": "T409",
+      "name": "존 로크",
+      "tier": 4,
+      "era": "근대",
+      "school": "경험론",
+      "quote": "마음은 백지다!",
+      "skill": "타불라 라사",
+      "skillDesc": null,
+      "lore": "「통치론」으로 자유주의의 기초를 놓은 영국의 경험론자.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1690,
+      "materialCost": 7
+    },
+    {
+      "id": "T410",
+      "name": "고트프리트 라이프니츠",
+      "tier": 4,
+      "era": "근대",
+      "school": "합리론",
+      "quote": "이 세계는 가능한 최선의 세계다!",
+      "skill": "모나드 미적분 포격",
+      "skillDesc": "창문 없는 단자(모나드) 레이저가 적들을 무한 관통",
+      "lore": "뉴턴과 미적분 원조 논쟁을 벌인 인류 역사상 최후의 만능 천재.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1714,
+      "materialCost": 6
+    },
+    {
+      "id": "T408",
+      "name": "바뤼흐 스피노자",
+      "tier": 4,
+      "era": "근대",
+      "school": "합리론",
+      "quote": "신즉자연(Deus sive Natura)!",
+      "skill": "코나투스 파동",
+      "skillDesc": "모든 아군 타워가 서로 연결되어 공격력 15% 공유",
+      "lore": "파문당한 뒤에도 평온하게 안경 렌즈를 깎으며 불멸의 윤리학을 썼다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1677,
+      "materialCost": 6
+    },
+    {
+      "id": "T407",
+      "name": "블레즈 파스칼",
+      "tier": 4,
+      "era": "근대",
+      "school": "그리스도교 철학",
+      "quote": "인간은 생각하는 갈대다.",
+      "skill": "파스칼의 내기",
+      "skillDesc": null,
+      "lore": "계산기를 발명한 수학자. 사후 메모가 「팡세」로 엮였다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1670,
+      "materialCost": 6
+    },
+    {
+      "id": "T412",
+      "name": "왕양명",
+      "tier": 4,
+      "era": "동양",
+      "school": "양명학",
+      "quote": "마음이 곧 이치다!",
+      "skill": "지행합일",
+      "skillDesc": null,
+      "lore": "대나무 앞에서 7일간 격물을 하다 병이 난 뒤 마음의 학문으로 돌아섰다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1527,
+      "materialCost": 6
+    },
+    {
+      "id": "T413",
+      "name": "퇴계 이황",
+      "tier": 4,
+      "era": "동양",
+      "school": "유학",
+      "quote": "경(敬)으로 마음을 지켜라!",
+      "skill": "이기호발",
+      "skillDesc": "주변 아군 사거리 +15%",
+      "lore": "기대승과 8년간 편지로 사단칠정을 논쟁했다. 원조 장문 DM.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1568,
+      "materialCost": 6
+    },
+    {
+      "id": "T411",
+      "name": "데이비드 흄",
+      "tier": 4,
+      "era": "근대",
+      "school": "경험론",
+      "quote": "이성은 정념의 노예일 뿐이다!",
+      "skill": "인과율 해체",
+      "skillDesc": "적의 이동 경로와 스킬 발동 조건의 인과관계를 끊어 침묵시킴",
+      "lore": "당구공이 부딪혀 굴러가는 건 그저 습관적 믿음일 뿐이라고 일갈했다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1748,
+      "materialCost": 6
+    },
+    {
+      "id": "T414",
+      "name": "장 자크 루소",
+      "tier": 4,
+      "era": "근대",
+      "school": "사회계약론",
+      "quote": "자연으로 돌아가라!",
+      "skill": "일반의지",
+      "skillDesc": null,
+      "lore": "「사회계약론」과 「에밀」의 저자. 칸트가 산책 시간을 잊을 만큼 빠져 읽었다고 한다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1762,
+      "materialCost": 6
+    },
+    {
+      "name": "율곡 이이",
+      "era": "동양",
+      "school": "성리학",
+      "quote": "뜻을 세우고 힘써 행하라.",
+      "skill": "기발의 조화",
+      "skillDesc": "",
+      "lore": "이황과 다른 길에서 같은 학문을 묻는다. 오늘도 토론방 알림이 쌓였다.",
+      "id": "T415",
+      "tier": 4,
+      "plus": false,
+      "thoughtYear": 1575,
+      "hidden": false,
+      "materialCost": 6
+    },
+    {
+      "name": "임마누엘 칸트",
+      "era": "근대",
+      "school": "비판철학",
+      "quote": "감히 알려고 하라.",
+      "skill": "이성의 경계",
+      "skillDesc": "",
+      "lore": "경험과 이성 사이에 경계선을 긋는 중. 산책 시간은 예외가 없다.",
+      "id": "T416",
+      "tier": 4,
+      "plus": true,
+      "thoughtYear": 1781,
+      "hidden": false,
+      "materialCost": 12
+    },
+    {
+      "name": "제러미 벤담",
+      "era": "근대",
+      "school": "공리주의",
+      "quote": "행복을 어떻게 헤아릴 것인가?",
+      "skill": "행복의 계산",
+      "skillDesc": "",
+      "lore": "오늘의 행복도 합산 중. 점심 메뉴에서부터 계산이 길어진다.",
+      "id": "T417",
+      "tier": 4,
+      "plus": true,
+      "thoughtYear": 1789,
+      "hidden": false,
+      "materialCost": 8
+    },
+    {
+      "id": "T507",
+      "name": "고틀로프 프레게",
+      "tier": 4,
+      "era": "근현대",
+      "school": "합리론",
+      "quote": "뜻(Sinn)과 지시체(Bedeutung)를 구분하라!",
+      "skill": "기호논리학 레이저",
+      "skillDesc": "샛별과 개밥바라기별의 이중 광선으로 단일 대상에게 400% 확정 피해",
+      "lore": "현대 분석철학과 컴퓨터 프로그래밍 논리의 아버지이나 러셀의 편지 한 통에 눈물 흘렸다.",
+      "hidden": false,
+      "plus": true,
+      "thoughtYear": 1879,
+      "materialCost": 8
+    },
+    {
+      "id": "T501",
+      "name": "게오르크 헤겔",
+      "tier": 5,
+      "era": "근대",
+      "school": "관념론",
+      "quote": "이성적인 것이 현실적인 것이다!",
+      "skill": "정-반-합 변증법",
+      "skillDesc": "1타(정), 2타(반) 후 3타째에 미네르바의 부엉이가 날아가 500% 폭발 딜",
+      "lore": "나폴레옹이 말 타고 지나가는 것을 보고 '세계정신'을 목격했다고 감탄했다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1807,
+      "materialCost": 18
+    },
+    {
+      "id": "T502",
+      "name": "아르투어 쇼펜하우어",
+      "tier": 5,
+      "era": "근대",
+      "school": "실존주의",
+      "quote": "세계는 나의 표상이요, 맹목적 삶의 의지다!",
+      "skill": "염세주의의 늪",
+      "skillDesc": "맵 전체의 적들에게 삶의 고통 디버프를 걸어 초당 최대체력 3% 비례 피해",
+      "lore": "헤겔과 같은 시간에 강의를 열었다가 수강생이 안 와서 평생 헤겔을 저주했다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1818,
+      "materialCost": 14
+    },
+    {
+      "id": "T510",
+      "name": "에드문트 후설",
+      "tier": 5,
+      "era": "근현대",
+      "school": "관념론",
+      "quote": "사태 자체로 돌아가라!",
+      "skill": "현상학적 환원(괄호치기)",
+      "skillDesc": "적의 모든 외피와 특수 능력을 괄호 안에 가두어 순수 본질(맨몸)로 만듦",
+      "lore": "의식의 지향성을 분석해 현대 대륙철학의 모든 거장들을 길러낸 스승.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1900,
+      "materialCost": 16
+    },
+    {
+      "id": "T508",
+      "name": "버트런드 러셀",
+      "tier": 5,
+      "era": "근현대",
+      "school": "합리론",
+      "quote": "이발사는 자신의 수염을 깎을 것인가?",
+      "skill": "러셀의 역설 폭탄",
+      "skillDesc": "적들을 자기참조의 무한루프 모순에 빠뜨려 4초간 서로 공격하게 만듦",
+      "lore": "수학원리를 쓰고 노벨문학상을 받았으며 평화운동으로 감옥까지 다녀온 행동파.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1910,
+      "materialCost": 14
+    },
+    {
+      "id": "T506",
+      "name": "존 스튜어트 밀",
+      "tier": 5,
+      "era": "근대",
+      "school": "공리주의",
+      "quote": "배부른 돼지보다 배고픈 소크라테스가 낫다.",
+      "skill": "최대 다수의 최대 행복",
+      "skillDesc": null,
+      "lore": "세 살에 그리스어를 배운 신동. 「자유론」의 저자.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1863,
+      "materialCost": 15
+    },
+    {
+      "name": "페르디낭 드 소쉬르",
+      "era": "근현대",
+      "school": "언어학",
+      "quote": "의미는 차이 속에서 생겨난다.",
+      "skill": "기호의 연결",
+      "skillDesc": "",
+      "lore": "이름표를 바꾸면 같은 사람일까? 도감 담당자와 회의가 길어졌다.",
+      "id": "T511",
+      "tier": 5,
+      "plus": false,
+      "thoughtYear": 1916,
+      "hidden": false,
+      "materialCost": 14
+    },
+    {
+      "id": "T505",
+      "name": "프리드리히 니체",
+      "tier": 5,
+      "era": "근현대",
+      "school": "실존주의",
+      "quote": "신은 죽었다! 위버멘쉬를 보라!",
+      "skill": "망치로 철학하기",
+      "skillDesc": "주변의 하위 티어 관념론 타워 1개를 파괴하고 영구적으로 공격력 300% 각성",
+      "lore": "영원회귀의 운명조차 사랑(아모르 파티)하며 우상을 망치로 부수는 초인.",
+      "hidden": false,
+      "plus": true,
+      "thoughtYear": 1887,
+      "materialCost": 32
+    },
+    {
+      "id": "T504",
+      "name": "카를 마르크스",
+      "tier": 5,
+      "era": "근현대",
+      "school": "유물론",
+      "quote": "만국의 노동자여, 단결하라!",
+      "skill": "자본론과 계급투쟁",
+      "skillDesc": "현재 보유 골드량에 비례해 공격력이 무한 증폭되며 보스 장갑을 철폐함",
+      "lore": "자본주의를 가장 치밀하게 분석했으나 정작 본인은 늘 엥겔스에게 생활비를 빌렸다.",
+      "hidden": false,
+      "plus": true,
+      "thoughtYear": 1867,
+      "materialCost": 21
+    },
+    {
+      "id": "T503",
+      "name": "쇠렌 키르케고르",
+      "tier": 5,
+      "era": "근현대",
+      "school": "실존주의",
+      "quote": "절망은 죽음에 이르는 병이다!",
+      "skill": "단독자의 도약",
+      "skillDesc": "주변 1칸에 다른 아군 타워가 없을 때 공격력 및 치명타 피해량 250% 폭증",
+      "lore": "레기네 올센과 파혼한 뒤 평생 고독 속에서 실존의 불안을 파고들었다.",
+      "hidden": false,
+      "plus": true,
+      "thoughtYear": 1843,
+      "materialCost": 24
+    },
+    {
+      "id": "T509",
+      "name": "지그문트 프로이트",
+      "tier": 5,
+      "era": "근현대",
+      "school": "정신분석",
+      "quote": "이드가 있던 곳에 자아가 있게 하라!",
+      "skill": "무의식의 해석",
+      "skillDesc": "적의 숨은 약점을 드러내 받는 피해 +20%",
+      "lore": "꿈을 \"무의식으로 가는 왕도\"라 불렀다. 생각할 때면 늘 시가를 물고 있었다.",
+      "hidden": false,
+      "plus": true,
+      "thoughtYear": 1900,
+      "materialCost": 18
+    },
+    {
+      "id": "T611",
+      "name": "다산 정약용",
+      "tier": 5,
+      "era": "동양",
+      "school": "유학",
+      "quote": "백성을 위한 학문이어야 한다!",
+      "skill": "거중기",
+      "skillDesc": "보스에게 주는 피해 +50%",
+      "lore": "유배 18년 동안 책 500권을 썼다. 귀양지를 집필실로 쓴 사나이.",
+      "hidden": false,
+      "plus": true,
+      "thoughtYear": 1818,
+      "materialCost": 24
+    },
+    {
+      "id": "T601",
+      "name": "마르틴 하이데거",
+      "tier": 6,
+      "era": "근현대",
+      "school": "실존주의",
+      "quote": "인간은 죽음을 향해 가는 존재(Sein-zum-Tode)다!",
+      "skill": "현존재와 시간 왜곡",
+      "skillDesc": "맵 전체의 시간을 왜곡해 적 이동속도를 60% 늦추고 체력 15% 이하 적 즉시 처형",
+      "lore": "슈바르츠발트 산장에 은거하며 잊혀진 '존재'의 의미를 다시 물은 거장.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1927,
+      "materialCost": 50
+    },
+    {
+      "id": "T604",
+      "name": "자크 라캉",
+      "tier": 6,
+      "era": "근현대",
+      "school": "정신분석",
+      "quote": "무의식은 언어처럼 구조화되어 있다!",
+      "skill": "거울 단계",
+      "skillDesc": "적 하나를 혼란시켜 아군처럼 보이게 함",
+      "lore": "세미나 시간을 마음대로 끊는 \"짧은 세션\"으로 정신분석협회에서 쫓겨났다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1966,
+      "materialCost": 50
+    },
+    {
+      "id": "T605",
+      "name": "미셸 푸코",
+      "tier": 6,
+      "era": "근현대",
+      "school": "구조주의",
+      "quote": "감시하는 자도 감시당한다!",
+      "skill": "판옵티콘",
+      "skillDesc": "모든 적 받는 피해 +25%",
+      "lore": "칸트의 \"계몽이란 무엇인가\"에 200년 뒤 같은 제목의 답장을 썼다. 말년엔 소크라테스의 죽음을 강의했다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1975,
+      "materialCost": 46
+    },
+    {
+      "id": "T607",
+      "name": "질 들뢰즈",
+      "tier": 6,
+      "era": "근현대",
+      "school": "후기구조주의",
+      "quote": "리좀처럼 뻗어 나가라!",
+      "skill": "차이와 반복",
+      "skillDesc": "공격할 때마다 탄환이 갈라짐",
+      "lore": "스피노자, 흄, 니체에 대해 각각 책을 쓴 뒤 \"철학사는 초상화 그리기\"라고 했다.",
+      "hidden": false,
+      "plus": false,
+      "thoughtYear": 1968,
+      "materialCost": 44
+    },
+    {
+      "name": "발터 벤야민",
+      "era": "근현대",
+      "school": "비판이론",
+      "quote": "과거의 잔해에서 지금을 읽는다.",
+      "skill": "기억의 성좌",
+      "skillDesc": "",
+      "lore": "수첩과 여행가방에 기억을 챙겼다. 수하물 제한은 생각보다 엄격하다.",
+      "id": "T614",
+      "tier": 6,
+      "plus": false,
+      "thoughtYear": 1940,
+      "hidden": false,
+      "materialCost": 36
+    },
+    {
+      "name": "존 롤스",
+      "era": "근현대",
+      "school": "정의론",
+      "quote": "내 자리를 모른다면 어떤 규칙을 고를까?",
+      "skill": "무지의 장막",
+      "skillDesc": "",
+      "lore": "자리를 뽑기 전에 규칙부터 정하자고 한다. 랜덤 게임에 꼭 필요한 사람.",
+      "id": "T615",
+      "tier": 6,
+      "plus": false,
+      "thoughtYear": 1971,
+      "hidden": false,
+      "materialCost": 37
+    },
+    {
+      "id": "T606",
+      "name": "한나 아렌트",
+      "tier": 6,
+      "era": "근현대",
+      "school": "정치철학",
+      "quote": "악은 평범하다!",
+      "skill": "탄생성",
+      "skillDesc": "웨이브마다 새 탄환 패턴 추가",
+      "lore": "박사논문이 아우구스티누스의 사랑 개념이었다. 말년엔 칸트의 판단력을 \"시민의 정치철학\"으로 읽었다.",
+      "hidden": false,
+      "plus": true,
+      "thoughtYear": 1958,
+      "materialCost": 55
+    },
+    {
+      "id": "T703",
+      "name": "자크 데리다",
+      "tier": 6,
+      "era": "근현대",
+      "school": "해체주의",
+      "quote": "텍스트 바깥은 없다!",
+      "skill": "차연",
+      "skillDesc": "적의 이름(속성)을 해체해 고정 피해",
+      "lore": "「플라톤의 약국」에서 글을 쓰지 않은 소크라테스를 글로 다시 읽었다. 후설의 「기하학의 기원」 번역으로 데뷔했다.",
+      "hidden": false,
+      "plus": true,
+      "thoughtYear": 1967,
+      "materialCost": 67
+    },
+    {
+      "id": "T701",
+      "name": "델포이의 소크라테스",
+      "tier": 7,
+      "era": "고대",
+      "school": "합리론",
+      "quote": "너 자신을 알라!",
+      "skill": "산파술과 문답법",
+      "skillDesc": "주변 타워의 잠재 공격력 +25% 개방",
+      "lore": "아테네의 등에(Gadfly)로 활약하며 길거리 논파왕에 등극했다.",
+      "hidden": false,
+      "origin": true,
+      "plus": false,
+      "thoughtYear": 9999,
+      "materialCost": 57
+    },
+    {
+      "id": "T704",
+      "name": "대성지성 공자",
+      "tier": 7,
+      "era": "동양",
+      "school": "유학",
+      "quote": "배우고 때로 익히면 기쁘지 아니한가!",
+      "skill": "인(仁)의 감화",
+      "skillDesc": "주변 아군 공격력 +10%",
+      "lore": "14년간 천하를 떠돌며 일자리를 구했지만 아무도 채용하지 않았다. 원조 구직 철학자.",
+      "hidden": false,
+      "origin": true,
+      "plus": false,
+      "thoughtYear": 9999,
+      "materialCost": 23
+    },
+    {
+      "id": "T705",
+      "name": "고타마 붓다",
+      "tier": 7,
+      "era": "동양",
+      "school": "불교",
+      "quote": "모든 것은 괴로움이다!",
+      "skill": "중도",
+      "skillDesc": "적 이동속도 -10%",
+      "lore": "왕자 자리를 버리고 출가했다. 금수저 포기 선언의 원조.",
+      "hidden": false,
+      "origin": true,
+      "plus": false,
+      "thoughtYear": 9999,
+      "materialCost": 35
+    },
+    {
+      "id": "T706",
+      "name": "예수",
+      "tier": 7,
+      "era": "히든",
+      "school": "기독교",
+      "quote": "너희 원수를 사랑하라!",
+      "skill": "산상수훈",
+      "skillDesc": "모든 아군 공격력 +50% · 보스 피해 +100%",
+      "lore": "글 한 줄 남기지 않았지만 가장 많이 인용된다. 그 점에서 소크라테스와 닮았다.",
+      "hidden": false,
+      "origin": true,
+      "plus": false,
+      "thoughtYear": 9999,
+      "materialCost": 56
+    },
+    {
+      "id": "T602",
+      "name": "루트비히 비트겐슈타인",
+      "tier": 7,
+      "era": "근현대",
+      "school": "회의주의",
+      "quote": "말할 수 없는 것에 대해서는 침묵해야 한다!",
+      "skill": "논리철학논고 & 언어게임",
+      "skillDesc": "전기 모드(단일 극딜 침묵 레이저) ↔ 후기 모드(다중 언어게임 바운스 공격)",
+      "lore": "재벌가 상속권을 다 포기하고 초등학교 교사와 정원사를 거쳐 철학계를 두 번 뒤집었다.",
+      "hidden": false,
+      "origin": true,
+      "plus": false,
+      "thoughtYear": 9999,
+      "materialCost": 32
+    },
+    {
+      "id": "T702",
+      "name": "쾨니히스베르크의 칸트",
+      "tier": 7,
+      "era": "근대",
+      "school": "근원·비판철학",
+      "quote": "너의 의지의 준칙이 보편적 입법의 원리가 되게 하라!",
+      "skill": "별과 도덕법칙",
+      "skillDesc": "몬스터들이 칸트 주변을 지날 때 시간과 공간의 형식에 갇혀 50% 감속",
+      "lore": "산책 시간이 어찌나 정확했던지 쾨니히스베르크 시민들이 시계를 맞췄다.",
+      "hidden": false,
+      "origin": true,
+      "plus": false,
+      "thoughtYear": 9999,
+      "materialCost": 48
+    }
+  ],
+  "recipes": [
+    {
+      "id": "V3_T212",
+      "result": "T212",
+      "materials": [
+        "T108",
+        "T108"
+      ],
+      "catalyst": null,
+      "logic": "공자의 배움을 이어 인간의 선한 가능성을 펼친다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T213",
+      "result": "T213",
+      "materials": [
+        "T108",
+        "T107"
+      ],
+      "catalyst": null,
+      "logic": "유가의 배움과 자연에 대한 질문을 대조해 예의 역할을 구성한다. 게임적 대조 조합.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T211",
+      "result": "T211",
+      "materials": [
+        "T107",
+        "T107"
+      ],
+      "catalyst": null,
+      "logic": "노자의 길을 잇고 넓혀 자유로운 변화를 묻는다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T309",
+      "result": "T309",
+      "materials": [
+        "T109",
+        "T109",
+        "T109"
+      ],
+      "catalyst": null,
+      "logic": "붓다의 가르침을 거듭 사유하며 공과 연기를 묻는다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T306",
+      "result": "T306",
+      "materials": [
+        "T207",
+        "T301"
+      ],
+      "catalyst": null,
+      "logic": "플라톤의 초월성과 아리스토텔레스의 개념을 신플라톤주의로 엮는다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T210",
+      "result": "T210",
+      "materials": [
+        "T106",
+        "T105"
+      ],
+      "catalyst": null,
+      "logic": "질문과 자연 탐구를 판단 유보라는 태도로 묶은 게임적 축약.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T209",
+      "result": "T209",
+      "materials": [
+        "T105",
+        "T105"
+      ],
+      "catalyst": null,
+      "logic": "원자론의 계보를 이어 두려움과 쾌락을 다시 묻는다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T303",
+      "result": "T303",
+      "materials": [
+        "T106",
+        "T301"
+      ],
+      "catalyst": null,
+      "logic": "그리스의 윤리적 질문을 로마의 실천으로 옮긴 게임적 축약.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T308",
+      "result": "T308",
+      "materials": [
+        "T306",
+        "T106",
+        "T106"
+      ],
+      "catalyst": null,
+      "logic": "플로티노스의 사유를 자기 성찰과 신앙의 질문으로 이어 간다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T315",
+      "result": "T315",
+      "materials": [
+        "T212",
+        "T211"
+      ],
+      "catalyst": null,
+      "logic": "맹자의 본심과 장자의 내적 자유를 엮은 심학의 게임적 표현.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T311",
+      "result": "T311",
+      "materials": [
+        "T309",
+        "T109",
+        "T109"
+      ],
+      "catalyst": null,
+      "logic": "공과 연기의 질문을 일심과 화쟁으로 펼친다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T401",
+      "result": "T401",
+      "materials": [
+        "T308",
+        "T301",
+        "T301"
+      ],
+      "catalyst": null,
+      "logic": "기독교 사유와 아리스토텔레스 철학을 신앙과 이성의 체계로 엮는다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T312",
+      "result": "T312",
+      "materials": [
+        "T212",
+        "T108",
+        "T108"
+      ],
+      "catalyst": null,
+      "logic": "공자와 맹자의 배움을 체계화한다. 정이의 역할을 생략한 게임적 축약.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T402",
+      "result": "T402",
+      "materials": [
+        "T308",
+        "T106",
+        "T301"
+      ],
+      "catalyst": null,
+      "logic": "신학과 논증의 전통을 바탕으로 불필요한 가정을 걷어 낸다. 게임적 축약.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T405",
+      "result": "T405",
+      "materials": [
+        "T308",
+        "T210"
+      ],
+      "catalyst": null,
+      "logic": "내면의 확실성과 회의의 태도를 방법적 의심으로 재구성한다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T409",
+      "result": "T409",
+      "materials": [
+        "T402",
+        "T301"
+      ],
+      "catalyst": null,
+      "logic": "유명론과 감각 경험의 문제를 경험론으로 엮은 게임적 축약.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T410",
+      "result": "T410",
+      "materials": [
+        "T306",
+        "T301",
+        "T301",
+        "T207",
+        "T207"
+      ],
+      "catalyst": null,
+      "logic": "고대 형이상학의 질문을 근대 합리론으로 재구성한다. 게임적 축약.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T408",
+      "result": "T408",
+      "materials": [
+        "T306",
+        "T301",
+        "T301",
+        "T105",
+        "T105"
+      ],
+      "catalyst": null,
+      "logic": "일자와 자연의 질문을 하나의 실체로 엮은 게임적 축약. 데카르트는 동일 등급이라 생략.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T407",
+      "result": "T407",
+      "materials": [
+        "T308",
+        "T303"
+      ],
+      "catalyst": null,
+      "logic": "내면과 신앙의 문제를 인간의 유한성으로 이어 간다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T412",
+      "result": "T412",
+      "materials": [
+        "T315",
+        "T212"
+      ],
+      "catalyst": null,
+      "logic": "육구연의 심학과 맹자의 본심을 지행합일로 이어 간다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T413",
+      "result": "T413",
+      "materials": [
+        "T312",
+        "T108",
+        "T108"
+      ],
+      "catalyst": null,
+      "logic": "주희의 학문을 조선의 성리학으로 깊게 이어 간다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T415",
+      "result": "T415",
+      "materials": [
+        "T312",
+        "T212"
+      ],
+      "catalyst": null,
+      "logic": "주희와 맹자의 문제를 기와 실천의 관점에서 다시 묻는다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T411",
+      "result": "T411",
+      "materials": [
+        "T210",
+        "T301",
+        "T301",
+        "T106",
+        "T106"
+      ],
+      "catalyst": null,
+      "logic": "회의와 경험의 질문을 인간 본성의 탐구로 재구성한다. 로크는 동일 등급이라 생략.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T414",
+      "result": "T414",
+      "materials": [
+        "T315",
+        "T213"
+      ],
+      "catalyst": null,
+      "logic": "내면의 자발성과 사회적 교육을 대조해 자연과 사회를 묻는 동서양 게임 조합.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T416",
+      "result": "T416",
+      "materials": [
+        "T411",
+        "T410"
+      ],
+      "catalyst": null,
+      "logic": "흄의 경험론과 라이프니츠의 합리론을 비판적으로 종합한다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T417",
+      "result": "T417",
+      "materials": [
+        "T411",
+        "T209"
+      ],
+      "catalyst": null,
+      "logic": "경험과 쾌락의 문제를 효용의 기준으로 재구성한다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T507",
+      "result": "T507",
+      "materials": [
+        "T410",
+        "T301",
+        "T301"
+      ],
+      "catalyst": null,
+      "logic": "보편적 계산과 논리의 계보를 현대 논리학으로 이어 간다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T501",
+      "result": "T501",
+      "materials": [
+        "T416",
+        "T408"
+      ],
+      "catalyst": null,
+      "logic": "칸트 이후의 문제와 스피노자의 전체성을 관념론으로 전개한다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T502",
+      "result": "T502",
+      "materials": [
+        "T416",
+        "T207",
+        "T109"
+      ],
+      "catalyst": null,
+      "logic": "칸트의 인식론, 플라톤의 이데아, 불교의 고통 문제를 엮는다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T510",
+      "result": "T510",
+      "materials": [
+        "T405",
+        "T507",
+        "T301",
+        "T301"
+      ],
+      "catalyst": null,
+      "logic": "의식의 확실성과 논리의 문제를 현상학으로 재구성한다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T508",
+      "result": "T508",
+      "materials": [
+        "T507",
+        "T410"
+      ],
+      "catalyst": null,
+      "logic": "논리의 계보를 논리주의와 분석철학으로 이어 간다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T506",
+      "result": "T506",
+      "materials": [
+        "T417",
+        "T409"
+      ],
+      "catalyst": null,
+      "logic": "벤담의 효용과 로크의 자유 문제를 공리주의의 새 길로 엮는다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T511",
+      "result": "T511",
+      "materials": [
+        "T507",
+        "T402"
+      ],
+      "catalyst": null,
+      "logic": "논리와 이름의 문제를 기호의 관계로 엮은 게임적 대조 조합. 직접 계승 관계는 아님.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T505",
+      "result": "T505",
+      "materials": [
+        "T501",
+        "T502"
+      ],
+      "catalyst": null,
+      "logic": "헤겔의 체계를 극복 대상으로, 쇼펜하우어를 출발점으로 삼아 가치를 다시 묻는다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T504",
+      "result": "T504",
+      "materials": [
+        "T501",
+        "T209",
+        "T105"
+      ],
+      "catalyst": null,
+      "logic": "헤겔의 변증법과 고대 원자론의 문제를 유물론으로 재구성한다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T503",
+      "result": "T503",
+      "materials": [
+        "T501",
+        "T308",
+        "T106",
+        "T106"
+      ],
+      "catalyst": null,
+      "logic": "헤겔의 체계에 맞서 개인과 신앙을 소크라테스적 질문으로 세운다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T509",
+      "result": "T509",
+      "materials": [
+        "T502",
+        "T207",
+        "T207",
+        "T207",
+        "T207"
+      ],
+      "catalyst": null,
+      "logic": "의지와 욕망, 영혼의 갈등을 무의식으로 엮은 게임적 축약.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T611",
+      "result": "T611",
+      "materials": [
+        "T312",
+        "T412",
+        "T413",
+        "T415",
+        "T108",
+        "T108"
+      ],
+      "catalyst": null,
+      "logic": "주희의 체계, 왕양명의 실천, 이황과 이이의 서로 다른 길을 실학의 문제로 엮은 게임적 축약. 직접 계승 전체를 뜻하지 않는다.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T601",
+      "result": "T601",
+      "materials": [
+        "T510",
+        "T505",
+        "T301",
+        "T301"
+      ],
+      "catalyst": null,
+      "logic": "후설의 현상학과 니체, 아리스토텔레스의 존재 물음을 다시 묻는다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T604",
+      "result": "T604",
+      "materials": [
+        "T509",
+        "T511",
+        "T501"
+      ],
+      "catalyst": null,
+      "logic": "프로이트의 정신분석에 소쉬르의 언어와 헤겔의 인정 문제를 엮는다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T605",
+      "result": "T605",
+      "materials": [
+        "T505",
+        "T416",
+        "T213"
+      ],
+      "catalyst": null,
+      "logic": "니체의 계보학과 비판, 규율의 문제를 엮은 게임 조합. 순자는 대조 재료.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T607",
+      "result": "T607",
+      "materials": [
+        "T505",
+        "T408",
+        "T411"
+      ],
+      "catalyst": null,
+      "logic": "니체·스피노자·흄을 가로질러 차이와 생성의 철학을 펼친다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T614",
+      "result": "T614",
+      "materials": [
+        "T504",
+        "T416",
+        "T207",
+        "T207",
+        "T207"
+      ],
+      "catalyst": null,
+      "logic": "마르크스의 역사 비판과 칸트의 인식, 플라톤의 이념을 기억의 성좌로 엮는다. 게임적 축약.",
+      "provisional": true
+    },
+    {
+      "id": "V3_T615",
+      "result": "T615",
+      "materials": [
+        "T416",
+        "T416",
+        "T409",
+        "T414"
+      ],
+      "catalyst": null,
+      "logic": "칸트의 도덕과 사회계약의 문제를 공정한 정의로 재구성한다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T606",
+      "result": "T606",
+      "materials": [
+        "T601",
+        "T308",
+        "T301"
+      ],
+      "catalyst": null,
+      "logic": "하이데거의 존재 물음과 어거스틴, 아리스토텔레스를 인간의 활동과 공적 세계로 잇는다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T703",
+      "result": "T703",
+      "materials": [
+        "T601",
+        "T510",
+        "T207"
+      ],
+      "catalyst": null,
+      "logic": "하이데거와 후설, 플라톤의 텍스트를 비판적으로 읽어 해체로 이어 간다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T701",
+      "result": "T701",
+      "materials": [
+        "T106",
+        "T106",
+        "T106",
+        "T503",
+        "T503",
+        "T407"
+      ],
+      "catalyst": null,
+      "logic": "문답과 개인의 결단을 모아 델포이의 소크라테스를 깨운다. 시대를 되돌아보는 근원 조합.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T704",
+      "result": "T704",
+      "materials": [
+        "T108",
+        "T108",
+        "T108",
+        "T312",
+        "T312",
+        "T412",
+        "T412"
+      ],
+      "catalyst": null,
+      "logic": "공자 세 장, 주희 두 장, 왕양명 두 장으로 대성지성의 기억을 깨운다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T705",
+      "result": "T705",
+      "materials": [
+        "T109",
+        "T109",
+        "T109",
+        "T109",
+        "T109",
+        "T309",
+        "T309",
+        "T309",
+        "T309",
+        "T309",
+        "T311",
+        "T311",
+        "T311"
+      ],
+      "catalyst": null,
+      "logic": "가르침과 공, 화쟁의 기억을 모아 고타마 붓다를 깨운다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T706",
+      "result": "T706",
+      "materials": [
+        "T308",
+        "T308",
+        "T401",
+        "T401",
+        "T407",
+        "T407",
+        "T503"
+      ],
+      "catalyst": null,
+      "logic": "어거스틴 두 장, 아퀴나스 두 장, 파스칼 두 장과 키에르케고르의 신앙을 모은다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T602",
+      "result": "T602",
+      "materials": [
+        "T507",
+        "T507",
+        "T508",
+        "T106",
+        "T106"
+      ],
+      "catalyst": null,
+      "logic": "논리와 문답의 기억을 모아 언어의 한계를 묻는 근원을 깨운다.",
+      "provisional": false
+    },
+    {
+      "id": "V3_T702",
+      "result": "T702",
+      "materials": [
+        "T416",
+        "T416",
+        "T411",
+        "T411",
+        "T410",
+        "T410"
+      ],
+      "catalyst": null,
+      "logic": "비판철학과 그 두 출발점을 모아 근원 칸트를 깨운다.",
+      "provisional": false
+    }
+  ],
+  "combat": [
+    {
+      "id": "T106",
+      "type": "단일",
+      "range": 1.7,
+      "speed": 1.1,
+      "power": 0.9,
+      "target": "강한 적",
+      "note": "질문으로 상대의 약점을 드러낸다"
+    },
+    {
+      "id": "T207",
+      "type": "광역",
+      "range": 1.8,
+      "speed": 1.25,
+      "power": 1,
+      "target": "선두",
+      "note": "이데아의 빛이 주변까지 번지는 광역"
+    },
+    {
+      "id": "T301",
+      "type": "단일",
+      "range": 1.8,
+      "speed": 1.25,
+      "power": 1,
+      "target": "선두",
+      "note": "세 번째 삼단논법마다 강타"
+    },
+    {
+      "id": "T105",
+      "type": "광역",
+      "range": 1.6,
+      "speed": 1,
+      "power": 0.9,
+      "target": "선두",
+      "note": "원자처럼 흩어지는 작은 광역"
+    },
+    {
+      "id": "T108",
+      "type": "지원",
+      "range": 1.6,
+      "speed": 1,
+      "power": 0.8,
+      "target": "선두",
+      "note": "곁의 아군을 가르쳐 공격력을 올린다"
+    },
+    {
+      "id": "T107",
+      "type": "제어",
+      "range": 1.8,
+      "speed": 1.1,
+      "power": 0.8,
+      "target": "선두",
+      "note": "부드럽게 적의 발을 묶는 둔화"
+    },
+    {
+      "id": "T109",
+      "type": "단일",
+      "range": 1.7,
+      "speed": 1,
+      "power": 0.85,
+      "target": "선두",
+      "note": "번뇌를 서서히 태우는 지속 피해"
+    },
+    {
+      "id": "T212",
+      "type": "지원",
+      "range": 1.8,
+      "speed": 1,
+      "power": 0.9,
+      "target": "선두",
+      "note": "호연지기로 곁의 아군을 북돋운다"
+    },
+    {
+      "id": "T213",
+      "type": "단일",
+      "range": 1.8,
+      "speed": 1,
+      "power": 0.95,
+      "target": "선두",
+      "note": "배울수록 강해진다"
+    },
+    {
+      "id": "T211",
+      "type": "단일",
+      "range": 1.8,
+      "speed": 1.5,
+      "power": 0.95,
+      "target": "선두",
+      "note": "나비처럼 한 번 더 때리는 추가타"
+    },
+    {
+      "id": "T309",
+      "type": "연쇄",
+      "range": 1.9,
+      "speed": 1.25,
+      "power": 1,
+      "target": "선두",
+      "note": "공(空)의 논리가 옆 적으로 번진다"
+    },
+    {
+      "id": "T306",
+      "type": "연쇄",
+      "range": 2.1,
+      "speed": 0.9,
+      "power": 1.1,
+      "target": "선두",
+      "note": "일자의 빛이 줄줄이 흘러나간다"
+    },
+    {
+      "id": "T210",
+      "type": "제어",
+      "range": 1.8,
+      "speed": 1,
+      "power": 0.85,
+      "target": "선두",
+      "note": "판단 중지로 적의 발걸음도 멈춘다"
+    },
+    {
+      "id": "T209",
+      "type": "지원",
+      "range": 1.7,
+      "speed": 1,
+      "power": 0.85,
+      "target": "선두",
+      "note": "곁의 아군을 편안하게 해 손이 빨라진다"
+    },
+    {
+      "id": "T303",
+      "type": "단일",
+      "range": 2,
+      "speed": 1.1,
+      "power": 1,
+      "target": "선두",
+      "note": "편지를 한 통 더 보낸다"
+    },
+    {
+      "id": "T308",
+      "type": "단일",
+      "range": 1.8,
+      "speed": 1.4,
+      "power": 1,
+      "target": "강한 적",
+      "note": "고백할수록 쌓이는 누적 공격력"
+    },
+    {
+      "id": "T311",
+      "type": "지원",
+      "range": 1.7,
+      "speed": 1.3,
+      "power": 0.85,
+      "target": "선두",
+      "note": "화쟁으로 주변 공격속도 강화"
+    },
+    {
+      "id": "T315",
+      "type": "지원",
+      "range": 2,
+      "speed": 1.3,
+      "power": 0.85,
+      "target": "선두",
+      "note": "주변 공격속도 지원"
+    },
+    {
+      "id": "T401",
+      "type": "지원",
+      "range": 2.3,
+      "speed": 1,
+      "power": 1.1,
+      "target": "선두",
+      "note": "거대한 체계로 곁의 아군을 떠받친다"
+    },
+    {
+      "id": "T312",
+      "type": "단일",
+      "range": 1.9,
+      "speed": 1.45,
+      "power": 1,
+      "target": "강한 적",
+      "note": "격물치지, 맞힐수록 강해짐"
+    },
+    {
+      "id": "T402",
+      "type": "저격",
+      "range": 2.2,
+      "speed": 1.2,
+      "power": 1,
+      "target": "약한 적",
+      "note": "빈사 상태의 적을 면도날로 정리"
+    },
+    {
+      "id": "T405",
+      "type": "단일",
+      "range": 1.9,
+      "speed": 1.35,
+      "power": 1.1,
+      "target": "선두",
+      "note": "명증한 치명타 딜러"
+    },
+    {
+      "id": "T409",
+      "type": "지원",
+      "range": 2.3,
+      "speed": 1,
+      "power": 1.1,
+      "target": "선두",
+      "note": "백지에 경험을 채워 곁을 빠르게 한다"
+    },
+    {
+      "id": "T410",
+      "type": "연쇄",
+      "range": 2.1,
+      "speed": 1.3,
+      "power": 1,
+      "target": "선두",
+      "note": "단자 레이저가 두 명에게 연쇄"
+    },
+    {
+      "id": "T408",
+      "type": "지원",
+      "range": 1.7,
+      "speed": 1.2,
+      "power": 0.8,
+      "target": "선두",
+      "note": "모든 것은 연결된다, 주변 공격력 강화"
+    },
+    {
+      "id": "T407",
+      "type": "저격",
+      "range": 2.6,
+      "speed": 0.9,
+      "power": 1.3,
+      "target": "강한 적",
+      "note": "내기에 건 한 발"
+    },
+    {
+      "id": "T412",
+      "type": "단일",
+      "range": 2.3,
+      "speed": 1.1,
+      "power": 1.15,
+      "target": "선두",
+      "note": "앎과 행함이 하나 된 일격"
+    },
+    {
+      "id": "T413",
+      "type": "지원",
+      "range": 2.2,
+      "speed": 1.4,
+      "power": 0.9,
+      "target": "선두",
+      "note": "경(敬)으로 주변 공격력 강화"
+    },
+    {
+      "id": "T411",
+      "type": "제어",
+      "range": 2,
+      "speed": 1.3,
+      "power": 0.95,
+      "target": "선두",
+      "note": "인과를 끊어 적을 기절"
+    },
+    {
+      "id": "T414",
+      "type": "제어",
+      "range": 2.3,
+      "speed": 1,
+      "power": 1.1,
+      "target": "선두",
+      "note": "일반의지가 맵 전체를 묶는다"
+    },
+    {
+      "id": "T415",
+      "type": "지원",
+      "range": 2.3,
+      "speed": 1.45,
+      "power": 0.9,
+      "target": "선두",
+      "note": "주변 공격력과 실천의 조화"
+    },
+    {
+      "id": "T416",
+      "type": "제어",
+      "range": 2.5,
+      "speed": 1.45,
+      "power": 0.9,
+      "target": "선두",
+      "note": "이성의 경계로 이동속도 제어"
+    },
+    {
+      "id": "T417",
+      "type": "지원",
+      "range": 2.4,
+      "speed": 1.6,
+      "power": 0.85,
+      "target": "약한 적",
+      "note": "효용 계산으로 추가 골드"
+    },
+    {
+      "id": "T507",
+      "type": "저격",
+      "range": 3,
+      "speed": 1.1,
+      "power": 1.3,
+      "target": "보스",
+      "note": "먼 거리에서 보스를 노리는 저격"
+    },
+    {
+      "id": "T501",
+      "type": "단일",
+      "range": 2,
+      "speed": 1.4,
+      "power": 1.05,
+      "target": "강한 적",
+      "note": "정-반-합, 세 번째마다 3배"
+    },
+    {
+      "id": "T502",
+      "type": "제어",
+      "range": 2.1,
+      "speed": 1.2,
+      "power": 0.85,
+      "target": "강한 적",
+      "note": "삶의 고통, 지속 피해"
+    },
+    {
+      "id": "T510",
+      "type": "제어",
+      "range": 2.2,
+      "speed": 1.3,
+      "power": 0.9,
+      "target": "강한 적",
+      "note": "괄호치기로 적을 무방비하게"
+    },
+    {
+      "id": "T508",
+      "type": "제어",
+      "range": 2,
+      "speed": 1.35,
+      "power": 1,
+      "target": "선두",
+      "note": "역설로 적을 멈춰 세운다"
+    },
+    {
+      "id": "T506",
+      "type": "광역",
+      "range": 2.5,
+      "speed": 0.9,
+      "power": 1.2,
+      "target": "선두",
+      "note": "최대 다수에게 고루 피해를"
+    },
+    {
+      "id": "T511",
+      "type": "연쇄",
+      "range": 2.7,
+      "speed": 1.6,
+      "power": 1,
+      "target": "선두",
+      "note": "기호처럼 적을 잇는 연쇄 공격"
+    },
+    {
+      "id": "T505",
+      "type": "단일",
+      "range": 2.3,
+      "speed": 1.45,
+      "power": 1.2,
+      "target": "강한 적",
+      "note": "망치로 내리치는 고위력 치명타"
+    },
+    {
+      "id": "T504",
+      "type": "단일",
+      "range": 2.2,
+      "speed": 1.5,
+      "power": 1,
+      "target": "선두",
+      "note": "처치할 때마다 골드를 모은다"
+    },
+    {
+      "id": "T503",
+      "type": "단일",
+      "range": 2,
+      "speed": 1.6,
+      "power": 1.1,
+      "target": "선두",
+      "note": "홀로 설 때 진가를 내는 단독자"
+    },
+    {
+      "id": "T509",
+      "type": "제어",
+      "range": 2.4,
+      "speed": 1.4,
+      "power": 1,
+      "target": "강한 적",
+      "note": "무의식을 드러내 받는 피해 증가"
+    },
+    {
+      "id": "T611",
+      "type": "저격",
+      "range": 3.2,
+      "speed": 1.5,
+      "power": 1.1,
+      "target": "보스",
+      "note": "거중기로 보스를 들어 올린다"
+    },
+    {
+      "id": "T601",
+      "type": "제어",
+      "range": 2.9,
+      "speed": 1.5,
+      "power": 1,
+      "target": "선두",
+      "note": "맵 전체의 시간을 늦춘다"
+    },
+    {
+      "id": "T604",
+      "type": "제어",
+      "range": 2.7,
+      "speed": 1.6,
+      "power": 1,
+      "target": "강한 적",
+      "note": "거울 속 약점을 드러낸다"
+    },
+    {
+      "id": "T605",
+      "type": "제어",
+      "range": 2.8,
+      "speed": 1.6,
+      "power": 1,
+      "target": "보스",
+      "note": "감시의 시선, 보스를 무방비하게"
+    },
+    {
+      "id": "T607",
+      "type": "광역",
+      "range": 2.6,
+      "speed": 1.6,
+      "power": 1,
+      "target": "선두",
+      "note": "리좀처럼 퍼지는 광역"
+    },
+    {
+      "id": "T614",
+      "type": "광역",
+      "range": 3,
+      "speed": 1.6,
+      "power": 1.05,
+      "target": "선두",
+      "note": "기억의 성좌를 광역 피해로"
+    },
+    {
+      "id": "T615",
+      "type": "지원",
+      "range": 3,
+      "speed": 1.7,
+      "power": 0.9,
+      "target": "선두",
+      "note": "무지의 장막으로 아군 공격 지원"
+    },
+    {
+      "id": "T606",
+      "type": "지원",
+      "range": 2.6,
+      "speed": 1.6,
+      "power": 0.9,
+      "target": "선두",
+      "note": "함께 행위하면 공격속도 상승"
+    },
+    {
+      "id": "T703",
+      "type": "저격",
+      "range": 3.4,
+      "speed": 1.8,
+      "power": 1.1,
+      "target": "약한 적",
+      "note": "차연, 무너지는 적을 해체"
+    },
+    {
+      "id": "T701",
+      "type": "지원",
+      "range": 3.1,
+      "speed": 2,
+      "power": 1,
+      "target": "선두",
+      "note": "문답법으로 주변의 잠재력을 연다"
+    },
+    {
+      "id": "T704",
+      "type": "지원",
+      "range": 3.1,
+      "speed": 2,
+      "power": 1,
+      "target": "선두",
+      "note": "인(仁)으로 주변을 크게 강화"
+    },
+    {
+      "id": "T705",
+      "type": "지원",
+      "range": 3.1,
+      "speed": 2,
+      "power": 1,
+      "target": "선두",
+      "note": "중도로 주변 공격속도 대폭 강화"
+    },
+    {
+      "id": "T706",
+      "type": "지원",
+      "range": 3.2,
+      "speed": 2.1,
+      "power": 1.1,
+      "target": "선두",
+      "note": "모두를 일으켜 세우는 최강 지원"
+    },
+    {
+      "id": "T602",
+      "type": "연쇄",
+      "range": 2.8,
+      "speed": 1.6,
+      "power": 1.05,
+      "target": "선두",
+      "note": "언어게임이 세 명에게 번진다"
+    },
+    {
+      "id": "T702",
+      "type": "제어",
+      "range": 3.2,
+      "speed": 1.9,
+      "power": 1,
+      "target": "선두",
+      "note": "시간과 공간의 형식으로 모두를 늦춘다"
+    }
+  ],
+  "rates": [
+    {
+      "tier": 1,
+      "plus": false,
+      "rate": 0.8
+    },
+    {
+      "tier": 2,
+      "plus": false,
+      "rate": 0.13
+    },
+    {
+      "tier": 3,
+      "plus": false,
+      "rate": 0.035
+    },
+    {
+      "tier": 3,
+      "plus": true,
+      "rate": 0.015
+    },
+    {
+      "tier": 4,
+      "plus": false,
+      "rate": 0.01
+    },
+    {
+      "tier": 4,
+      "plus": true,
+      "rate": 0.005
+    },
+    {
+      "tier": 5,
+      "plus": false,
+      "rate": 0.0025
+    },
+    {
+      "tier": 5,
+      "plus": true,
+      "rate": 0.0015
+    },
+    {
+      "tier": 6,
+      "plus": false,
+      "rate": 0.0008
+    },
+    {
+      "tier": 6,
+      "plus": true,
+      "rate": 0.00015
+    },
+    {
+      "tier": 7,
+      "plus": false,
+      "rate": 5e-05
+    }
+  ]
+}

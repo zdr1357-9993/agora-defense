@@ -638,5 +638,61 @@
     "gesture": "wave",
     "variant": 2,
     "duration": 0.9
+  },
+  "T315": {
+    "name": "공자",
+    "motif": "bamboo",
+    "row": 3,
+    "gesture": "unroll",
+    "variant": 0,
+    "duration": 0.76
+  },
+  "T415": {
+    "name": "퇴계 이황",
+    "motif": "bamboo",
+    "row": 3,
+    "gesture": "unroll",
+    "variant": 0,
+    "duration": 0.9
+  },
+  "T416": {
+    "name": "임마누엘 칸트",
+    "motif": "clock",
+    "row": 5,
+    "gesture": "orbit",
+    "variant": 5,
+    "duration": 0.62
+  },
+  "T417": {
+    "name": "카를 마르크스",
+    "motif": "gears",
+    "row": 15,
+    "gesture": "orbit",
+    "variant": 5,
+    "duration": 0.9
+  },
+  "T511": {
+    "name": "고틀로프 프레게",
+    "motif": "atom",
+    "row": 8,
+    "gesture": "orbit",
+    "variant": 1,
+    "duration": 0.76
+  },
+  "T614": {
+    "name": "자크 데리다",
+    "motif": "razor",
+    "row": 6,
+    "gesture": "slash",
+    "variant": 6,
+    "duration": 0.69
+  },
+  "T615": {
+    "name": "한나 아렌트",
+    "motif": "books",
+    "row": 2,
+    "gesture": "throw",
+    "variant": 3,
+    "duration": 0.69
   }
 }

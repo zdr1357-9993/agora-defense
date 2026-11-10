@@ -4,13 +4,15 @@ import catalystsJson from './data/catalysts.json';
 import stagesJson from './data/stages.json';
 import ratesJson from './data/rates.json';
 import combatJson from './data/combat.json';
+import archiveJson from '../data/roster-v2-archive.json';
 
 export interface Philosopher {
   /** 표시 이름 (오마주 이름 적용) / realName: 내부 키로 쓰는 실제 이름 */
   id: string; name: string; realName: string; tier: number; era: string; school: string;
   quote: string; skill: string; skillDesc: string; lore: string; hidden: boolean;
+  plus?: boolean; origin?: boolean; thoughtYear?: number; materialCost?: number;
 }
-export interface Recipe { id: string; result: string; materials: string[]; catalyst: string | null; logic: string }
+export interface Recipe { id: string; result: string; materials: string[]; catalyst: string | null; logic: string; provisional?: boolean }
 export interface Stage {
   id: string; era: string; name: string; unlockAfter: string | null;
   enemyEarly: string; enemyLate: string; boss10: string; boss20: string; counter: string; story: string;
@@ -58,8 +60,20 @@ export const RECIPES = (recipesJson as Recipe[]).map((r) => ({ ...r, logic: homa
 export const STAGES = stagesJson as Stage[];
 export const CATALYSTS = catalystsJson as { id: string; name: string }[];
 /** 소환 시 등급별 확률 (엑셀 Rates 시트) */
-export const SUMMON_RATES = ratesJson as { tier: number; rate: number }[];
+export const SUMMON_RATES = ratesJson as { tier: number; plus?:boolean; rate: number }[];
 export const PHIL = new Map(PHILOSOPHERS.map((p) => [p.id, p]));
+/** Old collection records remain owned but never enter active summon/craft pools. */
+export const ARCHIVED_PHILOSOPHERS = (archiveJson as Philosopher[]).filter(p=>!PHIL.has(p.id));
+export const gradeRank = (p: {tier:number;plus?:boolean}) => p.tier + (p.plus ? .5 : 0);
+export const gradeCode = (p: {tier:number;plus?:boolean}) => `${p.tier}성${p.plus ? '+' : ''}`;
+export const gradeLabel = (p: {tier:number;plus?:boolean}) => `${gradeCode(p)} · ${TIER_NAME[p.tier]}${p.plus ? '+' : ''}`;
+export const GRADE_STEPS = [1,2,3,3.5,4,4.5,5,5.5,6,6.5,7];
+export const gradeAt = (rank:number) => ({tier:Math.floor(rank),plus:rank%1>0});
+/** Stack equal materials for readability; keep individual IDs in the engine. */
+export function materialGroups(ids:readonly string[]) {
+  const counts=new Map<string,number>(); for(const id of ids) counts.set(id,(counts.get(id)??0)+1);
+  return [...counts].map(([id,count])=>({id,count}));
+}
 export const CAT_ICON: Record<string, string> = { C001: '🔥', C002: '💎', C003: '🌀', C004: '⚙️', C005: '🪞' };
 export const CAT_NAME: Record<string, string> = Object.fromEntries(CATALYSTS.map((c) => [c.id, c.name.replace(/^\S*\s/, '').trim()]));
 export const ERA_ICON: Record<string, string> = { 고대: '🏛', 중세: '⛪', 동양: '🏯', 근대: '⚙️', 근현대: '📻', 현대: '🌐', 히든: '✨' };
@@ -74,7 +88,9 @@ export const TYPE_ICON: Record<string, string> = { 단일: '🎯', 광역: '💥
 /** 철학자의 실제 전투 수치: 등급 기본 피해 × 위력, 사거리·속도는 개인 프로필 */
 export function statsOf(id: string) {
   const p = PHIL.get(id)!, c = COMBAT.get(id), base = TIER_STATS[p.tier]!;
-  return { dmg: base.dmg * (c?.power ?? 1), range: c?.range ?? base.range, cooldown: c ? 1 / c.speed : base.cooldown, type: c?.type ?? '단일', target: c?.target ?? '선두', note: c?.note ?? '' };
+  // A + rank is halfway to the next rank in power, not battle enhancement +1.
+  const plus = p.plus ? Math.sqrt(TIER_STATS[p.tier+1]!.dmg/base.dmg) : 1;
+  return { dmg: base.dmg * plus * (c?.power ?? 1), range: c?.range ?? base.range, cooldown: c ? 1 / c.speed : base.cooldown, type: c?.type ?? '단일', target: c?.target ?? '선두', note: c?.note ?? '' };
 }
 
 

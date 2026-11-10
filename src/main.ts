@@ -12,7 +12,7 @@ import { STAGE_STARS, ERA_BONUS, STAR_BONUS } from './affinity';
 import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
 import { ITEM, isOwner, ITEM_BONUS } from './items';
 import {
-  homage, statsOf, TYPE_ICON, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, CAT_NAME, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, UPGRADE, type Stage, type Recipe,
+  ARCHIVED_PHILOSOPHERS, gradeRank, gradeCode, gradeLabel, gradeAt, GRADE_STEPS, materialGroups, homage, statsOf, TYPE_ICON, PHIL, PHILOSOPHERS, STAGES, TIER_STATS, CAT_ICON, CAT_NAME, ERA_ICON, RECIPES, SUMMON_RATES, TIER_NAME, UPGRADE, type Stage, type Recipe,
 } from './data';
 import { philosopherSprite, skinnedSprite, SKINS, monsterSprite, monsterSprite2, itemSprite, TIER_AURA } from './sprites';
 import { SKILLS, skillMode, skillModeLabel } from './skills';
@@ -141,7 +141,7 @@ function renderHome() {
     (row.querySelector('.sinfo') as HTMLButtonElement).onclick = () => stageInfo(s);
     box.appendChild(row);
   }
-  if (progress.favorite && progress.cards[progress.favorite]) {
+  if (progress.favorite && PHIL.has(progress.favorite) && progress.cards[progress.favorite]) {
     const fav = PHIL.get(progress.favorite)!;
     const ot = document.createElement('div');
     ot.className = 'srow onetool-row';
@@ -162,12 +162,12 @@ function renderCodex() {
   // 등급 탭: 한 번에 한 등급만 (스크롤 없이)
   const tabs = document.createElement('div');
   tabs.className = 'codex-tabs';
-  tabs.innerHTML = [1, 2, 3, 4, 5, 6, 7].map((t) => `<button class="tier-chip t${t} ${t === codexTier ? 'on' : ''}" data-ct="${t}">${TIER_NAME[t]}</button>`).join('');
+  tabs.innerHTML = GRADE_STEPS.map(t=>`<button class="tier-chip t${Math.floor(t)} ${t===codexTier?'on':''}" data-ct="${t}">${gradeCode(gradeAt(t))}</button>`).join('');
   box.appendChild(tabs);
   for (const b of tabs.querySelectorAll<HTMLButtonElement>('[data-ct]')) b.onclick = () => { codexTier = Number(b.dataset.ct); renderCodex(); };
   const grid = document.createElement('div');
   grid.className = 'codex-grid';
-  for (const p of PHILOSOPHERS.filter((x) => x.tier === codexTier)) {
+  for (const p of PHILOSOPHERS.filter((x) => gradeRank(x) === codexTier)) {
     const known = seen.has(p.id) || !!progress.cards[p.id] || (isAdmin() || (QA_MODE && !p.hidden));
     const n = progress.cards[p.id] ?? 0, lv = cardLevel(n);
     const d = document.createElement('div');
@@ -177,6 +177,12 @@ function renderCodex() {
     grid.appendChild(d);
   }
   box.appendChild(grid);
+  const archived=ARCHIVED_PHILOSOPHERS.filter(p=>(progress.cards[p.id]??0)>0);
+  if(archived.length){
+    const archive=document.createElement('details'); archive.className='collection-archive';
+    archive.innerHTML=`<summary>이전 카드 보관함 · ${archived.length}종</summary><p>이전 버전의 카드·경험치·장착·스킨 기록은 그대로 보존돼요. 현재 소환과 조합에는 사용하지 않아요.</p>${archived.map(p=>`<div><b>${homage(p.name)}</b><span>${progress.cards[p.id]}장 · Lv.${cardLevel(progress.cards[p.id])}</span></div>`).join('')}`;
+    box.appendChild(archive);
+  }
 }
 
 function cardHtml(id: string) {
@@ -185,7 +191,7 @@ function cardHtml(id: string) {
   const st = statsOf(id);
   const bar = (v: number, max: number) => `<span class="sbar"><i style="width:${Math.min(100, (v / max) * 100)}%"></i></span>`;
   return `<div class="pcard tc${p.tier}">
-    <div class="pc-head"><span class="pc-tier tier-chip t${p.tier}">${TIER_NAME[p.tier]}</span><b>${p.name}</b><span class="pc-era">${ERA_ICON[p.era] ?? ''} ${p.era} · ${p.school}</span></div>
+    <div class="pc-head"><span class="pc-tier tier-chip t${p.tier}">${gradeLabel(p)}</span><b>${p.name}</b><span class="pc-era">${ERA_ICON[p.era] ?? ''} ${p.era} · ${p.school}</span></div>
     <div class="pc-art" style="background-color:#f5f0e7;background-image:url('${journeyArt(p.era)}')"><img src="${portrait(id)}"></div>
     <div class="pc-quote">“${p.quote}”</div>
     <div class="pc-skill"><b>✦ ${p.skill}</b><span>${p.skillDesc}</span></div>
@@ -197,8 +203,8 @@ function cardHtml(id: string) {
       <div>📈 초당 피해 ${bar(st.dmg / st.cooldown, 3200)}<em>${Math.round(st.dmg / st.cooldown)}</em></div>
     </div></details>
     <div class="pc-lore">${p.lore}</div>
-    ${recipes.length ? `<details class="card-section"><summary>만드는 방법 · 조합 ${recipes.length}개</summary>${recipes.map((r) => `<div class="pc-recipe">⚗ ${r.materials.map((m) => PHIL.get(m)!.name).join(' + ')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''}<small>${r.logic}</small></div>`).join('')}</details>` : '<p class="hint">기본 소환으로 만나는 철학자예요.</p>'}
-    <div class="pc-foot">AGORA · ${TIER_NAME[p.tier]}</div>
+    ${recipes.length ? `<details class="card-section"><summary>만드는 방법 · 조합 ${recipes.length}개</summary>${recipes.map((r) => `<div class="pc-recipe">⚗ ${materialGroups(r.materials).map(({id,count})=>PHIL.get(id)!.name+(count>1 ? ' ×'+count : '')).join(' + ')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''}<small>${r.logic}</small></div>`).join('')}</details>` : '<p class="hint">기본 소환으로 만나는 철학자예요.</p>'}
+    <div class="pc-foot">AGORA · ${gradeLabel(p)}</div>
   </div>`;
 }
 function showCard(id: string) {
@@ -432,7 +438,7 @@ $('merge').onclick = () => {
   const ov = document.createElement('div');
   ov.className = 'overlay merge-ov';
   ov.innerHTML = `<div class="pop merge-pop"><h3>⚗ 어떤 조합을 할까요?</h3>${list.map((r, i) => { const res = PHIL.get(r.result)!; const seen = QA_MODE || progress.seen.includes(res.id) || !res.hidden;
-    return `<button class="mrow t${res.tier}" data-i="${i}"><img src="${portrait(res.id)}"><span><b>${seen ? res.name : '???'}</b><small>${r.materials.map((m) => shortName(PHIL.get(m)!.name)).join(' + ')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''}</small></span><em class="tier-chip t${res.tier}">${TIER_NAME[res.tier]}</em></button>`; }).join('')}</div>`;
+    return `<button class="mrow t${res.tier}" data-i="${i}"><img src="${portrait(res.id)}"><span><b>${seen ? res.name : '???'}</b><small>${materialGroups(r.materials).map(({id,count})=>shortName(PHIL.get(id)!.name)+(count>1 ? ' ×'+count : '')).join(' + ')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''}</small></span><em class="tier-chip t${res.tier}">${gradeLabel(res)}</em></button>`; }).join('')}</div>`;
   ov.onclick = (e) => { const b = (e.target as HTMLElement).closest('.mrow') as HTMLElement | null; if (b) doMerge(list[+b.dataset.i!]); ov.remove(); };
   document.body.appendChild(ov);
 };
@@ -441,7 +447,7 @@ function doMerge(r: Recipe) { if (game?.synthesize(r)) bump(progress, 'merges');
 function mergeChoices(g: Game): Recipe[] {
   if (g.over) return [];
   return g.availableRecipes().filter((r) => g.hasCatalyst(r) && !g.isLocked(r) && (!selected || r.materials.includes(selected.philId)))
-    .sort((a, b) => PHIL.get(b.result)!.tier - PHIL.get(a.result)!.tier);
+    .sort((a, b) => gradeRank(PHIL.get(b.result)!) - gradeRank(PHIL.get(a.result)!));
 }
 /** 필드 표시용: 조합 가능한 철학자 id, 선택한 철학자의 재료 짝 id */
 let readyIds = new Set<string>(), partnerIds = new Set<string>();
@@ -503,7 +509,7 @@ function updateUI() {
     if (selected) {
       const p = PHIL.get(selected.philId)!;
       info.className = `scard t${p.tier}`;
-      info.innerHTML = `<div class="sc-face"><img src="${pedArt(p.id)}"></div><div class="sc-body"><div class="sc-name"><span class="tier-chip t${p.tier}">${TIER_NAME[p.tier]}</span>${selected.level ? `<span class="tag lv">+${selected.level}</span>` : ''}<b>${p.name}</b></div><div class="sc-skill"><span class="skill-mode">${skillModeLabel(g.skillOf(p.id))}</span> <b>${p.skill}</b> ${p.skillDesc}</div></div>`;
+      info.innerHTML = `<div class="sc-face"><img src="${pedArt(p.id)}"></div><div class="sc-body"><div class="sc-name"><span class="tier-chip t${p.tier}">${gradeLabel(p)}</span>${selected.level ? `<span class="tag lv">+${selected.level}</span>` : ''}<b>${p.name}</b></div><div class="sc-skill"><span class="skill-mode">${skillModeLabel(g.skillOf(p.id))}</span> <b>${p.skill}</b> ${p.skillDesc}</div></div>`;
     } else {
       const nk = g.waveKind(), nkName = { normal: g.stage.enemyEarly, fast: '빠른 도그마', tank: '단단한 도그마', swarm: '도그마 떼', boss: g.bossName() }[nk];
       const nkTip = { normal: '기본 무리', fast: '느리게 만드는 철학자가 좋아요', tank: '한 방이 센 철학자가 좋아요', swarm: '범위 공격이 좋아요', boss: '강화를 미리 해 두세요' }[nk];
@@ -708,7 +714,7 @@ function draw() {
     ctx.fillStyle = TIER_AURA[p.tier]; ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#1c1917'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = `900 ${br * 1.3}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(String(p.tier), bx, by + 0.5);
+    ctx.fillText(`${p.tier}${p.plus ? '+' : ''}`, bx, by + 0.5);
     const tool = g.toolOf(t);
     if (tool) {
       const isz = cell * 0.38, ix = (t.cx + 0.62) * cellX, iy = (t.cy + 0.42) * cell;
@@ -1008,13 +1014,13 @@ function refreshWallet() {
 }
 
 // ---------- 고민방 ----------
-let roomThinker = 'T104';
+let roomThinker = 'T106';
 function renderRoom() {
   const idle = settleIdle(progress, clearedStages());
   saveProgress(progress);
-  if (progress.favorite && progress.cards[progress.favorite]) roomThinker = progress.favorite;
+  if (progress.favorite && PHIL.has(progress.favorite) && progress.cards[progress.favorite]) roomThinker = progress.favorite;
   const owned = PHILOSOPHERS.filter((p) => progress.cards[p.id]);
-  if (!progress.cards[roomThinker] && owned.length) roomThinker = owned.sort((a, b) => b.tier - a.tier)[0].id;
+  if ((!PHIL.has(roomThinker) || !progress.cards[roomThinker]) && owned.length) roomThinker = owned.sort((a, b) => gradeRank(b) - gradeRank(a))[0].id;
   const p = PHIL.get(roomThinker)!;
   const cost = tapUpgradeCost(progress);
   const rate = idleRate(progress, clearedStages());
@@ -1064,7 +1070,7 @@ function pullBtn(id: string, cls: string) {
   return `<button class="chunky ${cls}" data-pull="${id}">${o.label}<small>${CUR_ICON[o.currency]} ${o.cost.toLocaleString()}</small></button>`;
 }
 function renderGacha() {
-  const rates = CARD_RATES.map((r) => `<span class="tier-chip t${r.tier}">${TIER_NAME[r.tier]} ${(r.rate * 100).toFixed(1)}%</span>`).join(' ');
+  const rates = CARD_RATES.map((r) => `<span class="tier-chip t${r.tier}">${gradeLabel(r)} ${(r.rate * 100).toFixed(2)}%</span>`).join(' ');
   $('tab-gacha').innerHTML = `
     <div class="gacha-box master-box">
       <div class="gb-head"><h2>${iconHtml('gacha')} 거장 초대</h2><button class="info-btn" aria-label="거장 초대 안내" data-ginfo="m">i</button></div>
@@ -1081,7 +1087,7 @@ function renderGacha() {
     </div>`;
   const INFO: Record<string, string> = {
     m: `<h2>${iconHtml('gacha')} 거장 초대</h2><p>💎 지혜석 10회 뽑기의 마지막 1장은 반드시 <b>거장 또는 근원</b>이에요.<br>🎫 초대장 1장으로 거장 이상 1명을 바로 불러올 수도 있어요.</p>`,
-    c: `<h2>${iconHtml('codex')} 기억 떠올리기</h2><p>고뇌를 써서 잊어버린 철학자의 <b>기억(카드)</b>을 떠올려요. <b>거장·근원</b>은 카드가 있어야 전투에서 조합할 수 있어요. 이야기에서 지나온 시대의 철학자만 떠올릴 수 있어요 (지금: ${[...openEras()].join(', ')}).</p><p>같은 카드가 모이면 레벨업(Lv.${CARD_MAX_LEVEL}까지) · 레벨당 공격력 +${CARD_ATK_PER_LEVEL * 100}%<br>그 뒤 ${AWAKEN_EVERY}장마다 <b>각성</b>(최대 ${AWAKEN_MAX}단계): 공격력 +15%, 스킬 강화<br>레벨이 오르면 일화가 열려요.</p><div class="rates-line">${rates}</div><p><b>천장</b>: 거장 이상이 안 나와도 ${PITY_LIMIT}회째엔 확정 · 지금 ${PITY_LIMIT - progress.pity}회 남음</p>`,
+    c: `<h2>${iconHtml('codex')} 기억 떠올리기</h2><p>고뇌를 써서 잊어버린 철학자의 <b>기억(카드)</b>을 떠올려요. <b>거장·근원</b>은 카드가 있어야 전투에서 조합할 수 있어요. 고뇌 뽑기는 열린 시대 또는 이미 가진 카드에서 뽑아요. 지혜석·초대장은 모든 시대에서 뽑아요 (지금: ${[...openEras()].join(', ')}).</p><p>같은 카드가 모이면 레벨업(Lv.${CARD_MAX_LEVEL}까지) · 레벨당 공격력 +${CARD_ATK_PER_LEVEL * 100}%<br>그 뒤 ${AWAKEN_EVERY}장마다 <b>각성</b>(최대 ${AWAKEN_MAX}단계): 공격력 +15%, 스킬 강화<br>레벨이 오르면 일화가 열려요.</p><p class="hint">아래는 전체 등급 기본 확률이에요. 고뇌 뽑기는 열린 등급끼리 합계 100%로 다시 나눠요.</p><div class="rates-line">${rates}</div><p><b>천장</b>: 거장 이상이 안 나와도 ${PITY_LIMIT}회째엔 확정 (열린 거장 등급이 없으면 모든 시대에서 해금) · 지금 ${PITY_LIMIT - progress.pity}회 남음</p>`,
     t: `<h2>🧰 도구 상자</h2><p>뽑은 도구는 도감에서 철학자에게 장착해요.<br>그 도구의 주인에게 끼우면 <b>찰떡!</b> 공격력 +60%</p>`,
   };
   for (const b of $('tab-gacha').querySelectorAll<HTMLButtonElement>('[data-ginfo]')) b.onclick = () => alertBox(INFO[b.dataset.ginfo!]);
@@ -1103,11 +1109,11 @@ function renderGacha() {
 function gachaShow(o: PullOption, got: string[], before: Record<string, number>) {
   if (!got.length) return;
   const isTool = o.kind === 'tool';
-  const tiers = got.map(id => isTool ? 3 : PHIL.get(id)!.tier);
+  const tiers = got.map(id => isTool ? 3 : gradeRank(PHIL.get(id)!));
   const { top, hero, rest } = gachaLayout(tiers, isTool);
   const rare = hero >= 0, multiple = got.length > 1;
   const ov = document.createElement('div');
-  ov.className = `gacha-stage memory-reveal result-board ${rare ? 'has-spotlight' : 'ordinary-results'} rarity-${top}`;
+  ov.className = `gacha-stage memory-reveal result-board ${rare ? 'has-spotlight' : 'ordinary-results'} rarity-${Math.floor(top)}`;
   ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', '뽑기 결과');
   const previousFocus = document.activeElement as HTMLElement | null;
   ov.innerHTML = `<header class="memory-caption"><small>아고라 기억 우체국</small><h2>${rare ? '잠깐, 묵직한 기억이 도착했어요' : '기억이 도착했어요'}</h2><p class="reveal-progress" aria-live="polite">${rare ? '리본이 풀리는 중…' : `${got.length}개의 결과를 모두 확인해 보세요`}</p></header>
@@ -1129,8 +1135,8 @@ function gachaShow(o: PullOption, got: string[], before: Record<string, number>)
       counted[id] = (counted[id] ?? 0) + 1;
       const now = cardLevel(counted[id]);
       const tag = prev === 0 ? '<i class="new">NEW</i>' : now > prev ? `<i class="lvup">Lv.${now}!</i>` : '';
-      el.className = `gcard t${tiers[i]} ${i === hero ? 'spotlight-card' : ''}`;
-      el.innerHTML = `${tag}<img src="${pedArt(id)}"><b>${p.name}</b><small>${TIER_NAME[tiers[i]]}</small>`;
+      el.className = `gcard t${Math.floor(tiers[i])} ${i === hero ? 'spotlight-card' : ''}`;
+      el.innerHTML = `${tag}<img src="${pedArt(id)}"><b>${p.name}</b><small>${gradeLabel(p)}</small>`;
     }
     return el;
   });
@@ -1145,10 +1151,10 @@ function gachaShow(o: PullOption, got: string[], before: Record<string, number>)
     if (revealed || closed) return;
     revealed = true; window.clearTimeout(timer);
     ov.classList.add('results-ready'); ov.classList.toggle('instant-reveal', !animate);
-    ov.querySelector('h2')!.textContent = `${TIER_NAME[top]}의 기억을 찾았어요!`;
+    ov.querySelector('h2')!.textContent = `${gradeLabel(PHIL.get(got[hero])!)}의 기억을 찾았어요!`;
     ov.querySelector('.reveal-progress')!.textContent = multiple ? `최고 등급 1장과 나머지 ${rest.length}장 · 총 ${got.length}장` : '소중한 기억이 한 장 더해졌어요';
     skip.classList.add('hidden'); done.classList.remove('hidden'); done.focus();
-    if (animate) sfx.reveal(top - 1);
+    if (animate) sfx.reveal(Math.floor(top) - 1);
   };
   skip.onclick = () => reveal(false);
   done.onclick = () => {
@@ -1218,20 +1224,21 @@ function renderShop() {
 }
 
 // ---------- 조합표 · 확률표 ----------
+let recipeQuery='', recipeTier=0;
 function recipeSheet(filter: 'all' | 'ready' | 'liked' = 'all') {
   const g = game;
   const liked = new Set(progress.likedRecipes ?? []);
   const canNow = (r: Recipe) => !!g && g.ownedMaterials(r).every(Boolean) && g.hasCatalyst(r) && !g.isLocked(r);
   const all = RECIPES.filter((r) => !PHIL.get(r.result)!.hidden || progress.seen.includes(r.result) || QA_MODE);
   const rows = all.filter((r) => filter === 'all' || (filter === 'ready' ? canNow(r) : liked.has(r.id)))
-    .sort((a, b) => Number(canNow(b)) - Number(canNow(a)) || Number(liked.has(b.id)) - Number(liked.has(a.id)) || PHIL.get(a.result)!.tier - PHIL.get(b.result)!.tier);
-  const face = (id: string, on: boolean, unknown = false) => `<span class="rf t${PHIL.get(id)!.tier} ${on ? 'on' : ''} ${unknown ? 'unk' : ''}"><img src="${portrait(id)}" alt=""><small>${unknown ? '???' : shortName(PHIL.get(id)!.name)}</small></span>`;
+    .sort((a, b) => Number(canNow(b)) - Number(canNow(a)) || Number(liked.has(b.id)) - Number(liked.has(a.id)) || gradeRank(PHIL.get(a.result)!) - gradeRank(PHIL.get(b.result)!));
+  const face = (id: string, on: boolean, unknown = false, count = 1) => `<span class="rf t${PHIL.get(id)!.tier} ${on ? 'on' : ''} ${unknown ? 'unk' : ''}"><img src="${portrait(id)}" alt=""><small>${unknown ? '???' : shortName(PHIL.get(id)!.name)}${count>1 ? ' ×'+count : ''}</small><i class="recipe-rank">${gradeCode(PHIL.get(id)!)}</i></span>`;
   const html = rows.map((r) => {
     const own = g ? g.ownedMaterials(r) : r.materials.map(() => false);
     const known = QA_MODE || progress.seen.includes(r.result) || !PHIL.get(r.result)!.hidden;
     const cat = r.catalyst ? `<b>+</b><span class="rf cat ${g && g.catalysts[r.catalyst] ? 'on' : ''}"><i>${CAT_ICON[r.catalyst]}</i><small>촉매</small></span>` : '';
-    return `<div class="req ${canNow(r) ? 'ready' : ''}" data-id="${r.id}">${liked.has(r.id) ? '<em class="hrt">💗</em>' : ''}
-      ${r.materials.map((m, i) => face(m, own[i])).join('<b>+</b>')}${cat}<b class="eq">=</b>${face(r.result, true, !known)}
+    return `<div class="req ${canNow(r) ? 'ready' : ''}" data-id="${r.id}" data-grade="${gradeRank(PHIL.get(r.result)!)}" data-search="${PHIL.get(r.result)!.name} ${PHIL.get(r.result)!.realName} ${r.materials.map(id=>PHIL.get(id)!.name+' '+PHIL.get(id)!.realName).join(' ')}">${liked.has(r.id) ? '<em class="hrt">💗</em>' : ''}
+      ${materialGroups(r.materials).map(({id,count})=>face(id,!!g && g.towers.filter(t=>t.philId===id).length>=count,false,count)).join('<b>+</b>')}${cat}<b class="eq">=</b>${face(r.result, true, !known)}
       <button class="req-i" data-info="${r.id}" aria-label="상세">i</button></div>`;
   }).join('') || `<p class="hint" style="text-align:center">${filter === 'ready' ? '지금 바로 할 수 있는 조합이 없어요' : '💗 표시한 조합이 없어요'}</p>`;
   document.querySelector('.overlay.recipes')?.remove();
@@ -1239,8 +1246,12 @@ function recipeSheet(filter: 'all' | 'ready' | 'liked' = 'all') {
   o.className = 'overlay recipes';
   o.innerHTML = `<div class="pop rsheet"><div class="rs-head"><h2>📜 조합표</h2><button class="rs-x" aria-label="닫기">✕</button></div>
     <div class="rs-tabs">${(['all', 'ready', 'liked'] as const).map((f) => `<button data-f="${f}" class="${f === filter ? 'on' : ''}">${{ all: `전체 ${all.length}`, ready: `지금 가능 ${all.filter(canNow).length}`, liked: `💗 목표 ${liked.size}` }[f]}</button>`).join('')}</div>
-    <p class="hint rs-hint">진한 얼굴 = 지금 필드에 있는 재료 · <b>i</b> 를 누르면 자세히</p>
+    <div class="recipe-filters"><label>찾기<input id="recipe-search" placeholder="철학자 이름 또는 재료"></label><label>완성 등급<select id="recipe-grade"><option value="0">모든 등급</option>${GRADE_STEPS.filter(t=>t>1).map(t=>`<option value="${t}">${gradeCode(gradeAt(t))}</option>`).join('')}</select></label></div><p class="hint rs-hint">진한 얼굴 = 재료 수량 충족 · ×숫자 = 필요한 인원 · +는 별도 조합 단계</p>
     <div class="rs-list">${html}</div></div>`;
+  const search=o.querySelector<HTMLInputElement>('#recipe-search')!, grade=o.querySelector<HTMLSelectElement>('#recipe-grade')!;
+  search.value=recipeQuery; grade.value=String(recipeTier);
+  const applyFilters=()=>{for(const row of o.querySelectorAll<HTMLElement>('.req')) row.hidden=!!((recipeTier && Number(row.dataset.grade)!==recipeTier) || !(row.dataset.search??'').toLowerCase().includes(recipeQuery.toLowerCase().trim()));};
+  search.oninput=()=>{recipeQuery=search.value;applyFilters();}; grade.onchange=()=>{recipeTier=Number(grade.value);applyFilters();};applyFilters();
   o.onclick = (e) => {
     const el = e.target as HTMLElement;
     if (el === o || el.closest('.rs-x')) { o.remove(); return; }
@@ -1262,10 +1273,10 @@ function recipeDetail(r: Recipe, back: 'all' | 'ready' | 'liked') {
   const o = document.createElement('div');
   o.className = 'overlay rdetail';
   o.innerHTML = `<div class="pop rd-pop t${res.tier}">
-    <div class="rd-hero"><img src="${pedArt(res.id)}" alt="" class="${known ? '' : 'unk'}"><div><span class="tier-chip t${res.tier}">${TIER_NAME[res.tier]}</span><h2>${known ? res.name : '??? (처음 조합하면 공개)'}</h2>${known ? `<p class="rd-skill"><b>✦ ${res.skill}</b> ${res.skillDesc}</p>` : ''}</div></div>
-    <div class="rd-mats">${r.materials.map((m, i) => { const p = PHIL.get(m)!; return `<div class="${own[i] ? 'have' : ''}"><img src="${portrait(m)}" alt=""><b>${p.name}</b><small>${TIER_NAME[p.tier]} · ${own[i] ? '필드에 있음 ✓' : '없음'}</small></div>`; }).join('')}
+    <div class="rd-hero"><img src="${pedArt(res.id)}" alt="" class="${known ? '' : 'unk'}"><div><span class="tier-chip t${res.tier}">${gradeLabel(res)}</span><h2>${known ? res.name : '??? (처음 조합하면 공개)'}</h2>${known ? `<p class="rd-skill"><b>✦ ${res.skill}</b> ${res.skillDesc}</p>` : ''}</div></div>
+    <div class="rd-mats">${materialGroups(r.materials).map(({id,count})=>{const p=PHIL.get(id)!,have=g?g.towers.filter(t=>t.philId===id).length:0;return `<div class="${have>=count?'have':''}"><img src="${portrait(id)}" alt=""><b>${p.name} ×${count}</b><small>${gradeLabel(p)} · ${g?`보유 ${have}/${count}`:'필요 '+count+'명'}</small></div>`;}).join('')}
       ${r.catalyst ? `<div class="${g && g.catalysts[r.catalyst] ? 'have' : ''}"><i>${CAT_ICON[r.catalyst]}</i><b>촉매 ${CAT_NAME[r.catalyst]}</b><small>보유 ${g ? g.catalysts[r.catalyst] : 0}</small></div>` : ''}</div>
-    ${r.logic ? `<p class="rd-logic">💬 ${r.logic}</p>` : ''}
+    <p class="recipe-cost">1성부터 모두 조합할 때: <b>${res.materialCost}명분</b> · 지금 필요한 직접 재료 ${r.materials.length}명</p>${res.origin?'<p class="hint">근원은 후대의 기억을 모아 원래 인물을 깨우는 특별 조합이에요.</p>':''}${r.logic ? `<p class="rd-logic">${r.provisional?'🧩 게임적 축약 · ':''}${r.logic}</p>` : ''}
     ${g && g.isLocked(r) ? `<p class="hint">🔒 ${lockReason(r)}</p>` : ''}
     <div class="rd-btns"><button class="chunky rd-like">${liked ? '💔 목표 해제' : '💗 목표로 저장'}</button>${ready ? '<button class="chunky gold rd-go">⚗ 지금 조합</button>' : '<button class="chunky blue rd-back">← 목록</button>'}</div></div>`;
   o.onclick = (e) => {
@@ -1283,12 +1294,10 @@ function recipeDetail(r: Recipe, back: 'all' | 'ready' | 'liked') {
 }
 
 function rateSheet() {
-  const commons = PHILOSOPHERS.filter((p) => p.tier === 1 && !p.hidden);
-  const rows = [1, 2, 3, 4, 5, 6, 7].map((t) => `<tr><td><span class="tier-chip t${t}">${TIER_NAME[t]}</span></td><td>${PHILOSOPHERS.filter((p) => p.tier === t).length}명</td><td>${t === 1 ? '소환' : '📜 조합'}</td></tr>`).join('');
-  alertBox(`<h2>🎲 소환과 등급</h2><p>소환하면 <b>흔함 ${commons.length}명</b> 중 한 명이 똑같은 확률(각 ${(100 / commons.length).toFixed(1)}%)로 나와요.<br>그 위 등급은 전부 조합표대로 만들어요.</p>
-    <p class="hint">${commons.map((p) => p.name).join(' · ')}</p>
-    <table class="rates"><tr><th>등급</th><th>인원</th><th>얻는 법</th></tr>${rows}</table>
-    <p class="hint">🎟 무료 소환권: 10웨이브마다 보스를 잡으면 ${3}장, 5·15·25·35·45웨이브 광장 집회에서 1장</p>`);
+ const ids=summonPool(), pool=ids.length?PHILOSOPHERS.filter(p=>ids.includes(p.id)):PHILOSOPHERS;
+ const bands=SUMMON_RATES.filter(r=>pool.some(p=>gradeRank(p)===gradeRank(r))), total=bands.reduce((n,r)=>n+r.rate,0);
+ const rows=GRADE_STEPS.map(t=>{const r=bands.find(r=>gradeRank(r)===t);return `<tr><td><span class="tier-chip t${Math.floor(t)}">${gradeLabel(gradeAt(t))}</span></td><td>${PHILOSOPHERS.filter(p=>gradeRank(p)===t).length}명</td><td>${r?((r.rate/total)*100).toFixed(4)+'%':'기억 해금 필요'}</td></tr>`;}).join('');
+ alertBox(`<h2>🎲 전투 소환과 등급</h2><p>기본 1성에 더해, <b>카드를 보유한 상위 철학자</b>도 낮은 확률로 등장해요. 열린 등급끼리 확률을 다시 나눠요. 해금한 근원은 첫 소환부터 등장할 수 있어요.</p><p class="hint">튜토리얼은 지정된 1성만 나와요. 3성+·4성+·5성+·6성+는 별도 조합 단계이며 전투 강화 +1과 달라요.</p><table class="rates"><tr><th>등급</th><th>전체 인원</th><th>현재 확률</th></tr>${rows}</table><p class="hint">카드 뽑기의 확률은 뽑기 화면의 안내에서 확인해요.</p>`);
 }
 
 // ---------- 타격감 연출 ----------
@@ -1583,7 +1592,7 @@ function welcome() {
       <div>📜 <b>조합</b> 그 위는 전부 조합표대로 모아야 탄생</div>
       <div>🤔 <b>고민방</b> 고뇌를 모아 카드를 뽑고 성장</div>
     </div>
-    <p>첫 선물로 🤔 300 · 💎 100 · 탈레스 카드를 드려요.<br>먼저 <b>아테네의 광장 · 쉬움</b>부터!</p>`), 300);
+    <p>첫 선물로 🤔 300 · 💎 100 · 소크라테스 카드를 드려요.<br>먼저 <b>아테네의 광장 · 쉬움</b>부터!</p>`), 300);
 }
 
 /** 로그인 후 계정 진입 */
@@ -1677,7 +1686,7 @@ function tcgCard(id: string) {
   return `<div class="tcg tcg-t${p.tier}" data-id="${id}"><div class="tcg-inner">
     <div class="tcg-face tcg-front">
       <div class="tcg-top"><b>${p.name}</b><span class="tcg-type">${TYPE_ICON[st.type]} ${st.type}</span></div>
-      <div class="tcg-stars">${'★'.repeat(p.tier)}<small>${TIER_NAME[p.tier]} · ${ERA_ICON[p.era] ?? ''} ${p.school}</small></div>
+      <div class="tcg-stars">${'★'.repeat(p.tier)}${p.plus ? '⁺' : ''}<small>${gradeLabel(p)} · ${ERA_ICON[p.era] ?? ''} ${p.school}</small></div>
       <div class="tcg-art"><img src="${art}">${lv ? `<span class="tcg-lv">Lv.${lv}</span>` : ''}</div>
       <div class="tcg-skill"><b>✦ ${p.skill}</b><p>${p.skillDesc}</p></div>
       <div class="tcg-stat"><span>⚔ ${Math.round(st.dmg)}</span><span>◎ ${st.range}칸</span><span>⏱ ${(1 / st.cooldown).toFixed(2)}/초</span></div>
@@ -1695,7 +1704,7 @@ function tcgCard(id: string) {
 }
 function openTcg(startId?: string) {
   const seen = new Set(progress.seen);
-  const list = [...PHILOSOPHERS].filter((p) => seen.has(p.id) || !!progress.cards[p.id] || (isAdmin() || (QA_MODE && !p.hidden))).sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id));
+  const list = [...PHILOSOPHERS].filter((p) => seen.has(p.id) || !!progress.cards[p.id] || (isAdmin() || (QA_MODE && !p.hidden))).sort((a, b) => gradeRank(a) - gradeRank(b) || a.id.localeCompare(b.id));
   if (!list.length) { toast('아직 만난 철학자가 없어요'); return; }
   const ov = document.createElement('div');
   ov.className = 'overlay tcg-ov';
@@ -1855,7 +1864,7 @@ function summonPool(st?: StoryStage): string[] {
   if (st?.pool) return toIds(new Set(st.pool)); // 시작 튜토리얼은 판마다 정해진 철학자만
   const names = new Set(START_POOL);
   for (const st of STORY) if ((progress.storyCleared ?? []).includes(st.id)) for (const n of st.unlock ?? []) names.add(n);
-  return PHILOSOPHERS.filter((p) => p.tier === 1 && names.has(p.realName)).map((p) => p.id);
+  return PHILOSOPHERS.filter(p=>(p.tier===1 && names.has(p.realName)) || (p.tier>1 && (progress.cards[p.id]??0)>0)).map(p=>p.id);
 }
 /** 기억이 열린 시대: 지금 진행 중인 장까지 */
 function openEras(): Set<string> {
@@ -1865,7 +1874,7 @@ function openEras(): Set<string> {
   const upto = QA_MODE || !next ? Math.max(...CHAPTERS.map(c=>c.n)) : next.chapter;
   return new Set(CHAPTERS.filter((c) => c.n <= upto).map((c) => c.era));
 }
-setCardFilter((p) => openEras().has(p.era));
+setCardFilter((p) => openEras().has(p.era) || !!progress.cards[p.id]);
 const storyOpen = (st: StoryStage) => { const i = STORY.indexOf(st); return (st.base !== 'S6' || modernUnlocked()) && (QA_MODE || i === 0 || (progress.storyCleared ?? []).includes(STORY[i - 1].id)); };
 let storyChapter = -1;
 /** 설정에서 '처음부터 튜토리얼'을 눌렀을 때 (이미 1장을 진행한 계정도 튜토리얼을 다시 열어 둔다) */
@@ -1883,7 +1892,7 @@ function renderStory(box: HTMLElement) {
   let selectedStage = stages.find(st => st.id === journeySelectedId) ?? stages.find(st => st.id === next.id) ?? stages.find(storyOpen) ?? stages[0];
   journeySelectedId = selectedStage.id;
   const positions = stages.length === 5 ? [[17,76],[42,62],[75,72],[79,36],[43,20]] : [[18,75],[44,55],[78,65],[72,25]];
-  const faceId = progress.favorite && progress.cards[progress.favorite] ? progress.favorite : 'T106';
+  const faceId = progress.favorite && PHIL.has(progress.favorite) && progress.cards[progress.favorite] ? progress.favorite : 'T106';
   const heading = document.createElement('div'); heading.className = 'journey-heading';
   heading.innerHTML = '<h2>모험의 여정</h2><small>지도를 눌러 목적지를 고르고, 준비되면 출발해요</small>'; box.appendChild(heading);
   const chapters = document.createElement('nav'); chapters.className = 'journey-chapters'; chapters.setAttribute('aria-label','시대 선택');
@@ -2004,7 +2013,7 @@ function playPrologue() {
   const ov = document.createElement('div');
   ov.className = 'prologue';
   ov.innerHTML = `<div class="pr-scene" style="background-image:url(${sceneArt('고대')})"></div>
-    <div class="pr-people">${['소크라테스', '피타고라스', '탈레스', '헤라클레이토스'].map((n) => `<img src="${portrait(PHILOSOPHERS.find((p) => p.realName === n)!.id)}">`).join('')}</div>
+    <div class="pr-people">${['소크라테스', '플라톤', '아리스토텔레스', '데모크리토스'].map((n) => `<img src="${portrait(PHILOSOPHERS.find((p) => p.realName === n)!.id)}">`).join('')}</div>
     <div class="lid top"></div><div class="lid bottom"></div>
     <p class="pr-text"></p><button class="vn-skip">건너뛰기 ▶▶</button>`;
   document.body.appendChild(ov);
@@ -2077,7 +2086,7 @@ function resultPanel(g: Game, html: string) {
   const nextLabel = g.raid ? '' : story ? (win || story.chapter === 0 ? '▶ 다음 이야기' : '↻ 다시 도전') : g.oneTool ? '' : win ? '▶ 다음 스테이지' : '↻ 다시 도전';
   const ov = document.createElement('div');
   ov.className = 'overlay result';
-  const mvp = [...g.towers].sort((a, b) => PHIL.get(b.philId)!.tier - PHIL.get(a.philId)!.tier)[0];
+  const mvp = [...g.towers].sort((a, b) => gradeRank(PHIL.get(b.philId)!) - gradeRank(PHIL.get(a.philId)!))[0];
   const hero = mvp ? `<div class="res-hero ${win ? 'win' : 'lose'}" style="background-image:url(${eraSky(g.stage.era)})">
       ${win ? '<i class="cf"></i><i class="cf"></i><i class="cf"></i><i class="cf"></i><i class="cf"></i><i class="cf"></i>' : ''}
       <img src="${heroPortrait(mvp.philId)}" alt=""><span class="res-ribbon">${win ? '논파 성공' : g.raid ? '레이드 종료' : '다음엔 꼭'}</span><span class="res-mvp">MVP · ${shortName(PHIL.get(mvp.philId)!.name)}</span></div>` : '';

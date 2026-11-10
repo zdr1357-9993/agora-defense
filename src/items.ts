@@ -3,7 +3,7 @@ export interface Item { id: string; name: string; owners: string[]; desc: string
 
 export const ITEMS: Item[] = [
   { id: 'cup', name: '독배', owners: ['소크라테스', '델포이의 소크라테스'], desc: '아테네가 건넨 마지막 잔' },
-  { id: 'watch', name: '회중시계', owners: ['임마누엘 칸트'], desc: '쾨니히스베르크 시민들이 시계를 맞춘 산책' },
+  { id: 'watch', name: '회중시계', owners: ['임마누엘 칸트', '쾨니히스베르크의 칸트'], desc: '쾨니히스베르크 시민들이 시계를 맞춘 산책' },
   { id: 'hammer', name: '망치', owners: ['프리드리히 니체', '카를 마르크스'], desc: '우상을 부수고, 세계를 바꾼다' },
   { id: 'razor', name: '면도날', owners: ['오컴의 윌리엄'], desc: '불필요한 존재를 늘리지 마라' },
   { id: 'flybottle', name: '파리병', owners: ['루트비히 비트겐슈타인'], desc: '파리에게 나가는 길을 보여 주기' },
