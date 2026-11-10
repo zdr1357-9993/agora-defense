@@ -1,3 +1,4 @@
+import { gachaLayout } from './gacha-layout';
 import { ENEMY_ROLES, ENEMY_NAMES } from './enemy-designs';
 import { canWearSkin, revealAdminCollection, modernUnlockStatus } from './ui-policy';
 import { signatureProfile, signaturePose, drawSignatureEffect, type SignatureCast } from './signature-fx';
@@ -1098,76 +1099,70 @@ function renderGacha() {
   }
 }
 
-/** 기억 두루마리 → 부드러운 열기 → 카드 공개. 결과·확률은 기존 규칙 그대로. */
+/** A rare result takes center stage once; the rest stay visible together. */
 function gachaShow(o: PullOption, got: string[], before: Record<string, number>) {
+  if (!got.length) return;
   const isTool = o.kind === 'tool';
-  const tiers = got.map((id) => (isTool ? 3 : PHIL.get(id)!.tier));
-  const top = Math.max(...tiers);
-  const glow = top >= 7 ? 'rainbow' : top >= 6 ? 'gold' : top >= 5 ? 'orange' : 'blue';
+  const tiers = got.map(id => isTool ? 3 : PHIL.get(id)!.tier);
+  const { top, hero, rest } = gachaLayout(tiers, isTool);
+  const rare = hero >= 0, multiple = got.length > 1;
   const ov = document.createElement('div');
-  ov.className = `gacha-stage memory-reveal glow-${glow}`;
-  ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', '기억 펼치기');
+  ov.className = `gacha-stage memory-reveal result-board ${rare ? 'has-spotlight' : 'ordinary-results'} rarity-${top}`;
+  ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', '뽑기 결과');
   const previousFocus = document.activeElement as HTMLElement | null;
-  ov.innerHTML = `<div class="memory-caption"><small>아고라 기억 우체국</small><h2>잊고 있던 생각이 도착했어요</h2><p class="reveal-progress" aria-live="polite">총 ${got.length}개의 기억</p></div>
-    <button type="button" class="scroll-wrap" aria-label="두루마리 펼치기"><img class="memory-scroll" src="${artUrl('memory-seal')}" alt="분홍 리본으로 묶인 기억 두루마리"><span>눌러서 기억 펼치기</span><small>철학자도 택배는 못 참지.</small></button>
-    <div class="cards ${got.length === 1 ? 'single' : ''}"></div><div class="g-actions"><button class="chunky blue skip">모두 열기</button><button class="chunky gold done hidden">확인</button></div>`;
+  ov.innerHTML = `<header class="memory-caption"><small>아고라 기억 우체국</small><h2>${rare ? '잠깐, 묵직한 기억이 도착했어요' : '기억이 도착했어요'}</h2><p class="reveal-progress" aria-live="polite">${rare ? '리본이 풀리는 중…' : `${got.length}개의 결과를 모두 확인해 보세요`}</p></header>
+    ${rare ? `<section class="memory-spotlight" aria-label="최고 등급 카드"><div class="spotlight-rays" aria-hidden="true"><i></i><i></i><i></i></div><div class="rare-card-back"><img src="${artUrl('memory-seal')}" alt="봉인된 기억"><b>어떤 철학자일까요?</b></div><div class="rare-card-front"></div></section>` : ''}
+    <section class="result-rest"><p class="rest-caption">${rare && multiple ? '함께 도착한 나머지 기억' : '전체 결과'}</p><div class="cards ${!multiple ? 'single' : ''}"></div></section>
+    <div class="g-actions"><button class="chunky blue skip ${rare ? '' : 'hidden'}">연출 건너뛰기</button><button class="chunky gold done ${rare ? 'hidden' : ''}">확인</button></div>`;
   document.body.appendChild(ov);
-  sfx.drumroll(.6);
-  ov.querySelector<HTMLButtonElement>('.scroll-wrap')!.focus();
-  const counted: Record<string, number> = { ...before };
-  const cardsEl = ov.querySelector('.cards')!;
-  let opened = false, idx = 0, timer = 0, revealTimer = 0;
-  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-  const sparkle = (host: HTMLElement, tier: number) => {
-    if (reducedMotion) return;
-    const trail = document.createElement('div'); trail.className = `memory-sparkles rarity-${Math.min(7,tier)}`;
-    for (let i=0;i<(tier>=6?10:6);i++) { const dot=document.createElement('i'); dot.style.setProperty('--a', `${i * 360 / (tier>=6?10:6)}deg`); dot.style.setProperty('--delay', `${i * 22}ms`); trail.appendChild(dot); }
-    host.appendChild(trail); window.setTimeout(() => trail.remove(), 1000);
-  };
-  const flipNext = (chain = true) => {
-    if (idx >= got.length) { ov.querySelector('.skip')!.classList.add('hidden'); ov.querySelector('.done')!.classList.remove('hidden'); ov.querySelector<HTMLButtonElement>('.done')!.focus(); return; }
-    const id = got[idx], tier = tiers[idx];
+  const counted = { ...before };
+  // Build in original draw order, so duplicate-card level changes remain correct.
+  const cards = got.map((id, i) => {
     const el = document.createElement('div');
+    el.dataset.resultIndex = String(i);
     if (isTool) {
-      const it = ITEMS.find((x) => x.id === id)!;
+      const it = ITEMS.find(x => x.id === id)!;
       el.className = 'gcard tool';
-      el.innerHTML = `<img src="${itemUrl(id)}"><b>${it.name}</b><small>${it.owners.map((x) => homage(x).split(' ').pop()).join('·')}의 찰떡</small>`;
+      el.innerHTML = `<img src="${itemUrl(id)}"><b>${it.name}</b><small>${it.owners.map(x => homage(x).split(' ').pop()).join('·')}의 찰떡</small>`;
     } else {
-      const p = PHIL.get(id)!;
-      const prev = cardLevel(counted[id] ?? 0);
+      const p = PHIL.get(id)!, prev = cardLevel(counted[id] ?? 0);
       counted[id] = (counted[id] ?? 0) + 1;
       const now = cardLevel(counted[id]);
       const tag = prev === 0 ? '<i class="new">NEW</i>' : now > prev ? `<i class="lvup">Lv.${now}!</i>` : '';
-      el.className = `gcard t${tier} ${tier >= 6 ? 'legend' : ''} ${tier >= 7 ? 'mythic' : ''}`;
-      el.innerHTML = `${tag}<img src="${pedArt(id)}"><b>${p.name}</b><small>${TIER_NAME[tier]}</small>`;
-      // The border marks rarity without full-screen flashes or camera shake.
+      el.className = `gcard t${tiers[i]} ${i === hero ? 'spotlight-card' : ''}`;
+      el.innerHTML = `${tag}<img src="${pedArt(id)}"><b>${p.name}</b><small>${TIER_NAME[tiers[i]]}</small>`;
     }
-    if (chain) sfx.reveal(tier - 1);
-    cardsEl.appendChild(el);
-    if (chain) sparkle(el, tier);
-    idx++;
-    ov.querySelector('.reveal-progress')!.textContent = `${idx} / ${got.length}개의 기억을 펼쳤어요`;
-    if (chain) timer = window.setTimeout(() => flipNext(), reducedMotion ? 30 : tier >= 6 ? 430 : 180);
-    else if (idx >= got.length) flipNext(false);
-  };
-  const open = () => {
-    if (opened) return; opened = true;
-    ov.classList.add('opened'); sparkle(ov.querySelector('.memory-caption') as HTMLElement, top);
-    revealTimer = window.setTimeout(() => flipNext(), reducedMotion ? 0 : 380);
-  };
-  ov.querySelector('.scroll-wrap')!.addEventListener('click', open);
-  // Explicit opening keeps the animation under the player's control.
-  ov.querySelector('.skip')!.addEventListener('click', (e) => {
-    e.stopPropagation();
-    opened = true; ov.classList.add('opened'); window.clearTimeout(timer); window.clearTimeout(revealTimer);
-    while (idx < got.length) flipNext(false);
-    flipNext(false); // Last card may already be visible while its completion timer is pending.
+    return el;
   });
-  ov.querySelector('.done')!.addEventListener('click', () => { window.clearTimeout(timer); window.clearTimeout(revealTimer); ov.remove(); renderGacha(); if (previousFocus?.isConnected) previousFocus.focus(); else $('tab-gacha').querySelector<HTMLButtonElement>('button')?.focus(); });
-  ov.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') { event.preventDefault(); (ov.querySelector(idx < got.length ? '.skip' : '.done') as HTMLButtonElement).click(); }
-    if (event.key === 'Tab') { const buttons = [...ov.querySelectorAll<HTMLButtonElement>('button')].filter(b => !b.classList.contains('hidden') && !(opened && b.classList.contains('scroll-wrap'))); const current = buttons.indexOf(document.activeElement as HTMLButtonElement); event.preventDefault(); buttons[(current + (event.shiftKey ? buttons.length - 1 : 1)) % buttons.length]?.focus(); }
+  const grid = ov.querySelector('.cards')!;
+  for (const i of rest) grid.appendChild(cards[i]);
+  if (rare) ov.querySelector('.rare-card-front')!.appendChild(cards[hero]);
+  if (rare && !multiple) ov.querySelector('.result-rest')!.classList.add('hidden');
+  let timer = 0, revealed = !rare, closed = false;
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  const skip = ov.querySelector<HTMLButtonElement>('.skip')!, done = ov.querySelector<HTMLButtonElement>('.done')!;
+  const reveal = (animate: boolean) => {
+    if (revealed || closed) return;
+    revealed = true; window.clearTimeout(timer);
+    ov.classList.add('results-ready'); ov.classList.toggle('instant-reveal', !animate);
+    ov.querySelector('h2')!.textContent = `${TIER_NAME[top]}의 기억을 찾았어요!`;
+    ov.querySelector('.reveal-progress')!.textContent = multiple ? `최고 등급 1장과 나머지 ${rest.length}장 · 총 ${got.length}장` : '소중한 기억이 한 장 더해졌어요';
+    skip.classList.add('hidden'); done.classList.remove('hidden'); done.focus();
+    if (animate) sfx.reveal(top - 1);
+  };
+  skip.onclick = () => reveal(false);
+  done.onclick = () => {
+    if (closed) return; closed = true; window.clearTimeout(timer); ov.remove(); renderGacha();
+    if (previousFocus?.isConnected) previousFocus.focus(); else $('tab-gacha').querySelector<HTMLButtonElement>('button')?.focus();
+  };
+  ov.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { event.preventDefault(); if (!revealed) reveal(false); else done.click(); }
+    if (event.key === 'Tab') { event.preventDefault(); (revealed ? done : skip).focus(); }
   });
+  if (rare) {
+    skip.focus(); sfx.drumroll(.6);
+    timer = window.setTimeout(() => reveal(!reduced), reduced ? 0 : top >= 7 ? 1300 : top >= 6 ? 1050 : 800);
+  } else { ov.classList.add('results-ready'); done.focus(); sfx.reveal(1); }
 }
 
 function burst(host: HTMLElement, tier: number) {
