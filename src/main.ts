@@ -477,7 +477,6 @@ $('upgrade-bands').addEventListener('click', (event) => {
     sfx.merge(); lastInfoKey = ''; updateUI();
   }
 });
-$('d-recipes').onclick = () => recipeSheet();
 $('merge').onclick = () => {
   if (!game) return;
   const list = mergeChoices(game);

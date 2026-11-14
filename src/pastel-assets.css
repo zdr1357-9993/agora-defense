@@ -70,7 +70,8 @@ button.ghost { border-radius: 2px; }
 #actions button span { font-size: 11px; }
 #actions button i:not(:has(img)) { font-size: 0; width: 28px; height: 28px; }
 #actions button i:not(:has(img))::before { content: ''; display: block; width: 28px; height: 28px; background: var(--action-art) center / contain no-repeat; image-rendering: pixelated; }
-#sell { --action-art: var(--art-sell); }#merge { --action-art: var(--art-merge); }#upgrade-btn { --action-art: var(--art-upgrade); }#d-recipes { --action-art: var(--art-recipe); }
+#sell { --action-art: var(--art-sell); }#merge { --action-art: var(--art-merge); }#upgrade-btn { --action-art: var(--art-upgrade); }
+#recruit-btn i:not(:has(img)) { font-size:20px; width:28px; height:28px; }
 #actions button i img { width: 34px; height: 34px; }
 #dock { grid-template-columns: 1fr 1fr; }
 #dock #summon, #dock #start { min-height: 56px; border: 2px solid #937da9; border-radius: 3px; font-size: 17px; }
