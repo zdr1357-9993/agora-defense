@@ -70,21 +70,22 @@
         <button id="speed">1x</button>
       </header>
       <div id="cats"></div>
-      <div id="battle-status-row"><div id="boss-status" role="status">보스는 10웨이브마다 등장해요</div><button id="battle-log" aria-label="철학자 대사 전체 보기">대사</button></div>
+      <div id="battle-status-row"><div id="boss-status" role="status">보스는 10웨이브마다 등장해요</div></div>
       <div id="field-wrap"><canvas id="field"></canvas></div>
-      <div id="battle-quote" role="log" aria-live="off">철학자의 한마디 · 전투를 시작해 보세요</div>
       <section id="selbar"><div id="info"></div></section>
-      <section id="upgrade-panel" class="upgrade-panel hidden" aria-label="강화 구간 선택">
-        <div class="upgrade-panel-head"><b>구간 강화</b><span>전장 배치 유닛 대상 · 대기석 제외</span></div>
-        <div id="upgrade-bands"></div>
-        <small class="upgrade-provisional">임시 비용 · 조정 예정 · 대상 전원 공격력 +35% (최대 Lv.5)</small>
-      </section>
-      <nav id="actions">
-        <button id="sell"><i>🪙</i><span>판매</span></button>
-        <button id="merge"><i>⚗</i><span>합성</span></button>
-        <button id="upgrade-btn"><i>⬆</i><span>강화</span></button>
-        <button id="d-recipes"><i>📜</i><span>조합표</span></button>
-      </nav>
+      <div id="battle-actions">
+        <section id="upgrade-panel" class="upgrade-panel hidden" aria-label="강화 구간 선택">
+          <div class="upgrade-panel-head"><b>구간 강화</b><span>전장 배치 유닛 대상 · 대기석 제외</span></div>
+          <div id="upgrade-bands"></div>
+          <small class="upgrade-provisional">임시 비용 · 조정 예정 · 대상 전원 공격력 +35% (최대 Lv.5)</small>
+        </section>
+        <nav id="actions">
+          <button id="sell"><i>🪙</i><span>판매</span></button>
+          <button id="merge"><i>⚗</i><span>합성</span></button>
+          <button id="upgrade-btn"><i>⬆</i><span>강화</span></button>
+          <button id="d-recipes"><i>📜</i><span>조합표</span></button>
+        </nav>
+      </div>
       <nav id="dock">
         <button id="summon">소환 <small>(<span id="cost">40G</span>)</small></button>
         <button id="start">웨이브 시작</button>

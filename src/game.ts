@@ -292,7 +292,6 @@ export class Game {
     keep.level = 0;
     this.fx.push({ type: 'morph', x: keep.cx + 0.5, y: keep.cy + 0.5, tier: PHIL.get(r.result)!.tier });
     this.discovered.add(r.result);
-    keep.sayCd = 0; this.say(keep);
     return keep;
   }
 

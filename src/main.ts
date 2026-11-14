@@ -291,7 +291,7 @@ function resize() {
   // 필드가 먼저: 상단·하단 버튼을 뺀 높이에서 아래 패널 최소 높이(104px)만 남기고 필드에 준다
   const battle = $('battle');
   const gap = parseFloat(getComputedStyle(battle).rowGap) || 8, pad = parseFloat(getComputedStyle(battle).paddingTop) + parseFloat(getComputedStyle(battle).paddingBottom);
-  const fixedIds = ['hud', 'cats', 'battle-status-row', 'battle-quote', 'selbar', 'actions', 'dock'];
+  const fixedIds = ['hud', 'cats', 'battle-status-row', 'selbar', 'battle-actions', 'dock'];
   const fixed = fixedIds.reduce((a, id) => a + $(id).offsetHeight, 0) + gap * fixedIds.filter(id => $(id).offsetHeight > 0).length + pad;
   const H = Math.max(150, battle.clientHeight - fixed - (parseFloat(frameStyle.paddingTop) || 0) - (parseFloat(frameStyle.paddingBottom) || 0) - (parseFloat(frameStyle.borderTopWidth) || 0) - (parseFloat(frameStyle.borderBottomWidth) || 0));
   if (!W || !battle.clientHeight) return;
@@ -318,7 +318,7 @@ new ResizeObserver(resize).observe($('battle'));
 function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   if ((story?.base === 'S6' || (!story && s.id === 'S6')) && !modernUnlocked()) { toast(modernLockText()); return; }
   if (story) { const base = STAGES.find((x) => x.id === story.base)!; s = { ...base, name: story.title, boss10: story.boss, boss20: story.boss, story: story.when }; }
-  spawnAt.clear(); signatureCasts.clear(); signatureLast.clear(); speeches.clear(); quoteQueue.length = 0; battleDialogue.length = 0; quoteLeft = 0; $('battle-quote').textContent = '철학자의 한마디 · 전투를 시작해 보세요';
+  spawnAt.clear(); signatureCasts.clear(); signatureLast.clear(); speeches.clear();
   $('field-wrap').style.backgroundImage = '';
   eraWipe(s.era, story ? story.title : s.name, story ? story.when : '');
   game = new Game(s, {
@@ -780,6 +780,39 @@ function draw() {
       ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText(e.name, x, by - 8);
       ctx.fillStyle = '#c2410c'; ctx.fillText(e.name, x, by - 8);
     }
+  }
+
+  // Skill lines appear briefly above the philosopher who spoke. They are not archived.
+  for (const t of towers) {
+    const speech = speeches.get(t.uid);
+    if (!speech || t.cy >= GRID) continue;
+    const cx = (t.cx + 0.5) * cellX, anchorY = (t.cy + 0.08) * cell;
+    const maxWidth = Math.min(184, Math.max(104, cellX * 4.6));
+    const fontSize = Math.max(9, Math.min(11, cell * 0.16));
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, speech.t / 0.28);
+    ctx.font = `700 ${fontSize}px "Galmuri11", sans-serif`;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const lines = wrapCanvasText(speech.text, maxWidth, line => ctx.measureText(line).width).slice(0, 3);
+    const lineHeight = fontSize * 1.3, padX = 7, padY = 5;
+    const contentW = Math.max(0, ...lines.map(line => ctx.measureText(line).width));
+    const bubbleW = Math.min(maxWidth + padX * 2, contentW + padX * 2);
+    const bubbleH = lines.length * lineHeight + padY * 2;
+    const left = Math.max(4, Math.min(w - bubbleW - 4, cx - bubbleW / 2));
+    let top = anchorY - bubbleH - 10;
+    if (top < 4) top = Math.min(fh - bubbleH - 4, anchorY + 10);
+    top = Math.max(4, top);
+    ctx.fillStyle = '#fffdf7'; ctx.strokeStyle = '#51455d'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(left, top, bubbleW, bubbleH, 6); ctx.fill(); ctx.stroke();
+    const tailX = Math.max(left + 9, Math.min(left + bubbleW - 9, cx));
+    const tailY = top < anchorY ? top + bubbleH : top;
+    ctx.beginPath();
+    if (top < anchorY) { ctx.moveTo(tailX - 4, tailY); ctx.lineTo(tailX, tailY + 5); ctx.lineTo(tailX + 4, tailY); }
+    else { ctx.moveTo(tailX - 4, tailY); ctx.lineTo(tailX, tailY - 5); ctx.lineTo(tailX + 4, tailY); }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#392f47';
+    lines.forEach((line, i) => ctx.fillText(line, left + padX, top + padY + lineHeight * (i + 0.5)));
+    ctx.restore();
   }
 
   ctx.font = `700 ${Math.max(9, cell * 0.14)}px "Galmuri11", sans-serif`;
@@ -1406,28 +1439,16 @@ function consumeFx(g: Game) {
     } else if (f.type === 'boss') { bossIntro = { name: f.name, t: 2.6 }; shake = 0.12; shakeStrength = 3; sfx.boss(); }
     else if (f.type === 'bossSkill' && f.text) { banner = { text: f.text, t: 1.6 }; shake = 0.08; shakeStrength = 2; sfx.bossSkill(); }
     else if (f.type === 'say') {
-      speeches.set(f.uid, {text:f.text,t:6});
-      const current = g.towers.find(t => t.uid === f.uid);
-      if (current) {
-        const text = `${PHIL.get(current.philId)!.name} · ${f.text}`;
-        if (battleDialogue[battleDialogue.length - 1] !== text) { battleDialogue.push(text); if (battleDialogue.length > 30) battleDialogue.shift(); }
-        if (quoteLeft <= 0) { $('battle-quote').textContent = text; $('battle-quote').scrollTop = 0; quoteLeft = 6; }
-        else if (!quoteQueue.includes(text) && quoteQueue.length < 6) quoteQueue.push(text);
-      }
+      speeches.set(f.uid, {text:f.text,t:3.6});
     }
     else if (f.type === 'ticket') { banner = { text: `${f.why}! 🎟 무료 소환권 +${f.n}`, t: 2 }; sfx.reveal(5); }
     else if (f.type === 'stun') { const t = g.towers.find((x) => x.uid === f.uid); if (t) for (let i = 0; i < 8; i++) particles.push({ x: t.cx + 0.5, y: t.cy + 0.3, vx: rnd(-1, 1), vy: rnd(-2, -0.5), life: 0.6, max: 0.6, color: '#c7a6ff', size: 0.07 }); }
   }
 }
 const speeches = new Map<number, { text: string; t: number }>();
-const quoteQueue: string[] = [];
-const battleDialogue: string[] = [];
-let quoteLeft = 0;
 const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
 
 function updateFx(dt: number) {
-  quoteLeft = Math.max(0, quoteLeft - dt / speed);
-  if (!quoteLeft && quoteQueue.length) { $('battle-quote').textContent = quoteQueue.shift()!; $('battle-quote').scrollTop = 0; quoteLeft = 6; }
   for (const [uid, cast] of signatureCasts) { cast.age += dt / speed; if (cast.age >= cast.duration) signatureCasts.delete(uid); }
   for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; if (!p.text) p.vy += 6 * dt; p.life -= dt; }
   for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
@@ -1548,7 +1569,7 @@ function drawFx(w: number, fh: number) {
     status.style.setProperty('--boss-hp', `${ratio*100}%`);
     status.classList.add('has-boss');
     status.textContent = `${boss.name} · ${Math.ceil(ratio*100)}%${game?.raid ? ` · ${Math.ceil(game.raidLeft)}초` : ''}${(boss.shieldT??0)>0 ? ' · 보호막' : ''}`;
-  } else { status.classList.remove('has-boss'); const q = $('battle-quote').textContent || ''; if (status.textContent !== q) status.textContent = q; }
+  } else { status.classList.remove('has-boss'); if (status.textContent !== '보스는 10웨이브마다 등장해요') status.textContent = '보스는 10웨이브마다 등장해요'; }
   // 보스 등장 컷인
   if (bossIntro) {
     const T = 2.6 - bossIntro.t, slide = 1 - Math.pow(1 - Math.min(1, T * 3.2), 3), out = Math.min(1, bossIntro.t * 3);
@@ -1630,10 +1651,6 @@ $('open-rates').onclick = rateSheet;
 for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.onclick = () => { sfx.click(); switchTab(b.dataset.tab!); };
 for (const id of ['mute', 'mute-b']) { const b = document.getElementById(id); if (b) { b.textContent = isMuted() ? '🔇' : '🔊'; b.onclick = () => { const mu = toggleMute(); for (const x of ['mute', 'mute-b']) { const e = document.getElementById(x); if (e) e.textContent = mu ? '🔇' : '🔊'; } }; } }
 $('b-recipes').onclick = () => recipeSheet();
-$('battle-log').onclick = () => {
-  const escape = (text: string) => text.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-  alertBox(`<h2>철학자들의 한마디</h2><p class="hint">최근 대사를 최대 30개까지 모았어요. 읽는 동안 전투는 잠시 멈춰요.</p><div class="battle-dialogue-log">${battleDialogue.length ? battleDialogue.map(text => `<p>${escape(text)}</p>`).join('') : '<p>아직 대사가 없어요. 철학자들이 입을 열면 여기에 기록돼요.</p>'}</div>`);
-};
 $('tut-again').onclick = () => { $('settings').classList.add('hidden'); progress.battleTutDone = false; progress.tabTut = []; pageTutStart(currentTab); saveProgress(progress); toast('🎓 화면마다, 그리고 다음 전투에서 튜토리얼이 다시 나와요'); };
 $('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); progress = loadProgress(); bootQA(); renderHome(); switchTab('stages'); } };
 function bootQA() { if (isAdmin() && revealAdminCollection(progress, PHILOSOPHERS.map(p => p.id))) saveProgress(progress); if (QA_MODE && !progress.purchases.includes('qa')) { progress.gonoe += QA_GONOE; progress.gems += QA_GEMS; progress.tickets += 5; progress.purchases.push('qa'); saveProgress(progress); } }

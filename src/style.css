@@ -810,6 +810,8 @@ button.ghost { border: 2px dashed #d8c3ae; box-shadow: none; }
 #sell:not(:disabled) { background: #ffe1ea; }
 #upgrade-btn:not(:disabled) { background: #dff6ea; }
 .upgrade-panel { flex: none; padding: 7px 8px 5px; border: 1px solid #bca8cb; border-radius: 8px; background: rgba(255,252,245,.97); }
+#battle-actions { position: relative; z-index: 4; flex: none; min-width: 0; }
+#upgrade-panel { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 8; max-height: min(30dvh, 220px); overflow-y: auto; box-sizing: border-box; box-shadow: 0 5px 18px rgba(48,35,58,.22); }
 .upgrade-panel-head { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; }
 .upgrade-panel-head span,.upgrade-provisional { color:#715f7d; font-size:10px; }
 #upgrade-bands { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; margin:5px 0 3px; }
