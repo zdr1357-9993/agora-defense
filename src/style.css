@@ -811,7 +811,17 @@ button.ghost { border: 2px dashed #d8c3ae; box-shadow: none; }
 #upgrade-btn:not(:disabled) { background: #dff6ea; }
 .upgrade-panel { flex: none; padding: 7px 8px 5px; border: 1px solid #bca8cb; border-radius: 8px; background: rgba(255,252,245,.97); }
 #battle-actions { position: relative; z-index: 4; flex: none; min-width: 0; }
-#upgrade-panel { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 8; max-height: min(30dvh, 220px); overflow-y: auto; box-sizing: border-box; box-shadow: 0 5px 18px rgba(48,35,58,.22); }
+#upgrade-panel, #recruit-panel { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 8; max-height: min(30dvh, 220px); overflow-y: auto; box-sizing: border-box; box-shadow: 0 5px 18px rgba(48,35,58,.22); }
+#battle-gems { flex:none; min-width:52px; height:34px; box-sizing:border-box; display:flex; align-items:center; justify-content:center; gap:3px; padding:2px 7px; border:1px solid #c9b9d6; border-radius:7px; background:#fffdf7; color:#56466b; font-size:12px; }
+#battle-gems b { color:#7552a3; }
+.recruit-panel { max-height:min(36dvh, 260px) !important; }
+#recruit-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; margin-top:6px; }
+.recruit-group { min-width:0; display:flex; flex-direction:column; gap:4px; padding:4px; border:1px solid #dfd3e6; border-radius:6px; background:#faf6fc; }
+.recruit-group > b { overflow:hidden; text-align:center; white-space:nowrap; font-size:10px; color:#50415e; }
+.recruit-choice { min-width:0; min-height:46px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:3px 2px; border:1px solid #c7b4d7; border-radius:5px; background:#fffdf7; color:#403548; line-height:1.2; }
+.recruit-choice strong { font-size:9px; white-space:nowrap; }
+.recruit-choice small { display:block; max-width:100%; overflow:hidden; color:#756481; font-size:7px; text-overflow:ellipsis; white-space:nowrap; }
+.recruit-choice:disabled { opacity:.46; filter:grayscale(.35); }
 .upgrade-panel-head { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; }
 .upgrade-panel-head span,.upgrade-provisional { color:#715f7d; font-size:10px; }
 #upgrade-bands { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; margin:5px 0 3px; }
@@ -834,6 +844,7 @@ button.ghost { border: 2px dashed #d8c3ae; box-shadow: none; }
 .mrow b { font-family: 'Jua'; font-weight: 400; font-size: 16px; } .mrow small { font-size: 11px; color: #7c6a5b; }
 .mrow em { font-style: normal; }
 @media (max-height: 700px) { #selbar { height: 58px; } #actions button { height: 50px; } }
+@media (max-width: 420px) { #battle-gems { min-width:46px; padding:2px 4px; font-size:11px; } .recruit-group { padding:3px 2px; } .recruit-choice { min-height:42px; } .upgrade-panel-head { align-items:flex-start; } .upgrade-panel-head span { text-align:right; } }
 #battle { justify-content: space-between; }
 #selbar { height: 78px; }
 #actions button { height: 62px; }

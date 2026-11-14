@@ -34,6 +34,17 @@ const LOCK_TIER = 6;
 /** 지름길 조합: 얕지만 그 철학자 카드 Lv.5(11장) 이상이어야 열린다 */
 const SHORTCUT_LV = 5;
 const isShortcut = (r: { logic: string }) => r.logic.startsWith('지름길');
+const RECRUIT_GROUPS = [
+  { id: 'all', label: '전체 랜덤', school: '' },
+  { id: 'confucian', label: '유학 랜덤', school: '유학' },
+  { id: 'rationalist', label: '합리론 랜덤', school: '합리론' },
+  { id: 'existentialist', label: '실존주의 랜덤', school: '실존주의' },
+] as const;
+const RECRUIT_BANDS = [
+  { id: 'low', label: '1–3성', min: 1, max: 3, cost: 40 },
+  { id: 'middle', label: '4–5성', min: 4, max: 5, cost: 50 },
+  { id: 'high', label: '6–7성', min: 6, max: 7, cost: 60 },
+] as const;
 /** 스토리 진행(장)에 따라 만들 수 있는 최고 등급: 1·2장 희귀, 3장 전설, 4장부터 근원 */
 function tierCap(prog = progress): number {
   if (QA_MODE) return 7;
@@ -338,6 +349,7 @@ function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   }
   // 마스터 계정은 전장에 들어갈 때 무조건 골드 10000
   if (me?.role === 'master') game.gold = 10000;
+  buildRecruitGrid(game);
   selected = null;
   resultShown = false;
   introT = 2.8;
@@ -430,9 +442,33 @@ $('summon').onclick = () => { if (game?.summon()) sfx.summon(); selected = null;
 $('sell').onclick = () => { if (game && selected) { game.sell(selected); selected = null; updateUI(); } };
 $('upgrade-btn').onclick = () => {
   const panel = $('upgrade-panel');
+  if (panel.classList.contains('hidden')) $('recruit-panel').classList.add('hidden');
   panel.classList.toggle('hidden');
   updateUI();
 };
+$('recruit-btn').onclick = () => {
+  const panel = $('recruit-panel');
+  if (panel.classList.contains('hidden')) $('upgrade-panel').classList.add('hidden');
+  panel.classList.toggle('hidden');
+  updateUI();
+};
+$('recruit-grid').addEventListener('click', (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-recruit-group]');
+  if (!button || !game) return;
+  const band = RECRUIT_BANDS.find((x) => x.id === button.dataset.recruitBand);
+  const group = RECRUIT_GROUPS.find((x) => x.id === button.dataset.recruitGroup);
+  if (!band || !group) return;
+  const candidates = PHILOSOPHERS.filter((p) => !p.hidden && !game!.locked.has(p.id) && p.tier >= band.min && p.tier <= band.max && (!group.school || p.school === group.school));
+  if (!candidates.length) { toast('지금 영입할 수 있는 후보가 없어요'); return; }
+  if (!game.canRecruit(band.cost)) { toast(game.insight < band.cost ? '영감석이 부족해요' : '전장과 대기석이 가득 찼어요'); return; }
+  const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+  const tower = game.recruit(chosen.id, band.cost);
+  if (!tower) return;
+  selected = null;
+  sfx.summon();
+  toast(`${group.label} · ${chosen.name} 영입`);
+  updateUI();
+});
 $('upgrade-bands').innerHTML = UPGRADE.bands.map((band) => `<button class="upgrade-band" data-upgrade-band="${band.id}"><b>${band.label}</b><span class="upgrade-band-detail"></span></button>`).join('');
 $('upgrade-bands').addEventListener('click', (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-upgrade-band]');
@@ -479,6 +515,7 @@ function updateUI() {
   if (!game) return;
   const g = game;
   $('gold').textContent = String(g.gold);
+  $('battle-gems').querySelector('b')!.textContent = String(g.insight);
   $('lives').textContent = String(g.lives);
   $('wave').textContent = String(g.wave);
   $('wave-max').textContent = String(g.maxWave);
@@ -554,6 +591,7 @@ function updateUI() {
   ub.disabled = !hasAny || !!g.over;
   ub.querySelector('span')!.textContent = '구간 강화';
   panel.classList.toggle('hidden', panel.classList.contains('hidden') || g.over !== null);
+  $('recruit-panel').classList.toggle('hidden', $('recruit-panel').classList.contains('hidden') || g.over !== null);
   $('upgrade-bands').querySelectorAll<HTMLButtonElement>('[data-upgrade-band]').forEach((button) => {
     const info = g.upgradeBandInfo(button.dataset.upgradeBand!)!;
     const n = info.eligible.length;
@@ -562,6 +600,22 @@ function updateUI() {
       ? `대상 ${n}명 모두 +1 · ${info.totalCost.toLocaleString()}G · +35%`
       : `대상 0명 · 전장 배치 ${info.fielded.length}명`;
   });
+  $('recruit-grid').querySelectorAll<HTMLButtonElement>('[data-recruit-group]').forEach((button) => {
+    const band = RECRUIT_BANDS.find((x) => x.id === button.dataset.recruitBand)!;
+    button.disabled = !button.dataset.candidates || !g.canRecruit(band.cost);
+  });
+}
+
+function buildRecruitGrid(g: Game) {
+  $('recruit-grid').innerHTML = RECRUIT_GROUPS.map((group) => `
+    <section class="recruit-group"><b>${group.label}</b>
+      ${RECRUIT_BANDS.map((band) => {
+        const candidates = PHILOSOPHERS.filter((p) => !p.hidden && !g.locked.has(p.id) && p.tier >= band.min && p.tier <= band.max && (!group.school || p.school === group.school));
+        const names = candidates.map((p) => p.name);
+        const preview = names.length ? `${names.slice(0, 2).map(shortName).join(' · ')}${names.length > 2 ? ` 외 ${names.length - 2}명` : ''}` : '해금된 후보 없음';
+        return `<button class="recruit-choice" data-recruit-group="${group.id}" data-recruit-band="${band.id}" data-candidates="${names.length || ''}" title="후보: ${names.length ? names.join(' · ') : '없음'}"><strong>${band.label} · ${band.cost}💎</strong><small>${preview}</small></button>`;
+      }).join('')}
+    </section>`).join('');
 }
 
 // ---------- 그리기 ----------
@@ -1426,6 +1480,7 @@ function consumeFx(g: Game) {
       for (let i = 0; i < (f.boss ? 64 : 14); i++) particles.push({ x: f.x, y: f.y, vx: rnd(f.boss ? -6 : -3.2, f.boss ? 6 : 3.2), vy: rnd(f.boss ? -7 : -4, 0.5), life: f.boss ? 0.95 : 0.7, max: f.boss ? 0.95 : 0.7, color: shard[i % shard.length], size: rnd(0.05, f.boss ? 0.17 : 0.12), sq: true, rot: rnd(0, 6), g: 7 });
       shapes.push({ kind: 'pop', x: f.x, y: f.y, r: f.boss ? 1.6 : 0.6, life: 0.3, max: 0.3 });
       particles.push({ x: f.x, y: f.y - 0.2, vx: 0, vy: -0.8, life: 0.9, max: 0.9, color: '#e3a72f', size: 0.28, text: `+${f.gold}G` });
+      particles.push({ x: f.x + 0.28, y: f.y - 0.52, vx: 0, vy: -0.65, life: 0.75, max: 0.75, color: '#65b8e8', size: 0.2, text: `💎+${f.insight}` });
       if (f.boss) {
         hitStop = 0.008; bossFlash = 0.1; shake = 0.13; shakeStrength = 4.5;
         shapes.push({ kind: 'bossShockwave', x: f.x, y: f.y, r: 3.2, life: 0.42, max: 0.42 });

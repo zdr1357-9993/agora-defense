@@ -70,10 +70,14 @@
         <button id="speed">1x</button>
       </header>
       <div id="cats"></div>
-      <div id="battle-status-row"><div id="boss-status" role="status">보스는 10웨이브마다 등장해요</div></div>
+      <div id="battle-status-row"><div id="boss-status" role="status">보스는 10웨이브마다 등장해요</div><div id="battle-gems" title="전투 중 처치로 얻는 임시 영감석">💎 <b>0</b></div></div>
       <div id="field-wrap"><canvas id="field"></canvas></div>
       <section id="selbar"><div id="info"></div></section>
       <div id="battle-actions">
+        <section id="recruit-panel" class="upgrade-panel recruit-panel hidden" aria-label="논박 및 학파 랜덤 영입">
+          <div class="upgrade-panel-head"><b>논박 · 학파 영입</b><span>처치 +1 · 보스 +10 · 전투 종료 시 소멸</span></div>
+          <div id="recruit-grid"></div>
+        </section>
         <section id="upgrade-panel" class="upgrade-panel hidden" aria-label="강화 구간 선택">
           <div class="upgrade-panel-head"><b>구간 강화</b><span>전장 배치 유닛 대상 · 대기석 제외</span></div>
           <div id="upgrade-bands"></div>
@@ -83,7 +87,7 @@
           <button id="sell"><i>🪙</i><span>판매</span></button>
           <button id="merge"><i>⚗</i><span>합성</span></button>
           <button id="upgrade-btn"><i>⬆</i><span>강화</span></button>
-          <button id="d-recipes"><i>📜</i><span>조합표</span></button>
+          <button id="recruit-btn"><i>💎</i><span>논박 영입</span></button>
         </nav>
       </div>
       <nav id="dock">

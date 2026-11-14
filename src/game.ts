@@ -44,7 +44,7 @@ export interface Enemy {
 /** 화면 연출용 이벤트 (게임 규칙에는 영향 없음) */
 export type FxEvent =
   | { type: 'hit'; x: number; y: number; dmg: number; big: boolean; uid?: number }
-  | { type: 'kill'; x: number; y: number; gold: number; boss: boolean }
+  | { type: 'kill'; x: number; y: number; gold: number; insight: number; boss: boolean }
   | { type: 'shot'; uid: number; tx?: number; ty?: number }
   | { type: 'ability'; uid: number; kind: Skill['kind']; mode: 'onHit' | 'trigger'; tx: number; ty: number }
   | { type: 'morph'; x: number; y: number; tier: number }
@@ -63,6 +63,8 @@ const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 
 export class Game {
   gold = startGold();
+  /** 전투 중 적 처치로 모으는 임시 영감석. 전투가 끝나면 소멸한다. */
+  insight = 0;
   lives = 20;
   wave = 0;
   summonCost = SUMMON_COST;
@@ -160,6 +162,20 @@ export class Game {
     this.towers.push(t);
     this.discovered.add(philId);
     return t;
+  }
+
+  canRecruit(cost: number) {
+    return !this.over && !this.oneTool && this.insight >= cost && (this.emptyCells().length > 0 || this.benchSlots().length > 0);
+  }
+
+  /** 논박/학파에서 고른 무작위 철학자를 전장 또는 대기석에 영입한다. */
+  recruit(philId: string, cost: number) {
+    const p = PHIL.get(philId);
+    if (!p || p.hidden || this.locked.has(philId) || !this.canRecruit(cost)) return null;
+    const tower = this.place(philId);
+    if (!tower) return null;
+    this.insight -= cost;
+    return tower;
   }
 
   /** 흔함(1등급) 9명 중 무작위 1명. 무료 소환권이 있으면 먼저 쓴다 */
@@ -519,7 +535,9 @@ export class Game {
 
     for (const e of this.enemies) if (e.hp <= 0) {
       this.gold += e.reward;
-      { const [kx, ky] = this.enemyPos(e); this.fx.push({ type: 'kill', x: kx, y: ky, gold: e.reward, boss: e.boss }); }
+      const insight = e.boss ? 10 : 1;
+      this.insight += insight;
+      { const [kx, ky] = this.enemyPos(e); this.fx.push({ type: 'kill', x: kx, y: ky, gold: e.reward, insight, boss: e.boss }); }
       if (!e.boss && Math.random() < 0.03) this.gainCatalyst(this.randomCatalyst());
     }
     this.enemies = this.enemies.filter((e) => e.hp > 0);
