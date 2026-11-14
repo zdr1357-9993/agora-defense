@@ -572,12 +572,15 @@ function draw() {
   const insetX = cellX * SCENERY_MARGIN, insetY = cell * SCENERY_MARGIN;
   const w = GRID * cellX, hTot = ROWS * cell, fh = GRID * cell;
   const scaleX = canvas.width / fullW, scaleY = canvas.height / fullH;
+  const shakeFade = shake > 0 ? Math.min(1, shake / 0.16) : 0;
+  const shakeX = Math.sin(tick * 3.7) * shakeStrength * shakeFade;
+  const shakeY = Math.cos(tick * 4.3) * shakeStrength * 0.58 * shakeFade;
   ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = '#f3eee8'; ctx.fillRect(0, 0, fullW, fullH);
   const scenery = arenaArt(g.stage.era, progress.battleBackdrop, g.storyId);
   if (scenery) ctx.drawImage(scenery, 0, 0, fullW, fullH);
-  ctx.setTransform(scaleX, 0, 0, scaleY, insetX * scaleX, insetY * scaleY);
+  ctx.setTransform(scaleX, 0, 0, scaleY, (insetX + shakeX) * scaleX, (insetY + shakeY) * scaleY);
   // An actual illustrated bench sits under the five waiting positions.
   drawWaitingBench(ctx, g.stage.era, cellX * .65, fh + cell * .53, cellX * 5.7, cell * .95);
   ctx.font = `${Math.max(10, cell * .2)}px "Galmuri11", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1335,6 +1338,9 @@ const recoil = new Map<number, number>();
 const signatureCasts = new Map<number, SignatureCast>();
 const signatureLast = new Map<number, number>();
 let shake = 0;
+let shakeStrength = 0;
+let hitStop = 0;
+let bossFlash = 0;
 let banner: { text: string; t: number } | null = null;
 let bossIntro: { name: string; t: number } | null = null;
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
@@ -1346,7 +1352,7 @@ THEME['현대'] = {...THEME['근현대'],ground:'#e4f0e9',road:'#e1eee7',roadEdg
 
 function soundFor(f: FxEvent) {
   if (f.type === 'hit') sfx.hit();
-  else if (f.type === 'kill') { if (f.boss) sfx.coin(); else sfx.kill(); }
+  else if (f.type === 'kill') { if (f.boss) sfx.bossBreak(); else sfx.kill(); }
 }
 
 function consumeFx(g: Game) {
@@ -1379,16 +1385,21 @@ function consumeFx(g: Game) {
       if (f.big && particles.filter(p => p.text).length < 8) particles.push({ x: f.x + rnd(-0.15, 0.15), y: f.y - 0.3, vx: 0, vy: -1.2, life: 0.7, max: 0.7, color: f.big ? '#ffd36b' : '#ffffff', size: f.big ? 0.36 : 0.24, text: fmt(f.dmg) + (f.big ? '!' : '') });
     } else if (f.type === 'kill') {
       const shard = ERA_SHARD[g.stage.era] ?? PASTEL;
-      for (let i = 0; i < (f.boss ? 44 : 14); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-3.2, 3.2), vy: rnd(-4, 0.5), life: 0.7, max: 0.7, color: shard[i % shard.length], size: rnd(0.05, 0.12), sq: true, rot: rnd(0, 6), g: 7 });
+      for (let i = 0; i < (f.boss ? 64 : 14); i++) particles.push({ x: f.x, y: f.y, vx: rnd(f.boss ? -6 : -3.2, f.boss ? 6 : 3.2), vy: rnd(f.boss ? -7 : -4, 0.5), life: f.boss ? 0.95 : 0.7, max: f.boss ? 0.95 : 0.7, color: shard[i % shard.length], size: rnd(0.05, f.boss ? 0.17 : 0.12), sq: true, rot: rnd(0, 6), g: 7 });
       shapes.push({ kind: 'pop', x: f.x, y: f.y, r: f.boss ? 1.6 : 0.6, life: 0.3, max: 0.3 });
       particles.push({ x: f.x, y: f.y - 0.2, vx: 0, vy: -0.8, life: 0.9, max: 0.9, color: '#e3a72f', size: 0.28, text: `+${f.gold}G` });
-      if (f.boss) { shake = 0.6; banner = { text: '🎉 논파 성공!', t: 1.8 }; }
+      if (f.boss) {
+        hitStop = 0.008; bossFlash = 0.1; shake = 0.16; shakeStrength = 10;
+        shapes.push({ kind: 'bossShockwave', x: f.x, y: f.y, r: 3.2, life: 0.42, max: 0.42 });
+        particles.push({ x: f.x, y: f.y - 0.75, vx: 0, vy: -0.65, life: 0.85, max: 0.85, color: '#fff4c2', size: 0.46, text: '논파!' });
+        banner = { text: '🎉 논파 성공!', t: 1.8 };
+      }
     } else if (f.type === 'morph') {
       if (f.tier >= 5) sfx.synth(f.tier - 1); else sfx.merge();
       // Short pixel confetti, no floor floodlight, glow ring or camera shake.
       for (let i = 0; i < 8; i++) particles.push({x:f.x,y:f.y-.25,vx:rnd(-.65,.65),vy:rnd(-1.2,-.4),life:.42,max:.42,color:['#a7c8ae','#c4b4d1','#e6cf9f'][i%3],size:.045,sq:true});
-    } else if (f.type === 'boss') { bossIntro = { name: f.name, t: 2.6 }; shake = 0.4; sfx.boss(); }
-    else if (f.type === 'bossSkill' && f.text) { banner = { text: f.text, t: 1.6 }; shake = 0.25; sfx.bossSkill(); }
+    } else if (f.type === 'boss') { bossIntro = { name: f.name, t: 2.6 }; shake = 0.12; shakeStrength = 3; sfx.boss(); }
+    else if (f.type === 'bossSkill' && f.text) { banner = { text: f.text, t: 1.6 }; shake = 0.08; shakeStrength = 2; sfx.bossSkill(); }
     else if (f.type === 'say') {
       speeches.set(f.uid, {text:f.text,t:6});
       const current = g.towers.find(t => t.uid === f.uid);
@@ -1420,6 +1431,8 @@ function updateFx(dt: number) {
   for (const [k, v] of recoil) { const n = v - dt * 6; if (n <= 0) recoil.delete(k); else recoil.set(k, n); }
   for (const [k, v] of hitFlash) { const n = v - dt * 9; if (n <= 0) hitFlash.delete(k); else hitFlash.set(k, n); }
   if (shake > 0) shake = Math.max(0, shake - dt);
+  if (shake === 0) shakeStrength = 0;
+  bossFlash = Math.max(0, bossFlash - dt);
   for (const [k, v] of speeches) { v.t -= dt / speed; if (v.t <= 0) speeches.delete(k); }
   if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
   if (bossIntro) { bossIntro.t -= dt; if (bossIntro.t <= 0) bossIntro = null; }
@@ -1452,6 +1465,16 @@ function drawShapes() {
       }
       case 'pop': // 처치 순간 흰 링
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 4 * a + 1; ctx.beginPath(); ctx.arc(X, Y, (s.r ?? 0.6) * cell * (0.2 + k * 0.8), 0, Math.PI * 2); ctx.stroke(); break;
+      case 'bossShockwave': { // 보스 격파 충격파
+        const radius = (s.r ?? 3) * cell * k;
+        ctx.globalAlpha *= 1 - k * 0.35;
+        for (let ring = 0; ring < 2; ring++) {
+          ctx.strokeStyle = ring === 0 ? '#fff4c2' : '#ffc45c';
+          ctx.lineWidth = Math.max(1.5, cell * (0.12 - k * 0.08));
+          ctx.beginPath(); ctx.arc(X, Y, Math.max(1, radius - ring * cell * 0.18), 0, Math.PI * 2); ctx.stroke();
+        }
+        break;
+      }
       case 'splash': // 원형 폭발
         ctx.fillStyle = 'rgba(255,179,107,.35)'; ctx.strokeStyle = '#ff9f43'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(X, Y, (s.r ?? 1) * cell * (0.3 + k * 0.7), 0, Math.PI * 2); ctx.fill(); ctx.stroke(); break;
@@ -1504,6 +1527,10 @@ function drawFx(w: number, fh: number) {
     }
   }
   ctx.globalAlpha = 1;
+  if (bossFlash > 0) {
+    ctx.fillStyle = `rgba(255, 249, 224, ${0.42 * bossFlash / 0.1})`;
+    ctx.fillRect(0, 0, w, fh);
+  }
   // 은은한 비네트
   const v = ctx.createRadialGradient(w / 2, fh / 2, fh * 0.35, w / 2, fh / 2, w * 0.75);
   v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(59,42,30,.18)');
@@ -1557,8 +1584,11 @@ function drawFx(w: number, fh: number) {
 let last = performance.now();
 let uiTimer = 0;
 function loop(now: number) {
-  const dt = Math.min(0.05, (now - last) / 1000) * speed;
+  const frameDt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  const frozen = hitStop > 0;
+  if (frozen) hitStop = Math.max(0, hitStop - frameDt);
+  const dt = frozen ? 0 : frameDt * speed;
   if (game && !document.querySelector('.battle-dialogue-log')) {
     game.update(dt);
     consumeFx(game);
