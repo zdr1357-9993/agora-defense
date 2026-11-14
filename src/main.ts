@@ -1735,35 +1735,35 @@ showLogin();
 // 개발·스테이지 화면에서 실제 전투 루프를 빠르게 캡처하기 위한 명시적 QA 경로.
 // 진행 저장/계정 로그인 없이 보스 웨이브 하나만 띄운다.
 if (new URLSearchParams(location.search).get('boss-preview') === '1') {
-  setQA(true);
-  startBattle(STAGES[0]);
-  const previewGame = game as unknown as Game | null;
-  if (previewGame) {
-    previewGame.wave = 9;
-    previewGame.startWave();
-    previewGame.update(0.02);
-    const boss = previewGame.enemies.find((enemy) => enemy.boss);
-    const internals = previewGame as unknown as { place: (id: string) => Tower | null; emptyCells: () => [number, number][] };
-    if (boss) {
-      const [bx, by] = previewGame.enemyPos(boss);
-      const hitters = PHILOSOPHERS
-        .filter((p) => p.tier >= 6 && !p.hidden)
-        .sort((a, b) => statsOf(b.id).dmg - statsOf(a.id).dmg)
-        .slice(0, 4);
-      for (const philosopher of hitters) {
-        const stats = statsOf(philosopher.id);
-        const cell = internals.emptyCells()
-          .map(([x, y]) => ({ x, y, d: Math.hypot(x + 0.5 - bx, y + 0.5 - by) }))
-          .filter((point) => point.d <= stats.range)
-          .sort((a, b) => a.d - b.d)[0];
-        if (!cell) continue;
-        const tower = internals.place(philosopher.id);
-        if (tower) { tower.cx = cell.x; tower.cy = cell.y; tower.level = 1; tower.cd = 0; }
+  try {
+    setQA(true);
+    startBattle(STAGES[0]);
+    const previewGame = game as unknown as Game | null;
+    if (previewGame) {
+      previewGame.wave = 9;
+      previewGame.startWave();
+      previewGame.update(0.02);
+      const boss = previewGame.enemies.find((enemy) => enemy.boss);
+      if (boss) {
+        const [bx, by] = previewGame.enemyPos(boss);
+        const hitters = PHILOSOPHERS.filter((p) => p.tier >= 6 && !p.hidden)
+          .sort((a, b) => statsOf(b.id).dmg - statsOf(a.id).dmg).slice(0, 3);
+        for (let i = 0; i < hitters.length; i++) {
+          const philosopher = hitters[i], stats = statsOf(philosopher.id);
+          const cell = previewGame.emptyCells()
+            .map(([x, y]) => ({ x, y, d: Math.hypot(x + 0.5 - bx, y + 0.5 - by) }))
+            .filter((point) => point.d <= stats.range)
+            .sort((a, b) => a.d - b.d)[0];
+          if (cell) previewGame.towers.push({ uid: 990001 + i, philId: philosopher.id, cx: cell.x, cy: cell.y, cd: 0, level: 1 });
+        }
+        boss.hp = 1;
       }
-      boss.hp = 1;
-      boss.maxHp = Math.max(1, boss.maxHp);
+      banner = { text: '보스 처치 연출 · QA 미리보기', t: 2.2 };
     }
-    banner = { text: '보스 처치 연출 · QA 미리보기', t: 2.2 };
+  } catch (error) {
+    console.error('Boss effect preview failed:', error);
+    const loginError = document.getElementById('login-err');
+    if (loginError) loginError.textContent = `QA 미리보기 오류: ${String(error)}`;
   }
 }
 setInterval(() => { if (!game && me) { settleIdle(progress, clearedStages()); saveProgress(progress); refreshWallet(); } }, 1000);
