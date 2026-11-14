@@ -1740,7 +1740,11 @@ if (new URLSearchParams(location.search).get('boss-preview') === '1') {
   setTimeout(() => {
     try {
       setQA(true);
+      progress.battleTutDone = true;
+      $('login').classList.add('hidden');
       startBattle(STAGES[0]);
+      tutStep = -1;
+      tutClear();
       const previewGame = game as unknown as Game | null;
       if (previewGame) {
         previewGame.wave = 9;
