@@ -21,7 +21,7 @@ GitHub Actions의 `Validate game branches`는 `develop`·`stage` push와 `main` 
 
 ## AI-DECK에서 두 worktree 준비
 
-저장소 루트에서 실행한다. 기존 폴더가 있으면 스크립트는 덮어쓰지 않고 중단한다.
+`develop` 브랜치의 저장소 루트에서 실행한다. 현재 checkout은 개발 환경으로 쓰고, 스테이지 worktree를 저장소 옆에 만든다. `main`에서 실행하면 두 worktree를 모두 별도로 만든다. 대상 폴더가 이미 있으면 스크립트는 덮어쓰지 않고 중단한다.
 
 ```bash
 git fetch origin develop stage

@@ -8,6 +8,13 @@ mkdir -p "$ENV_ROOT"
 
 for branch in develop stage; do
   target="$ENV_ROOT/$branch"
+  current_branch="$(git -C "$ROOT" branch --show-current)"
+
+  if [[ "$current_branch" == "$branch" ]]; then
+    echo "Using current checkout as $branch environment: $ROOT"
+    continue
+  fi
+
   if [[ -e "$target" ]]; then
     if git -C "$target" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
       && [[ "$(git -C "$target" branch --show-current)" == "$branch" ]]; then
