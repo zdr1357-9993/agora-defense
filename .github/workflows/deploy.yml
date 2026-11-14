@@ -1,12 +1,19 @@
-name: Deploy to GitHub Pages
+name: Deploy production and previews to GitHub Pages
+
 on:
   push:
-    branches: [main]
+    branches: [main, develop, stage]
   workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -14,16 +21,63 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout production
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: sources/main
+
+      - name: Checkout development
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          path: sources/develop
+
+      - name: Checkout stage
+        uses: actions/checkout@v4
+        with:
+          ref: stage
+          path: sources/stage
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm run build
+          cache-dependency-path: |
+            sources/main/package-lock.json
+            sources/develop/package-lock.json
+            sources/stage/package-lock.json
+
+      - name: Build production site
+        run: npm ci && npm run build
+        working-directory: sources/main
+
+      - name: Build development preview
+        run: npm ci && npm run build
+        working-directory: sources/develop
+
+      - name: Build stage preview
+        run: npm ci && npm run build
+        working-directory: sources/stage
+
+      - name: Assemble Pages artifact
+        run: |
+          mkdir -p site/dev site/stage
+          cp -a sources/main/dist/. site/
+          cp -a sources/develop/dist/. site/dev/
+          cp -a sources/stage/dist/. site/stage/
+
       - uses: actions/configure-pages@v5
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: site
+
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Summarize URLs
+        run: |
+          echo "- Production: ${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Develop: ${{ steps.deployment.outputs.page_url }}dev/" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Stage: ${{ steps.deployment.outputs.page_url }}stage/" >> "$GITHUB_STEP_SUMMARY"
