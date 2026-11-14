@@ -1737,14 +1737,15 @@ showLogin();
 if (new URLSearchParams(location.search).get('boss-preview') === '1') {
   setQA(true);
   startBattle(STAGES[0]);
-  if (game) {
-    game.wave = 9;
-    game.startWave();
-    game.update(0.02);
-    const boss = game.enemies.find((enemy) => enemy.boss);
-    const internals = game as unknown as { place: (id: string) => Tower | null; emptyCells: () => [number, number][] };
+  const previewGame = game as unknown as Game | null;
+  if (previewGame) {
+    previewGame.wave = 9;
+    previewGame.startWave();
+    previewGame.update(0.02);
+    const boss = previewGame.enemies.find((enemy) => enemy.boss);
+    const internals = previewGame as unknown as { place: (id: string) => Tower | null; emptyCells: () => [number, number][] };
     if (boss) {
-      const [bx, by] = game.enemyPos(boss);
+      const [bx, by] = previewGame.enemyPos(boss);
       const hitters = PHILOSOPHERS
         .filter((p) => p.tier >= 6 && !p.hidden)
         .sort((a, b) => statsOf(b.id).dmg - statsOf(a.id).dmg)
