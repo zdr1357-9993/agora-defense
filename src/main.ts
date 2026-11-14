@@ -1339,6 +1339,7 @@ const signatureCasts = new Map<number, SignatureCast>();
 const signatureLast = new Map<number, number>();
 let shake = 0;
 let shakeStrength = 0;
+let lastImpactShake = -Infinity;
 let hitStop = 0;
 let bossFlash = 0;
 let banner: { text: string; t: number } | null = null;
@@ -1380,6 +1381,10 @@ function consumeFx(g: Game) {
     else if (f.type === 'hit') {
       if (f.uid !== undefined) hitFlash.set(f.uid, 1);
       shapes.push({ kind: 'impact', x: f.x, y: f.y, r: f.big ? 0.55 : 0.32, life: 0.16, max: 0.16 });
+      // 큰 타격에만 짧게 반응하고, 빠른 연속 공격은 한 번으로 묶는다.
+      if (f.big && tick - lastImpactShake >= 5 && shakeStrength < 3) {
+        lastImpactShake = tick; shake = 0.05; shakeStrength = 1.6;
+      }
       // Damage does not move the camera or flood the field with light.
       for (let i = 0; i < (f.big ? 3 : 1); i++) particles.push({ x: f.x, y: f.y, vx: rnd(-2.5, 2.5), vy: rnd(-3, -0.5), life: 0.35, max: 0.35, color: f.big ? '#ffd36b' : '#ffffff', size: rnd(0.04, 0.08), star: f.big });
       if (f.big && particles.filter(p => p.text).length < 8) particles.push({ x: f.x + rnd(-0.15, 0.15), y: f.y - 0.3, vx: 0, vy: -1.2, life: 0.7, max: 0.7, color: f.big ? '#ffd36b' : '#ffffff', size: f.big ? 0.36 : 0.24, text: fmt(f.dmg) + (f.big ? '!' : '') });
@@ -1389,7 +1394,7 @@ function consumeFx(g: Game) {
       shapes.push({ kind: 'pop', x: f.x, y: f.y, r: f.boss ? 1.6 : 0.6, life: 0.3, max: 0.3 });
       particles.push({ x: f.x, y: f.y - 0.2, vx: 0, vy: -0.8, life: 0.9, max: 0.9, color: '#e3a72f', size: 0.28, text: `+${f.gold}G` });
       if (f.boss) {
-        hitStop = 0.008; bossFlash = 0.1; shake = 0.16; shakeStrength = 10;
+        hitStop = 0.008; bossFlash = 0.1; shake = 0.13; shakeStrength = 4.5;
         shapes.push({ kind: 'bossShockwave', x: f.x, y: f.y, r: 3.2, life: 0.42, max: 0.42 });
         particles.push({ x: f.x, y: f.y - 0.75, vx: 0, vy: -0.65, life: 0.85, max: 0.85, color: '#fff4c2', size: 0.46, text: '논파!' });
         banner = { text: '🎉 논파 성공!', t: 1.8 };
@@ -1727,6 +1732,39 @@ $('admin-cards').onclick = () => { for (const p of PHILOSOPHERS) { progress.card
 const remembered = lastLogin();
 if (remembered) { $<HTMLInputElement>('login-id').value = remembered.id; }
 showLogin();
+// 개발·스테이지 화면에서 실제 전투 루프를 빠르게 캡처하기 위한 명시적 QA 경로.
+// 진행 저장/계정 로그인 없이 보스 웨이브 하나만 띄운다.
+if (new URLSearchParams(location.search).get('boss-preview') === '1') {
+  setQA(true);
+  startBattle(STAGES[0]);
+  if (game) {
+    game.wave = 9;
+    game.startWave();
+    game.update(0.02);
+    const boss = game.enemies.find((enemy) => enemy.boss);
+    const internals = game as unknown as { place: (id: string) => Tower | null; emptyCells: () => [number, number][] };
+    if (boss) {
+      const [bx, by] = game.enemyPos(boss);
+      const hitters = PHILOSOPHERS
+        .filter((p) => p.tier >= 6 && !p.hidden)
+        .sort((a, b) => statsOf(b.id).dmg - statsOf(a.id).dmg)
+        .slice(0, 4);
+      for (const philosopher of hitters) {
+        const stats = statsOf(philosopher.id);
+        const cell = internals.emptyCells()
+          .map(([x, y]) => ({ x, y, d: Math.hypot(x + 0.5 - bx, y + 0.5 - by) }))
+          .filter((point) => point.d <= stats.range)
+          .sort((a, b) => a.d - b.d)[0];
+        if (!cell) continue;
+        const tower = internals.place(philosopher.id);
+        if (tower) { tower.cx = cell.x; tower.cy = cell.y; tower.level = 1; tower.cd = 0; }
+      }
+      boss.hp = 1;
+      boss.maxHp = Math.max(1, boss.maxHp);
+    }
+    banner = { text: '보스 처치 연출 · QA 미리보기', t: 2.2 };
+  }
+}
 setInterval(() => { if (!game && me) { settleIdle(progress, clearedStages()); saveProgress(progress); refreshWallet(); } }, 1000);
 requestAnimationFrame(loop);
 
