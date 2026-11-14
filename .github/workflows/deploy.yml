@@ -2,7 +2,7 @@ name: Deploy production and previews to GitHub Pages
 
 on:
   push:
-    branches: [main, develop, stage]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
