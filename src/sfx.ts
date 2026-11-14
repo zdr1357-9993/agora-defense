@@ -55,6 +55,7 @@ export const sfx = {
   hit: () => { const now = performance.now(); if (now - lastHit < 45) return; lastHit = now; tone(1200 + Math.random() * 300, 0.04, 'square', 0.025, 0.6); },
   kill: () => tone(660, 0.09, 'triangle', 0.07, 1.6),
   coin: () => { tone(1319, 0.06, 'square', 0.04); tone(1760, 0.08, 'square', 0.04, 1, 0.05); },
+  bossBreak: () => { noise(0.22, 0.16); tone(95, 0.34, 'sawtooth', 0.18, 0.38); tone(440, 0.16, 'triangle', 0.1, 2.2, 0.035); },
   boss: () => { tone(110, 0.6, 'sawtooth', 0.12, 0.8); tone(165, 0.6, 'sawtooth', 0.08, 0.8, 0.15); },
   bossSkill: () => { noise(0.3, 0.08); tone(300, 0.3, 'sawtooth', 0.06, 0.4); },
   win: () => [0, 2, 4, 7, 4, 7].forEach((n, i) => tone(C[n] * (i > 3 ? 2 : 1), 0.18, 'triangle', 0.13, 1, i * 0.11)),
