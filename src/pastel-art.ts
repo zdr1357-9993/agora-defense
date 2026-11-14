@@ -2,7 +2,7 @@ import { eraArtUrl, artImage, type ArtName } from './artwork';
 const ERAS = ['고대', '동양', '중세', '근대', '근현대', '현대'];
 const ARENAS: ArtName[] = ['arena-ancient-v2', 'arena-east-v2', 'arena-medieval-v2', 'arena-modern-v2', 'arena-contemporary-v2', 'arena-present-v3'];
 export function journeyArt(era: string): string { return eraArtUrl(era); }
-export const GREEK_BACKDROPS = [['greek-01', '올리브 아고라'], ['greek-02', '에게해 항구'], ['greek-03', '월계수 학당'], ['greek-04', '노을 신전'], ['greek-05', '낙서 공책 아고라']] as const;
+export const GREEK_BACKDROPS = [['greek-01', '올리브 아고라'], ['greek-02', '에게해 항구'], ['greek-03', '월계수 학당'], ['greek-04', '노을 신전'], ['greek-05', '낙서 공책 아고라'], ['greek-06', '파스텔 유적 제단']] as const;
 export function arenaArtName(era: string, concept = 'era', storyId?: string): ArtName {
   if (storyId === 'P7') return 'arena-bodhi-v2';
   // Old saves may keep a Greek concept. It can only override the ancient map.

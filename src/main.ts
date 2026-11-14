@@ -428,7 +428,19 @@ canvas.addEventListener('pointerdown', (ev) => {
 
 $('summon').onclick = () => { if (game?.summon()) sfx.summon(); selected = null; $('summon').blur(); updateUI(); };
 $('sell').onclick = () => { if (game && selected) { game.sell(selected); selected = null; updateUI(); } };
-$('upgrade-btn').onclick = () => { if (game && selected && game.upgrade(selected)) { sfx.merge(); lastInfoKey = ''; updateUI(); } };
+$('upgrade-btn').onclick = () => {
+  const panel = $('upgrade-panel');
+  panel.classList.toggle('hidden');
+  updateUI();
+};
+$('upgrade-bands').innerHTML = UPGRADE.bands.map((band) => `<button class="upgrade-band" data-upgrade-band="${band.id}"><b>${band.label}</b><span class="upgrade-band-detail"></span></button>`).join('');
+$('upgrade-bands').addEventListener('click', (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-upgrade-band]');
+  if (!button || !game) return;
+  if (game.upgradeBand(button.dataset.upgradeBand!)) {
+    sfx.merge(); lastInfoKey = ''; updateUI();
+  }
+});
 $('d-recipes').onclick = () => recipeSheet();
 $('merge').onclick = () => {
   if (!game) return;
@@ -536,10 +548,20 @@ function updateUI() {
     mb.innerHTML = ready.length ? `<i><img src="${portrait(ready[0].result)}"></i><span>합성</span>${ready.length > 1 ? `<em>${ready.length}</em>` : ''}` : '<i>⚗</i><span>합성</span>';
   }
   mb.disabled = !ready.length;
-  const cost = selected ? g.upgradeCost(selected) : null;
   const ub = $<HTMLButtonElement>('upgrade-btn');
-  ub.disabled = !selected || cost === null || g.gold < cost;
-  ub.querySelector('span')!.textContent = selected && cost !== null ? `강화 ${cost}G` : '강화';
+  const panel = $('upgrade-panel');
+  const hasAny = UPGRADE.bands.some((band) => (g.upgradeBandInfo(band.id)?.eligible.length ?? 0) > 0);
+  ub.disabled = !hasAny || !!g.over;
+  ub.querySelector('span')!.textContent = '구간 강화';
+  panel.classList.toggle('hidden', panel.classList.contains('hidden') || g.over !== null);
+  $('upgrade-bands').querySelectorAll<HTMLButtonElement>('[data-upgrade-band]').forEach((button) => {
+    const info = g.upgradeBandInfo(button.dataset.upgradeBand!)!;
+    const n = info.eligible.length;
+    button.disabled = n === 0 || g.gold < info.totalCost;
+    button.querySelector('.upgrade-band-detail')!.textContent = n
+      ? `대상 ${n}명 모두 +1 · ${info.totalCost.toLocaleString()}G · +35%`
+      : `대상 0명 · 전장 배치 ${info.fielded.length}명`;
+  });
 }
 
 // ---------- 그리기 ----------

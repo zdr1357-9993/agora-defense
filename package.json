@@ -6,8 +6,11 @@
   "scripts": {
     "data": "node scripts/xlsx-to-json.mjs",
     "dev": "npm run data && vite",
+    "dev:local": "vite --host 127.0.0.1 --port 5173 --strictPort",
     "build": "npm run data && tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "build:stage": "tsc --noEmit && vite build --outDir dist-stage",
+    "preview": "vite preview",
+    "preview:stage": "vite preview --host 127.0.0.1 --port 4173 --strictPort --outDir dist-stage"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

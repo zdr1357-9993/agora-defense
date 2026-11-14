@@ -1,0 +1,11 @@
+Asset attribution
+
+"LPC compatible Ancient Greek Architecture" by Wolthera van Hövell tot Westerflier.
+Original asset page: https://opengameart.org/content/lpc-compatible-ancient-greek-architecture
+License used: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License text: https://creativecommons.org/licenses/by/4.0/
+
+The game background src/assets/greek-06.webp is an adaptation. Selected altar,
+amphora, and Greek-key trim tiles were recolored, resized, softened, and composited
+over the existing Agora background. The original asset sheet is included in this
+folder. The rest of the background is from the project's existing artwork.

@@ -22,7 +22,7 @@
           <div class="set-head"><b>⚙️ 설정</b><button id="close-settings" class="icon-btn">✕</button></div>
           <div class="acct-bar"><span id="who"></span><button id="logout" class="ghost small">로그아웃</button></div>
           <small class="release-label">20261110v3 · 파스텔 도트</small><div id="cloud-state" class="cloud-state">☁️ 서버 저장 꺼짐</div>
-          <label class="backdrop-setting">고대 배경 (다른 시대는 자동)<select id="backdrop-select"><option value="greek-01">01 올리브 아고라</option><option value="greek-02">02 에게해 항구</option><option value="greek-03">03 월계수 학당</option><option value="greek-04">04 노을 신전</option><option value="greek-05">05 낙서 공책 아고라</option><option value="era" selected>시대에 맞는 전용 풍경 (기본)</option></select></label><div class="set-grid">
+          <label class="backdrop-setting">고대 배경 (다른 시대는 자동)<select id="backdrop-select"><option value="greek-01">01 올리브 아고라</option><option value="greek-02">02 에게해 항구</option><option value="greek-03">03 월계수 학당</option><option value="greek-04">04 노을 신전</option><option value="greek-05">05 낙서 공책 아고라</option><option value="greek-06">06 파스텔 유적 제단</option><option value="era" selected>시대에 맞는 전용 풍경 (기본)</option></select></label><div class="set-grid">
             <button id="mute" class="chunky blue">🔊</button>
             <button id="tut-again" class="chunky mint">🎓 튜토리얼 다시 보기</button>
             <button id="replay-start" class="chunky gold">🏛 처음부터 튜토리얼 진행 (오프닝부터)</button>
@@ -74,6 +74,11 @@
       <div id="field-wrap"><canvas id="field"></canvas></div>
       <div id="battle-quote" role="log" aria-live="off">철학자의 한마디 · 전투를 시작해 보세요</div>
       <section id="selbar"><div id="info"></div></section>
+      <section id="upgrade-panel" class="upgrade-panel hidden" aria-label="강화 구간 선택">
+        <div class="upgrade-panel-head"><b>구간 강화</b><span>전장 배치 유닛 대상 · 대기석 제외</span></div>
+        <div id="upgrade-bands"></div>
+        <small class="upgrade-provisional">임시 비용 · 조정 예정 · 대상 전원 공격력 +35% (최대 Lv.5)</small>
+      </section>
       <nav id="actions">
         <button id="sell"><i>🪙</i><span>판매</span></button>
         <button id="merge"><i>⚗</i><span>합성</span></button>

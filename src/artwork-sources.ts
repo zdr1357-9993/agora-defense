@@ -17,6 +17,7 @@ export const ART_SOURCES = {
   'greek-03': new URL('./assets/greek-03.webp', import.meta.url).href,
   'greek-04': new URL('./assets/greek-04.webp', import.meta.url).href,
   'greek-05': new URL('./assets/greek-05.webp', import.meta.url).href,
+  'greek-06': new URL('./assets/greek-06.webp', import.meta.url).href,
   'signature-fx-a': new URL('./assets/signature-fx-a.webp', import.meta.url).href,
   'signature-fx-b': new URL('./assets/signature-fx-b.webp', import.meta.url).href,
 

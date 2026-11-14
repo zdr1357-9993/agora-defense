@@ -215,11 +215,36 @@ export class Game {
       : { dmg: 1 + ITEM_BONUS.dmg, range: 0 };
   }
 
-  // ---------- 강화 (5성 이상) ----------
+  // ---------- 구간 강화 (전장 배치 유닛만) ----------
+  upgradeBandInfo(bandId: string) {
+    const band = UPGRADE.bands.find((x) => x.id === bandId);
+    if (!band) return null;
+    const fielded = this.fielded().filter((t) => {
+      const p = PHIL.get(t.philId)!;
+      return p.tier >= band.minTier && p.tier <= band.maxTier;
+    });
+    const eligible = fielded.filter((t) => t.level < UPGRADE.maxLevel);
+    const costOf = (t: Tower) => {
+      const p = PHIL.get(t.philId)!;
+      return Math.round(band.baseCost * (p.plus ? 1.5 : 1) * (t.level + 1));
+    };
+    return { band, fielded, eligible, totalCost: eligible.reduce((sum, t) => sum + costOf(t), 0), costOf };
+  }
+
+  upgradeBand(bandId: string) {
+    const info = this.upgradeBandInfo(bandId);
+    if (this.over || !info || !info.eligible.length || this.gold < info.totalCost) return false;
+    this.gold -= info.totalCost;
+    for (const t of info.eligible) t.level++;
+    return true;
+  }
+
+  // Kept for callers using the former one-tower API; new battle UI uses upgradeBand.
   upgradeCost(t: Tower) {
     const p = PHIL.get(t.philId)!;
-    if (p.tier < UPGRADE.minTier || t.level >= UPGRADE.maxLevel) return null;
-    return Math.round(UPGRADE.baseCost[p.tier] * (p.plus ? 1.5 : 1) * (t.level + 1));
+    const band = UPGRADE.bands.find((x) => p.tier >= x.minTier && p.tier <= x.maxTier);
+    if (!band || t.level >= UPGRADE.maxLevel) return null;
+    return Math.round(band.baseCost * (p.plus ? 1.5 : 1) * (t.level + 1));
   }
 
   upgrade(t: Tower) {

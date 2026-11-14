@@ -106,7 +106,16 @@ export const TIER_STATS = [
   { dmg: 2500, range: 3.1, cooldown: 0.5 }, // 근원
 ] as const;
 
-/** 전설 이상 강화: 단계당 공격력 +35%, 최대 5단계 */
-export const UPGRADE = { maxLevel: 5, perLevel: 0.35, minTier: 5, baseCost: [0, 0, 0, 0, 0, 200, 400, 900] };
+/** 전투 강화. 비용은 임시 밸런스값이며 여기서 조정한다. 비용은 유닛 1명·1회 기준. */
+export const UPGRADE = {
+  maxLevel: 5,
+  perLevel: 0.35,
+  provisionalCosts: true,
+  bands: [
+    { id: 'common', label: '1–3성', minTier: 1, maxTier: 3, baseCost: 40 },
+    { id: 'rare', label: '4–5성', minTier: 4, maxTier: 5, baseCost: 200 },
+    { id: 'high', label: '6–7성', minTier: 6, maxTier: 7, baseCost: 650 },
+  ],
+} as const;
 /** 스테이지 카운터가 보스에게 주는 배율 */
 export const COUNTER_MULT = 3;

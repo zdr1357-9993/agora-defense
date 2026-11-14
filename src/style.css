@@ -809,6 +809,15 @@ button.ghost { border: 2px dashed #d8c3ae; box-shadow: none; }
 #actions button:disabled { opacity: .45; filter: grayscale(.6); }
 #sell:not(:disabled) { background: #ffe1ea; }
 #upgrade-btn:not(:disabled) { background: #dff6ea; }
+.upgrade-panel { flex: none; padding: 7px 8px 5px; border: 1px solid #bca8cb; border-radius: 8px; background: rgba(255,252,245,.97); }
+.upgrade-panel-head { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; }
+.upgrade-panel-head span,.upgrade-provisional { color:#715f7d; font-size:10px; }
+#upgrade-bands { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; margin:5px 0 3px; }
+.upgrade-band { min-width:0; min-height:46px; padding:4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border:1px solid #bca8cb; border-radius:5px; background:#f2ecfa; color:#403548; }
+.upgrade-band b { font-size:12px; }
+.upgrade-band-detail { font-size:9px; line-height:1.25; text-align:center; }
+.upgrade-band:disabled { opacity:.5; }
+.upgrade-provisional { display:block; text-align:center; }
 #merge.hot { background: linear-gradient(180deg, #ffe58a, #ffc93d); animation: mergeGlow 1s infinite; }
 @keyframes mergeGlow { 50% { box-shadow: 0 0 0 5px rgba(255,211,107,.45), inset -2px -4px 0 var(--clay-lo), 0 6px 14px rgba(200,130,30,.35); } }
 #merge em { position: absolute; top: -6px; right: -4px; font-style: normal; background: #ff5f8f; color: #fff; border-radius: 99px; padding: 0 7px; font-size: 12px; box-shadow: 0 2px 6px rgba(200,40,90,.4); }
