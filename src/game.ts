@@ -24,6 +24,12 @@ export const SUMMON_COST = 40;
 export const SUMMON_STEP = 2;
 /** 보스를 잡으면 받는 무료 소환권 / 5·15·25…웨이브 광장 집회 보너스 */
 export const BOSS_TICKETS = 3, RALLY_TICKETS = 1;
+/** Temporary inspiration-stone recruitment prices, separate from paid wisdom stones. */
+export const RECRUIT_BANDS = [
+  { id: 'low', label: '1–3성', min: 1, max: 3, cost: 4 },
+  { id: 'middle', label: '4–5성', min: 4, max: 5, cost: 5 },
+  { id: 'high', label: '6–7성', min: 6, max: 7, cost: 6 },
+] as const;
 
 // QA 모드: 주소 뒤에 ?qa=1 (전 스테이지 해금·재화 지급). 기본은 처음 시작하는 상태
 export let QA_MODE = typeof location === 'undefined' ? false : new URLSearchParams(location.search).get('qa') === '1';
@@ -65,6 +71,8 @@ export class Game {
   gold = startGold();
   /** 전투 중 적 처치로 모으는 임시 영감석. 전투가 끝나면 소멸한다. */
   insight = 0;
+  /** Ordinary kills carry between waves; bosses never advance this counter. */
+  ordinaryKills = 0;
   lives = 20;
   wave = 0;
   summonCost = SUMMON_COST;
@@ -535,7 +543,7 @@ export class Game {
 
     for (const e of this.enemies) if (e.hp <= 0) {
       this.gold += e.reward;
-      const insight = e.boss ? 10 : 1;
+      const insight = e.boss ? 1 : (++this.ordinaryKills % 10 === 0 ? 1 : 0);
       this.insight += insight;
       { const [kx, ky] = this.enemyPos(e); this.fx.push({ type: 'kill', x: kx, y: ky, gold: e.reward, insight, boss: e.boss }); }
       if (!e.boss && Math.random() < 0.03) this.gainCatalyst(this.randomCatalyst());

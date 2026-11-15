@@ -815,6 +815,10 @@ button.ghost { border: 2px dashed #d8c3ae; box-shadow: none; }
 #battle-gems { flex:none; min-width:52px; height:34px; box-sizing:border-box; display:flex; align-items:center; justify-content:center; gap:3px; padding:2px 7px; border:1px solid #c9b9d6; border-radius:7px; background:#fffdf7; color:#56466b; font-size:12px; }
 #battle-gems b { color:#7552a3; }
 .recruit-panel { max-height:min(36dvh, 260px) !important; }
+.invite-icon { width:18px; height:18px; image-rendering:pixelated; vertical-align:middle; }
+#recruit-btn .invite-icon { width:20px; height:20px; }
+.insight-icon { width:14px; height:14px; image-rendering:pixelated; vertical-align:-2px; }
+.recruit-choice .insight-icon { width:12px; height:12px; }
 #recruit-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; margin-top:6px; }
 .recruit-group { min-width:0; display:flex; flex-direction:column; gap:4px; padding:4px; border:1px solid #dfd3e6; border-radius:6px; background:#faf6fc; }
 .recruit-group > b { overflow:hidden; text-align:center; white-space:nowrap; font-size:10px; color:#50415e; }

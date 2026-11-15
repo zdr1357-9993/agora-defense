@@ -1,3 +1,4 @@
+import { journeySign, mountJourneyWorld, focusJourney } from './journey-map';
 import { gachaLayout } from './gacha-layout';
 import { ENEMY_ROLES, ENEMY_NAMES } from './enemy-designs';
 import { canWearSkin, revealAdminCollection, modernUnlockStatus } from './ui-policy';
@@ -5,7 +6,7 @@ import { signatureProfile, signaturePose, drawSignatureEffect, type SignatureCas
 import { wrapCanvasText } from './text-layout';
 import { artUrl, artImage, iconHtml, artworkBoss } from './artwork';
 import { journeyArt, drawPastelFloor, arenaArt, drawWaitingBench, GREEK_BACKDROPS } from './pastel-art';
-import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
+import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, RECRUIT_BANDS, type Tower, type FxEvent } from './game';
 import { ACCOUNTS, login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
 import { STAGE_PATHS } from './paths';
 import { STAGE_STARS, ERA_BONUS, STAR_BONUS } from './affinity';
@@ -39,11 +40,6 @@ const RECRUIT_GROUPS = [
   { id: 'confucian', label: '유학 랜덤', school: '유학' },
   { id: 'rationalist', label: '합리론 랜덤', school: '합리론' },
   { id: 'existentialist', label: '실존주의 랜덤', school: '실존주의' },
-] as const;
-const RECRUIT_BANDS = [
-  { id: 'low', label: '1–3성', min: 1, max: 3, cost: 40 },
-  { id: 'middle', label: '4–5성', min: 4, max: 5, cost: 50 },
-  { id: 'high', label: '6–7성', min: 6, max: 7, cost: 60 },
 ] as const;
 /** 스토리 진행(장)에 따라 만들 수 있는 최고 등급: 1·2장 희귀, 3장 전설, 4장부터 근원 */
 function tierCap(prog = progress): number {
@@ -469,7 +465,7 @@ $('recruit-grid').addEventListener('click', (event) => {
   toast(`${group.label} · ${chosen.name} 영입`);
   updateUI();
 });
-$('upgrade-bands').innerHTML = UPGRADE.bands.map((band) => `<button class="upgrade-band" data-upgrade-band="${band.id}"><b>${band.label}</b><span class="upgrade-band-detail"></span></button>`).join('');
+  $('upgrade-bands').innerHTML = UPGRADE.bands.map((band) => `<button class="upgrade-band" data-upgrade-band="${band.id}"><b>${band.label}</b><span class="upgrade-band-detail"></span></button>`).join('');
 $('upgrade-bands').addEventListener('click', (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-upgrade-band]');
   if (!button || !game) return;
@@ -612,7 +608,7 @@ function buildRecruitGrid(g: Game) {
         const candidates = PHILOSOPHERS.filter((p) => !p.hidden && !g.locked.has(p.id) && p.tier >= band.min && p.tier <= band.max && (!group.school || p.school === group.school));
         const names = candidates.map((p) => p.name);
         const preview = names.length ? `${names.slice(0, 2).map(shortName).join(' · ')}${names.length > 2 ? ` 외 ${names.length - 2}명` : ''}` : '해금된 후보 없음';
-        return `<button class="recruit-choice" data-recruit-group="${group.id}" data-recruit-band="${band.id}" data-candidates="${names.length || ''}" title="후보: ${names.length ? names.join(' · ') : '없음'}"><strong>${band.label} · ${band.cost}💎</strong><small>${preview}</small></button>`;
+        return `<button class="recruit-choice" data-recruit-group="${group.id}" data-recruit-band="${band.id}" data-candidates="${names.length || ''}" title="후보: ${names.length ? names.join(' · ') : '없음'}"><strong>${band.label} · ${band.cost}<img class="insight-icon" src="/inspiration-stone.svg" alt="영감석"></strong><small>${preview}</small></button>`;
       }).join('')}
     </section>`).join('');
 }
@@ -1479,7 +1475,7 @@ function consumeFx(g: Game) {
       for (let i = 0; i < (f.boss ? 64 : 14); i++) particles.push({ x: f.x, y: f.y, vx: rnd(f.boss ? -6 : -3.2, f.boss ? 6 : 3.2), vy: rnd(f.boss ? -7 : -4, 0.5), life: f.boss ? 0.95 : 0.7, max: f.boss ? 0.95 : 0.7, color: shard[i % shard.length], size: rnd(0.05, f.boss ? 0.17 : 0.12), sq: true, rot: rnd(0, 6), g: 7 });
       shapes.push({ kind: 'pop', x: f.x, y: f.y, r: f.boss ? 1.6 : 0.6, life: 0.3, max: 0.3 });
       particles.push({ x: f.x, y: f.y - 0.2, vx: 0, vy: -0.8, life: 0.9, max: 0.9, color: '#e3a72f', size: 0.28, text: `+${f.gold}G` });
-      particles.push({ x: f.x + 0.28, y: f.y - 0.52, vx: 0, vy: -0.65, life: 0.75, max: 0.75, color: '#65b8e8', size: 0.2, text: `💎+${f.insight}` });
+      if (f.insight > 0) particles.push({ x: f.x + 0.28, y: f.y - 0.52, vx: 0, vy: -0.65, life: 0.75, max: 0.75, color: '#65b8e8', size: 0.2, text: `+${f.insight} 영감` });
       if (f.boss) {
         hitStop = 0.008; bossFlash = 0.1; shake = 0.13; shakeStrength = 4.5;
         shapes.push({ kind: 'bossShockwave', x: f.x, y: f.y, r: 3.2, life: 0.42, max: 0.42 });
@@ -2061,7 +2057,7 @@ function renderStory(box: HTMLElement) {
   const stages = STORY.filter(st => st.chapter === chapter.n);
   let selectedStage = stages.find(st => st.id === journeySelectedId) ?? stages.find(st => st.id === next.id) ?? stages.find(storyOpen) ?? stages[0];
   journeySelectedId = selectedStage.id;
-  const positions = stages.length === 5 ? [[17,76],[42,62],[75,72],[79,36],[43,20]] : [[18,75],[44,55],[78,65],[72,25]];
+  const positions = chapter.era === '고대' && stages.length === 5 ? [[50,91],[30,73],[64,52],[19,35],[57,20]] : stages.map((_, i) => [i === stages.length - 1 ? 50 : i % 2 ? 72 : 28, 88 - i * (74 / Math.max(1, stages.length - 1))]);
   const faceId = progress.favorite && PHIL.has(progress.favorite) && progress.cards[progress.favorite] ? progress.favorite : 'T106';
   const heading = document.createElement('div'); heading.className = 'journey-heading';
   heading.innerHTML = '<h2>모험의 여정</h2><small>지도를 눌러 목적지를 고르고, 준비되면 출발해요</small>'; box.appendChild(heading);
@@ -2070,12 +2066,13 @@ function renderStory(box: HTMLElement) {
   for (const button of chapters.querySelectorAll<HTMLButtonElement>('button')) button.onclick = () => { storyChapter = Number(button.dataset.chapter); journeySelectedId = ''; renderHome(); };
   box.appendChild(chapters);
   const wrap = document.createElement('div'); wrap.className = 'journey roam-map'; wrap.setAttribute('aria-label',`${chapter.title} 여정 지도`);
-  wrap.style.backgroundImage = `url(${journeyArt(chapter.era)})`;
+  wrap.dataset.era = chapter.era;
   const points = positions.map(([x,y],i) => i ? `Q ${(positions[i-1][0]+x)/2} ${positions[i-1][1]} ${x} ${y}` : `M ${x} ${y}`).join(' ');
   wrap.innerHTML = `<svg class="roam-road" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${points}" fill="none" stroke="#a899b0" stroke-width="7" opacity=".35"/><path d="${points}" fill="none" stroke="#fff8e8" stroke-width="5.7"/><path d="${points}" fill="none" stroke="#d2bda2" stroke-width=".5" stroke-dasharray="1.5 2"/></svg>
     <div class="roam-chapter-title"><small>${chapter.n ? `${chapter.n}장 · ${chapter.era}` : '시작 튜토리얼'}</small><b>${chapter.title}</b></div>
-    ${stages.map((st,i) => `<div class="jnode roam-node ${done.includes(st.id) ? 'done' : storyOpen(st) ? 'open' : 'lock'}" data-st="${st.id}" style="left:${positions[i][0]}%;top:${positions[i][1]}%"><button class="j-dot" aria-label="${storyOpen(st) ? st.title : '아직 열리지 않은 기억'}" aria-disabled="${!storyOpen(st)}" aria-pressed="${st.id === selectedStage.id}">${done.includes(st.id) ? '✓' : storyOpen(st) ? `${chapter.n || 'T'}-${i+1}` : iconHtml('lock','잠김')}</button><span class="j-name">${storyOpen(st) ? st.title : '아직 모르는 기억'}</span></div>`).join('')}
+    ${stages.map((st,i) => `<div class="jnode roam-node ${done.includes(st.id) ? 'done' : storyOpen(st) ? 'open' : 'lock'}" data-st="${st.id}" style="left:${positions[i][0]}%;top:${positions[i][1]}%"><button class="j-dot" aria-label="${storyOpen(st) ? st.title : '아직 열리지 않은 기억'}" aria-disabled="${!storyOpen(st)}" aria-pressed="${st.id === selectedStage.id}"><img class="journey-sign" src="${journeySign(`${chapter.n || 'T'}-${i+1}`, done.includes(st.id), !storyOpen(st))}" alt=""></button><span class="j-name">${storyOpen(st) ? st.title : '아직 모르는 기억'}</span></div>`).join('')}
     <div class="journey-traveler" aria-hidden="true"><img src="${portrait(faceId)}" alt=""><span>여기!</span></div>`;
+  mountJourneyWorld(wrap, journeyArt(chapter.era));
   box.appendChild(wrap);
   const bar = document.createElement('div'); bar.className = 'j-bar journey-destination';
   bar.innerHTML = `<p class="destination-status" role="status"></p><div class="destination-actions"><button id="j-go" class="chunky mint j-go"></button><button class="journey-info" aria-label="선택한 목적지 상세 정보">정보</button></div><div class="j-prog"><small>기억 ${done.length}/${STORY.length}</small><i style="--v:${done.length/STORY.length}"></i><button class="journey-current">다음 여정으로</button></div>`;
@@ -2087,6 +2084,7 @@ function renderStory(box: HTMLElement) {
     for (const node of wrap.querySelectorAll<HTMLElement>('.roam-node')) { const chosen = node.dataset.st === st.id; node.classList.toggle('chosen',chosen); node.querySelector('button')!.setAttribute('aria-pressed',String(chosen)); }
     if (open) { traveler.style.left = positions[index][0]+'%'; traveler.style.top = positions[index][1]+'%'; if (!initial) { traveler.classList.remove('walking'); void traveler.offsetWidth; traveler.classList.add('walking'); } }
     else if (initial) { const first = Math.max(0, stages.findIndex(storyOpen)); traveler.style.left = positions[first][0]+'%'; traveler.style.top = positions[first][1]+'%'; }
+    if (open) focusJourney(wrap, index, initial);
     const go = bar.querySelector<HTMLButtonElement>('#j-go')!;
     go.disabled = !open; go.innerHTML = `<small>${open ? st.when : st.base === 'S6' && !modernUnlocked() ? modernLockText() : '앞선 기억을 먼저 되찾아 주세요'}</small><b>${open ? `▶ ${done.includes(st.id) ? '다시 떠나기' : '여기로 출발'} · ${st.title}` : '아직 도착할 수 없어요'}</b>`;
     bar.querySelector('.destination-status')!.textContent = open ? `목적지 · ${st.title}` : st.base === 'S6' && !modernUnlocked() ? modernLockText() : '잠긴 지점이에요. 앞선 여정을 마치면 길이 열려요.';

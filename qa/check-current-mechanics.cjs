@@ -1,0 +1,25 @@
+const fs=require('node:fs'),ts=require('typescript');
+require.extensions['.ts']=(mod,file)=>mod._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true},fileName:file}).outputText,file);
+const {Game,RECRUIT_BANDS}=require('../src/game.ts');const {STAGES,PHILOSOPHERS}=require('../src/data.ts');const {playOne}=require('./current-feature-sim.ts');
+if(JSON.stringify(RECRUIT_BANDS.map(x=>x.cost))!==JSON.stringify([4,5,6]))throw Error('recruit band prices must be 4/5/6');
+const g=new Game(STAGES[0],{cardMult:()=>1,tool:()=>undefined},'normal');
+const kill=(boss=false)=>{g.enemies.push({uid:1000+g.enemies.length,hp:0,maxHp:1,dist:0,speed:1,boss,reward:0,name:'test',path:0,kind:boss?'boss':'normal'});g.update(0);return g.fx.filter(x=>x.type==='kill').at(-1);};
+for(let i=0;i<9;i++)if(kill(false).insight!==0)throw Error(`unexpected insight before ordinary kill 10: ${i+1}`);
+if(g.insight!==0||g.ordinaryKills!==9)throw Error('ordinary kill counter mismatch');
+if(kill(false).insight!==1||g.insight!==1)throw Error('ordinary 10th kill must pay one insight');
+if(kill(true).insight!==1||g.insight!==2||g.ordinaryKills!==10)throw Error('boss must pay one without advancing ordinary counter');
+for(let i=0;i<9;i++)kill(false);if(kill(false).insight!==1||g.insight!==3)throw Error('ordinary counter should carry across waves');
+const recruitGame=new Game(STAGES[0],{cardMult:()=>1,tool:()=>undefined},'normal');recruitGame.insight=3;
+if(recruitGame.recruit('T106',4)!==null||recruitGame.insight!==3)throw Error('insufficient insight charged');
+recruitGame.insight=5;if(!recruitGame.recruit('T106',4)||recruitGame.insight!==1)throw Error('valid recruit failed or wrong cost');
+const full=new Game(STAGES[0],{cardMult:()=>1,tool:()=>undefined},'normal');full.insight=10;
+for(let y=0;y<7;y++)for(let x=0;x<7;x++)if(!full.isRoad(x,y))full.towers.push({uid:y*7+x+1,philId:'T106',cx:x,cy:y,cd:0,level:0});
+for(let x=1;x<=5;x++)full.towers.push({uid:100+x,philId:'T106',cx:x,cy:7,cd:0,level:0});
+if(full.recruit('T106',4)!==null||full.insight!==10)throw Error('full board recruit charged insight');
+const locked=new Game(STAGES[0],{cardMult:()=>1,tool:()=>undefined},'normal');locked.insight=10;locked.locked.add('T106');
+if(locked.recruit('T106',4)!==null||locked.insight!==10)throw Error('locked recruit charged insight');
+const upgraded=new Game(STAGES[0],{cardMult:()=>1,tool:()=>undefined},'normal');upgraded.gold=100000;
+for(const [band,tier] of [['common',1],['rare',4],['high',6]]){const p=PHILOSOPHERS.find(x=>x.tier===tier&&!x.hidden);if(!p)throw Error(`missing tier-${tier} test card`);const t={uid:500+tier,philId:p.id,cx:tier,cy:0,cd:0,level:0};upgraded.towers.push(t);if(!upgraded.upgradeBand(band)||t.level!==1)throw Error(`current Game.upgradeBand failed: ${band}`);}
+const cond={stage:'S1',diff:'easy',growth:'starter',policy:'power',variant:'upgrade_recruit'};
+const a=playOne(cond,424242),b=playOne(cond,424242);if(JSON.stringify(a)!==JSON.stringify(b))throw Error('same seed was not reproducible');
+console.log('mechanics-ok ordinary=10:1 boss=1 carry=true recruit=4/5/6 locked/shortage/full-board=free upgrades=common/rare/high seed=reproducible');
