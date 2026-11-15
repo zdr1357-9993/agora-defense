@@ -26,7 +26,6 @@ const STORY_WAVES = 30; // 튜토리얼은 사건별 3~5웨이브, 본편은 30�
 import { ITEMS } from './items';
 
 import { $ } from './ui/dom';
-const spriteUrl = new Map<string, string>();
 import { cardArt, sceneArt } from './tcg';
 import { STORY, STORY_MAP, CHAPTERS, START_POOL, type StoryStage, type Line } from './story';
 import { focusJourney, journeySign } from './journey-map';
@@ -56,17 +55,7 @@ function lockReason(r: { result: string; logic: string }): string {
   if (isShortcut(r)) return `🔒카드 Lv.${SHORTCUT_LV}`;
   return '🔒';
 }
-const itemUrl = (id: string) => itemSprite(id).toDataURL();
-/** 착용 스킨이 반영된 도트 */
-const spriteFor = (id: string) => skinnedSprite(PHIL.get(id)!, canWearSkin(PHIL.get(id)!.tier) ? progress?.skinOn?.[id] : undefined);
-const monUrl = new Map<string, string>();
-const monsterUrl = (era: string, k: 'normal' | 'fast' | 'tank' | 'swarm' | 'boss') => { const key = era + k; if (!monUrl.has(key)) monUrl.set(key, monsterSprite2(era, k).toDataURL()); return monUrl.get(key)!; };
-const portrait = (id: string) => {
-  const key = id + (progress?.skinOn?.[id] ?? '');
-  if (!spriteUrl.has(key)) spriteUrl.set(key, spriteFor(id).toDataURL());
-  return spriteUrl.get(key)!;
-};
-
+import { itemUrl, spriteFor, monsterUrl, portrait, spriteUrl } from './ui/sprites';
 import { progress, setProgress } from './state/progress';
 import { me, setMe, isAdmin } from './state/account';
 const difficultyName = (d: { id: string; name: string }) => isAdmin() && d.id === 'challenge' ? '챌린지' : d.name;
