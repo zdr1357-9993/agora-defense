@@ -1,8 +1,8 @@
 # 2026-11-15 stage 현재 기능·장별 난이도 실험
 
-- 기록 시각(Asia/Seoul): 2026-11-15 09:38 KST, 탐색 완료·holdout 진행·완전해금 실험 대기
+- 기록 시각(Asia/Seoul): 2026-11-15 09:48 KST, 탐색·holdout 완료·완전해금 실험 진행
 - 담당 / 요청 근거: Codex / `ops/flow-qa/CURRENT_FEATURES_CHAPTER_REQUEST.md`
-- 상태: 검증 · 탐색 완료 · 독립 holdout 진행 중 · 완전해금 도구 준비
+- 상태: 검증 · 탐색 및 독립 holdout 완료 · 완전해금 실험 진행 중
 
 ## 요청과 범위
 
@@ -24,7 +24,7 @@
 ## 소스
 
 - 저장소 / worktree: 공개 `https://github.com/zdr1357-9993/agora-defense` / `projects/random-defense/agora-defense-envs/stage`
-- 브랜치 / 기준 SHA / 변경 커밋: `stage` / 최신 원격 `b4cac5d59b4cc302e1b557734606b4674cd7434c` / 기능 `6ab895fede49e5145fada202d9b1fa5642cdbe52`, 장 이동 수정을 분리하고 요청서 명칭으로 복귀 `565110ef27dc6b5576b37f2c8ebee54f5b6455e5`, holdout 러너 `626a93e152455d80bde512c711412f9b86b45f96`, 완전해금 별도 runner는 별도 커밋 예정. Push하지 않음.
+- 브랜치 / 기준 SHA / 변경 커밋: `stage` / 최신 원격 `b4cac5d59b4cc302e1b557734606b4674cd7434c` / 기능 `6ab895fede49e5145fada202d9b1fa5642cdbe52`, 장 이동 수정을 분리하고 요청서 명칭으로 복귀 `565110ef27dc6b5576b37f2c8ebee54f5b6455e5`, holdout 러너 `626a93e152455d80bde512c711412f9b86b45f96`, 완전해금 도달 도구 `d818b3724d6ca5ead0935630324257f1f210e958`. Push하지 않음.
 - 미커밋 변경·데이터 해시: 탐색 launch manifest `sourceSHA=739b9745a2cd70bcd1cb23a89a69343182ae641696b76a3d462679220d3b9301`; holdout manifest `sourceSHA=3f7bd05b578500cb99b767197b4bfd8e42f2a3c07a2f4b85812a41a6374fb826`. 각 파일·data SHA를 manifest에 보관. 두 실행 모두 source hashes를 기록.
 
 ## 검증과 반영 상태
@@ -40,8 +40,8 @@
 - 준비 / 실제 실행 / 완료 상태: 탐색 실험 8 worker/nice 10, 8,640 / 8,640 완료. 현행 stage `Game`, data, `RECIPES`, `Game.upgradeBand`, `Game.recruit` 직접 import.
 - 실제 소스·설정·정책·시드·예정 판수: 완료된 탐색은 6맵×4난이도×3군×2성장×2정책×30 paired seed. 시작 골드 220, story=false, 일반 30웨이브. 쉬움/보통 목표는 요청값, 어려움/불멸 목표는 미정. 분기 뒤 난수 소비는 군별로 달라질 수 있음.
 - PID / 시작 시각 / 완료 판수: PID 2(실행 namespace 기준), 2026-11-15 09:23:32 KST 시작, 09:26:45 KST 종료. 첫 확인 335판. 8,640 완료, 오류 없음.
-- 결과 / 로그 / 상태 파일: 탐색 `/mnt/d/AI-DECK/ai-deck/results/rd-current-features-20261115-002332Z/`; holdout `/mnt/d/AI-DECK/ai-deck/results/rd-current-features-holdout-20261115-003353Z/`. 탐색에는 `manifest.json`, `raw.jsonl`, `summary.json`, `summary.md`, `chapter-summary.md`, `philosopher-reach.json`, worker JSONL, `run.log`. 상태 `/mnt/d/AI-DECK/ai-deck/status/tasks/rd-current-features.json`. Holdout 상태 `/mnt/d/AI-DECK/ai-deck/status/tasks/rd-current-features-holdout.json`.
-- 결과와 해석의 한계: 288셀 각각 30판, paired seed 2,880묶음, 중복/누락 0. 실행 중 source hash 변화 없음. 30 seed는 탐색 표본이며 목표별 도달 관측도 조건당 30판뿐이다. 쉬움·보통 중 upgrade+recruit Wilson 95% 구간이 목표를 포함한 23조건을 골라 300 seed/조건, 세 군 paired holdout 진행 중이다. 현재 6,577/20,700판, 오류 없음. 완전해금 도달은 잠금 계정과 별도 9,600판/100seed 도구를 준비했다. story 사건/20웨이브 결과와 혼합하지 않으며 어려움/불멸 목표를 임의 확정하지 않는다.
+- 결과 / 로그 / 상태 파일: 탐색 `/mnt/d/AI-DECK/ai-deck/results/rd-current-features-20261115-002332Z/`; holdout `/mnt/d/AI-DECK/ai-deck/results/rd-current-features-holdout-20261115-003353Z/`; 완전해금 `/mnt/d/AI-DECK/ai-deck/results/rd-current-features-unlocked-20261115-004718Z/`. 각 실행 manifest/raw/summary/log, 결과 reach 보고서를 별도로 저장. 탐색 상태 `/mnt/d/AI-DECK/ai-deck/status/tasks/rd-current-features.json`, holdout `/mnt/d/AI-DECK/ai-deck/status/tasks/rd-current-features-holdout.json`, 완전해금 `/mnt/d/AI-DECK/ai-deck/status/tasks/rd-current-features-unlocked.json`.
+- 결과와 해석의 한계: 탐색 288셀 ×30판; paired seed 2,880묶음. holdout 69셀 ×300판; paired seed 6,900묶음. 두 실험 모두 누락/중복 0이며 각 실행 source hash 변화 없음. 23개 upgrade+recruit 후보 중 holdout Wilson 구간이 목표보다 높은 셀 15, 낮은 셀 4, 목표와 겹치는 셀 4. 어려움/불멸 목표는 미정이며 이 결과로 자동 조정하지 않는다. 완전해금 100 seed/셀 도달 실험은 별도로 진행 중이다. story 사건/20웨이브와 일반 30웨이브 결과를 혼합하지 않는다.
 
 ### 탐색 결과 요약
 
@@ -58,11 +58,12 @@
 
 - 실행 종료 후 균형 셀, paired 승패, 목표별 도달 시점·원재료 부족을 확인해 기록을 갱신한다.
 - 23개 후보 조건의 독립 300 seed holdout 완료 후, 장별 결과와 목표 도달률을 평가한다.
-- holdout 완료 후 완전해금 도달 9,600판을 현재 계정 잠금 승률과 별도 실행·보고한다.
+- 완전해금 9,600판 완료 후 목표별 100 seed 도달·시점과 잠금 계정 승률을 나란히 비교한다.
 - 장 이동 UX는 별도 작업으로 유지한다.
 
 ## 상태 이력
 
 - 2026-11-15 09:23–09:26 KST: 탐색 8,640판 완료.
 - 2026-11-15 09:33 KST: 23개 조건 holdout(20,700판) 시작, 최초 상태 확인 122판 완료.
-- 2026-11-15 09:38 KST: holdout 6,577/20,700 확인. 완전해금 100 seed 셀 러너 syntax 확인.
+- 2026-11-15 09:46 KST: holdout 20,700 / 20,700 완료; 균형·source hash 검증 통과.
+- 2026-11-15 09:47 KST: 완전해금 도달 9,600판 시작, 최초 확인 120판.
