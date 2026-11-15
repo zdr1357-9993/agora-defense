@@ -58,6 +58,7 @@ function lockReason(r: { result: string; logic: string }): string {
 import { itemUrl, spriteFor, monsterUrl, portrait, spriteUrl } from './ui/sprites';
 import { progress, setProgress } from './state/progress';
 import { initDaily } from './screens/daily';
+import { raidReward, raidTierText } from './screens/raid';
 import { me, setMe, isAdmin } from './state/account';
 const difficultyName = (d: { id: string; name: string }) => isAdmin() && d.id === 'challenge' ? '챌린지' : d.name;
 
@@ -2295,15 +2296,6 @@ function watchAd(done: () => void) {
 }
 
 // =============== 👑 보스 레이드: 하루 3번, 90초 동안 거대 보스에게 준 피해로 보상 ===============
-const RAID_TIERS = [20_000, 100_000, 300_000, 1_000_000, 3_000_000];
-const RAID_GONOE = [300, 1000, 2500, 5000, 9000, 15000];
-const RAID_GEMS = [0, 10, 20, 40, 70, 120];
-const raidTier = (d: number) => RAID_TIERS.filter((t) => d >= t).length;
-function raidReward(d: number) { const k = raidTier(d); return { gonoe: RAID_GONOE[k], gems: RAID_GEMS[k] }; }
-function raidTierText(d: number) {
-  const k = raidTier(d);
-  return `등급 <b>${['🥉 입문', '🥈 수련', '🥇 숙련', '🏅 대가', '👑 현자', '✨ 전설'][k]}</b>${k < RAID_TIERS.length ? ` · 다음 등급까지 ${(RAID_TIERS[k] - Math.round(d)).toLocaleString()}` : ''}`;
-}
 /** 요일마다 바뀌는 레이드 보스 */
 function raidBoss() { const pool = STAGES.filter(s => s.id !== 'S6' || modernUnlocked()); const s = pool[new Date().getDay() % pool.length]; return { stage: s, name: `${s.boss20}` }; }
 function startRaid() {
