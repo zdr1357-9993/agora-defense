@@ -22,13 +22,14 @@ import { cloudSignUp, cloudLogin, cloudLoad, cloudSave, flush as cloudFlush, clo
 import { setSaveHook, adoptProgress, setAccount, hasSave, loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, awakenLevel, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL, AWAKEN_MAX, AWAKEN_EVERY } from './save';
 import { LINES, UNLOCK_LEVELS } from './lines';
 import { setCardFilter, settleIdle, idleRate, tapGain, tapUpgradeCost, battleReward, pull, canAfford, PULLS, SHOP, buy, CUR_ICON, PITY_LIMIT, FIRST_CLEAR_GEMS, CARD_RATES, QA_GONOE, QA_GEMS, IDLE_PER_SEC, CARD_COST, type PullOption } from './meta';
-const STORY_WAVES = 20; // 스토리 한 판 ≈ 8분 (보스 10·20웨이브)
+const STORY_WAVES = 30; // 튜토리얼은 사건별 3~5웨이브, 본편은 30웨이브
 import { ITEMS } from './items';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const spriteUrl = new Map<string, string>();
 import { cardArt, sceneArt } from './tcg';
 import { STORY, STORY_MAP, CHAPTERS, START_POOL, type StoryStage, type Line } from './story';
+import { focusJourney, journeySign } from './journey-map';
 /** 이 등급 이상은 카드가 있어야 조합 가능 (6 = 거장, 예전 5성) */
 const LOCK_TIER = 6;
 /** 지름길 조합: 얕지만 그 철학자 카드 Lv.5(11장) 이상이어야 열린다 */
@@ -80,8 +81,8 @@ function show(id: 'home' | 'battle') {
 }
 
 let diffId = 'easy';
-const modernUnlocked = () => QA_MODE || modernUnlockStatus(progress.cleared).unlocked;
-const modernLockText = () => { const status = modernUnlockStatus(progress.cleared); return `현대 해금 · 이전 5개 시대 어려움 ${status.completed}/${status.total} 클리어`; };
+const modernUnlocked = () => QA_MODE || modernUnlockStatus(progress.cleared).unlocked || STORY.filter(st => st.chapter > 0 && st.chapter < 6).every(st => (progress.storyCleared ?? []).includes(st.id));
+const modernLockText = () => { const status = modernUnlockStatus(progress.cleared); return `현대 해금 · 5장 여정 ${STORY.filter(st => st.chapter > 0 && st.chapter < 6 && (progress.storyCleared ?? []).includes(st.id)).length}/${STORY.filter(st => st.chapter > 0 && st.chapter < 6).length} 완료 또는 이전 5개 시대 어려움 ${status.completed}/${status.total} 클리어`; };
 /** 스테이지별 난이도 해금: 쉬움은 항상, 다음 단계는 앞 단계를 깨야 */
 const diffUnlocked = (stageId: string, id: string) => {
   if (QA_MODE) return true;
@@ -95,7 +96,7 @@ const isUnlocked = (s: Stage) => s.id === 'S6' ? modernUnlocked() : QA_MODE || !
 // =============== 홈: 스테이지 지도 ===============
 /** 쉬움을 모든 스테이지에서 깨야 난이도 탭이 열린다 (신규 유저는 쉬움만) */
 /** 쉬움 = 스토리. 스토리를 끝까지 깨면 난이도 탭(보통 이상 본편)이 열린다 */
-const easyAllCleared = () => (progress.storyCleared ?? []).includes('P20') || STORY.every((s) => (progress.storyCleared ?? []).includes(s.id));
+const easyAllCleared = () => STORY.every((s) => (progress.storyCleared ?? []).includes(s.id));
 function stageInfo(s: Stage) {
   const hero = PHIL.get(s.counter)!;
   const marks = DIFFICULTIES.map((d) => `<span class="${progress.cleared.includes(clearKey(s.id, d.id)) ? 'on' : ''}">${d.icon}</span>`).join('');
@@ -114,39 +115,7 @@ function renderHome() {
   box.innerHTML = '';
   const diffOpen = QA_MODE || easyAllCleared();
   if (!diffOpen) diffId = 'easy';
-  if (diffOpen) {
-    const chips = document.createElement('div');
-    chips.className = 'diffs';
-    chips.innerHTML = DIFFICULTIES.map((d) => `<button data-diff="${d.id}" class="${d.id === diffId ? 'on' : ''}" style="--c:${d.color}">${d.icon}<span>${difficultyName(d)}</span></button>`).join('');
-    box.appendChild(chips);
-    for (const b of chips.querySelectorAll<HTMLButtonElement>('button')) b.onclick = () => { diffId = b.dataset.diff!; renderHome(); };
-  }
-  // 오늘의 할 일 · 보스 레이드 (시작 튜토리얼을 마치면)
-  if (QA_MODE || (progress.storyCleared ?? []).includes('A5')) {
-    const live = document.createElement('div');
-    live.className = 'live-row';
-    const n = claimable(progress), d = daily(progress);
-    live.innerHTML = `<button class="live-btn missions">📋 오늘의 할 일${n ? `<i class="dot">${n}</i>` : ''}</button><button class="live-btn raid">👑 보스 레이드 <small>${QA_MODE ? '∞' : `${d.raidsLeft}/${RAID_PER_DAY}`}</small></button>`;
-    (live.querySelector('.missions') as HTMLElement).onclick = () => missionsPanel();
-    (live.querySelector('.raid') as HTMLElement).onclick = () => startRaid();
-    box.appendChild(live);
-  }
-  if (diffId === 'easy') { renderStory(box); return; }
-  for (const s of STAGES) {
-    const row = document.createElement('div');
-    if (!isUnlocked(s)) {
-      row.className = 'srow locked';
-      row.innerHTML = `<span class="sname">🔒 ${s.id === 'S6' ? '현대 · 연결된 세계의 광장' : '???'}</span><small>${s.id === 'S6' ? modernLockText() : `${STAGES.find((x) => x.id === s.unlockAfter)?.name} 클리어 시`}</small>`;
-      box.appendChild(row); continue;
-    }
-    const open = diffUnlocked(s.id, diffId);
-    const cleared = progress.cleared.includes(clearKey(s.id, diffId));
-    row.className = `srow ${open ? '' : 'locked'} ${cleared ? 'cleared' : ''}`;
-    row.innerHTML = `<button class="sgo" ${open ? '' : 'disabled'}><img src="${portrait(s.counter)}"><span class="sname">${ERA_ICON[s.era]} ${s.name}</span>${cleared ? '<span class="badge">CLEAR</span>' : open ? '' : '<small>🔒</small>'}</button><button class="sinfo" aria-label="스테이지 정보">i</button>`;
-    (row.querySelector('.sgo') as HTMLButtonElement).onclick = () => startBattle(s);
-    (row.querySelector('.sinfo') as HTMLButtonElement).onclick = () => stageInfo(s);
-    box.appendChild(row);
-  }
+  renderStory(box);
   if (progress.favorite && PHIL.has(progress.favorite) && progress.cards[progress.favorite]) {
     const fav = PHIL.get(progress.favorite)!;
     const ot = document.createElement('div');
@@ -334,7 +303,7 @@ function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   }, story ? 'easy' : oneTool ? 'normal' : diffId, oneTool);
   if (story) game.storyId = story.id;
   if (!oneTool) game.summonPool = summonPool(story);
-  if (story) game.waveCap = story.waves ?? STORY_WAVES;
+  if (story) game.waveCap = story.chapter === 0 ? story.waves ?? STORY_WAVES : STORY_WAVES;
   // 거장 이상은 카드(기억)를 가진 철학자만 조합할 수 있다
   if (!QA_MODE) {
     // 잠금 규칙: ① 거장·근원은 카드 필요 ② 지금 시대의 상한보다 높은 등급은 카드가 있어야만 ③ 지름길 조합은 카드 Lv.3부터
@@ -1936,8 +1905,9 @@ setInterval(tutTick, 300);
 // ---------- 🎓 화면별 튜토리얼 (탭을 처음 열 때) ----------
 const PAGE_TUT: Record<string, { sel: string; text: string }[]> = {
   stages: [
-    { sel: '.srow:not(.locked) .sgo', text: '스테이지 이름을 누르면 바로 전투 시작! 처음엔 <b>쉬움</b>으로 해요. 모든 스테이지의 쉬움을 깨면 난이도 탭이 열려요.' },
-    { sel: '.srow:not(.locked) .sinfo', text: '<b>i</b>를 누르면 보스, 길 모양, 이 맵에서 강해지는 철학자 같은 정보를 볼 수 있어요.' },
+    { sel: '.journey-point.open .j-dot', text: '이 긴 지도에서 거점을 고르면 캐릭터와 카메라가 그곳으로 이동해요. 길은 튜토리얼에서 1~6장으로 이어져요.' },
+    { sel: '#j-go', text: '아래 목적지 패널에서 <b>출발</b>을 누르면 전투가 시작돼요. 옆 <b>정보</b> 버튼에서 보스와 돌아오는 기억을 확인할 수 있어요.' },
+    { sel: '#journey-difficulty', text: '난이도는 이 버튼 하나에서 바꿔요. 쉬움으로 튜토리얼과 1~6장을 모두 마치면 난이도 선택과 장 바로가기가 열려요.' },
     { sel: '#open-recipes', text: '📜 <b>조합표</b>에서 모든 조합식을, 🎲 확률에서 소환·등급 정보를 볼 수 있어요. 마음에 드는 조합은 💗로 찜해 두면 전투 중에 따라 보여요.' },
     { sel: '#tabs', text: '아래 탭에서 🤔고민방·🎴뽑기·📖도감·🛍상점으로 가요. 처음 들어가면 거기서도 안내해 드릴게요!' },
   ],
@@ -2045,56 +2015,109 @@ let storyChapter = -1;
 /** 설정에서 '처음부터 튜토리얼'을 눌렀을 때 (이미 1장을 진행한 계정도 튜토리얼을 다시 열어 둔다) */
 let replayTutorial = false;
 let journeySelectedId = '';
+let journeyFocusInitial = true;
 function renderStory(box: HTMLElement) {
   if (!replayTutorial && (progress.storyCleared ?? []).some(id => STORY_MAP.get(id)?.chapter) && !(progress.storyCleared ?? []).includes('A5')) {
     progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), 'A1','A2','A3','A4','A5'])]; saveProgress(progress);
   }
   const done = progress.storyCleared ?? [];
-  const next = STORY.find(st => !done.includes(st.id) && storyOpen(st)) ?? STORY.find(st => !done.includes(st.id)) ?? STORY[STORY.length - 1];
-  const chapter = CHAPTERS.find(ch => ch.n === storyChapter) ?? CHAPTERS.find(ch => ch.n === next.chapter)!;
-  storyChapter = chapter.n;
-  const stages = STORY.filter(st => st.chapter === chapter.n);
-  let selectedStage = stages.find(st => st.id === journeySelectedId) ?? stages.find(st => st.id === next.id) ?? stages.find(storyOpen) ?? stages[0];
+  const next = STORY.find(st => !done.includes(st.id) && storyOpen(st)) ?? STORY[STORY.length - 1];
+  const selectedStage = STORY.find(st => st.id === journeySelectedId) ?? next;
   journeySelectedId = selectedStage.id;
-  const positions = stages.length === 5 ? [[17,76],[42,62],[75,72],[79,36],[43,20]] : [[18,75],[44,55],[78,65],[72,25]];
+  const positionFor = (i: number, count: number): [number, number] => [i % 2 === 0 ? 27 : 73, 84 - (i / Math.max(1, count - 1)) * 48];
   const faceId = progress.favorite && PHIL.has(progress.favorite) && progress.cards[progress.favorite] ? progress.favorite : 'T106';
   const heading = document.createElement('div'); heading.className = 'journey-heading';
-  heading.innerHTML = '<h2>모험의 여정</h2><small>지도를 눌러 목적지를 고르고, 준비되면 출발해요</small>'; box.appendChild(heading);
-  const chapters = document.createElement('nav'); chapters.className = 'journey-chapters'; chapters.setAttribute('aria-label','시대 선택');
-  chapters.innerHTML = CHAPTERS.map(ch => `<button data-chapter="${ch.n}" aria-pressed="${ch.n === chapter.n}">${ch.era === '현대' && !modernUnlocked() ? '🔒 ' : ''}${ch.n ? `${ch.n}장 ${ch.era}` : '시작'}</button>`).join('');
-  for (const button of chapters.querySelectorAll<HTMLButtonElement>('button')) button.onclick = () => { storyChapter = Number(button.dataset.chapter); journeySelectedId = ''; renderHome(); };
-  box.appendChild(chapters);
-  const wrap = document.createElement('div'); wrap.className = 'journey roam-map'; wrap.setAttribute('aria-label',`${chapter.title} 여정 지도`);
-  wrap.style.backgroundImage = `url(${journeyArt(chapter.era)})`;
-  const points = positions.map(([x,y],i) => i ? `Q ${(positions[i-1][0]+x)/2} ${positions[i-1][1]} ${x} ${y}` : `M ${x} ${y}`).join(' ');
-  wrap.innerHTML = `<svg class="roam-road" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${points}" fill="none" stroke="#a899b0" stroke-width="7" opacity=".35"/><path d="${points}" fill="none" stroke="#fff8e8" stroke-width="5.7"/><path d="${points}" fill="none" stroke="#d2bda2" stroke-width=".5" stroke-dasharray="1.5 2"/></svg>
-    <div class="roam-chapter-title"><small>${chapter.n ? `${chapter.n}장 · ${chapter.era}` : '시작 튜토리얼'}</small><b>${chapter.title}</b></div>
-    ${stages.map((st,i) => `<div class="jnode roam-node ${done.includes(st.id) ? 'done' : storyOpen(st) ? 'open' : 'lock'}" data-st="${st.id}" style="left:${positions[i][0]}%;top:${positions[i][1]}%"><button class="j-dot" aria-label="${storyOpen(st) ? st.title : '아직 열리지 않은 기억'}" aria-disabled="${!storyOpen(st)}" aria-pressed="${st.id === selectedStage.id}">${done.includes(st.id) ? '✓' : storyOpen(st) ? `${chapter.n || 'T'}-${i+1}` : iconHtml('lock','잠김')}</button><span class="j-name">${storyOpen(st) ? st.title : '아직 모르는 기억'}</span></div>`).join('')}
-    <div class="journey-traveler" aria-hidden="true"><img src="${portrait(faceId)}" alt=""><span>여기!</span></div>`;
-  box.appendChild(wrap);
+  heading.innerHTML = '<h2>모험의 여정</h2><small>길을 위로 따라가세요 · 목적지를 고르고 출발해요</small><button type="button" id="journey-difficulty" aria-haspopup="dialog"></button>'; box.appendChild(heading);
+  const difficulty = DIFFICULTIES.find(d => d.id === diffId) ?? DIFFICULTIES[0];
+  const diffButton = heading.querySelector<HTMLButtonElement>('#journey-difficulty')!;
+  diffButton.textContent = `${difficulty.icon} 난이도 · ${difficultyName(difficulty)}　⌄`;
+  diffButton.onclick = () => openJourneyDifficulty();
+  if (easyAllCleared()) {
+    const shortcuts = document.createElement('nav'); shortcuts.className = 'journey-shortcuts'; shortcuts.setAttribute('aria-label','쉬움 완료 · 장 바로가기');
+    shortcuts.innerHTML = CHAPTERS.filter(ch => ch.n > 0).map(ch => `<button type="button" data-chapter="${ch.n}">${ch.n}장 ${ch.era}</button>`).join('');
+    box.appendChild(shortcuts);
+    shortcuts.querySelectorAll<HTMLButtonElement>('[data-chapter]').forEach(button => button.onclick = () => {
+      const era = wrapEra(button.dataset.chapter!);
+      if (era) wrap.scrollTo({top:era.offsetTop,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+    });
+  }
+  const wrap = document.createElement('div'); wrap.className = 'journey roam-map pixel-journey long-journey'; wrap.setAttribute('aria-label','튜토리얼부터 6장까지 이어지는 여정 지도');
+  wrap.dataset.era = '고대';
+  const world = document.createElement('div'); world.className = 'journey-world long-journey-world';
+  for (const chapter of [...CHAPTERS].reverse()) {
+    const stages = STORY.filter(st => st.chapter === chapter.n);
+    const era = document.createElement('section'); era.className = `journey-era ${chapter.n === 0 ? 'tutorial-era' : ''}`; era.dataset.chapter = String(chapter.n);
+    era.style.backgroundImage = `linear-gradient(180deg,rgba(255,251,236,.10),rgba(255,251,236,.18)),url(${chapter.n <= 1 ? '/journey/greek-tile-map.png' : journeyArt(chapter.era)})`;
+    const title = document.createElement('div'); title.className = 'journey-era-title'; title.innerHTML = `<small>${chapter.n ? `${chapter.n}장 · ${chapter.era}` : '시작 튜토리얼'}</small><b>${chapter.title}</b>`; era.appendChild(title);
+    const track = document.createElement('div'); track.className = 'journey-era-track';
+    const points = stages.map((_, i) => positionFor(i, stages.length));
+    const path = document.createElementNS('http://www.w3.org/2000/svg','svg'); path.setAttribute('viewBox','0 0 100 100'); path.setAttribute('preserveAspectRatio','none'); path.classList.add('journey-era-road');
+    const d = points.map(([x,y],i) => `${i ? 'L' : 'M'} ${x} ${y}`).join(' ');
+    path.innerHTML = `<path d="${d}" class="road-shadow"/><path d="${d}" class="road-line"/>`; track.appendChild(path);
+    stages.forEach((st, i) => {
+      const storyReady = storyOpen(st), stage = STAGES.find(s => s.id === st.base)!;
+      const diffReady = diffId === 'easy' || diffUnlocked(st.base, diffId);
+      const unlocked = storyReady && diffReady;
+      const cleared = diffId === 'easy' ? done.includes(st.id) : progress.cleared.includes(clearKey(st.base, diffId));
+      const point = document.createElement('div'); point.className = `jnode roam-node journey-point ${cleared ? 'done' : unlocked ? 'open' : 'lock'} ${st.id === selectedStage.id ? 'chosen' : ''}`; point.dataset.st = st.id;
+      point.style.left = `${points[i][0]}%`; point.style.top = `${points[i][1]}%`;
+      const button = document.createElement('button'); button.className = 'j-dot'; button.type = 'button'; button.setAttribute('aria-label',`${chapter.n ? `${chapter.n}장 · ` : '튜토리얼 · '}${st.title}${cleared ? ' · 클리어' : ''}${unlocked ? '' : ' · 잠김'}`); button.setAttribute('aria-pressed',String(st.id === selectedStage.id)); button.setAttribute('aria-disabled',String(!unlocked));
+      const signLabel = chapter.n ? `${chapter.n}-${i+1}` : `T-${i+1}`; button.innerHTML = `<img class="journey-sign" src="${journeySign(signLabel,cleared,!unlocked)}" alt="">`;
+      const name = document.createElement('span'); name.className = 'j-name'; name.textContent = unlocked ? st.title : '아직 닿지 않은 기억';
+      point.append(button,name);
+      const traveler = document.createElement('img'); traveler.className = 'journey-traveler'; traveler.src = portrait(faceId); traveler.alt = ''; traveler.setAttribute('aria-hidden','true');
+      if (st.id === selectedStage.id) point.appendChild(traveler);
+      track.appendChild(point);
+      button.onclick = () => { journeySelectedId = st.id; journeyFocusInitial = false; renderHome(); };
+    });
+    era.appendChild(track); world.appendChild(era);
+  }
+  wrap.appendChild(world); box.appendChild(wrap);
+  const wrapEra = (chapter: string) => wrap.querySelector<HTMLElement>(`.journey-era[data-chapter="${chapter}"]`);
   const bar = document.createElement('div'); bar.className = 'j-bar journey-destination';
-  bar.innerHTML = `<p class="destination-status" role="status"></p><div class="destination-actions"><button id="j-go" class="chunky mint j-go"></button><button class="journey-info" aria-label="선택한 목적지 상세 정보">정보</button></div><div class="j-prog"><small>기억 ${done.length}/${STORY.length}</small><i style="--v:${done.length/STORY.length}"></i><button class="journey-current">다음 여정으로</button></div>`;
+  bar.innerHTML = `<p class="destination-status" role="status"></p><div class="destination-actions"><button id="j-go" class="chunky mint j-go"></button><button class="journey-info" aria-label="선택한 목적지 상세 정보">정보</button></div><div class="j-prog"><small>쉬움 기억 ${done.length}/${STORY.length}</small><i style="--v:${done.length/STORY.length}"></i><button class="journey-current">다음 열린 거점</button></div>`;
   box.appendChild(bar);
-  const traveler = wrap.querySelector<HTMLElement>('.journey-traveler')!;
-  const update = (st: StoryStage, initial = false) => {
-    selectedStage = st; journeySelectedId = st.id;
-    const open = storyOpen(st), index = stages.indexOf(st);
-    for (const node of wrap.querySelectorAll<HTMLElement>('.roam-node')) { const chosen = node.dataset.st === st.id; node.classList.toggle('chosen',chosen); node.querySelector('button')!.setAttribute('aria-pressed',String(chosen)); }
-    if (open) { traveler.style.left = positions[index][0]+'%'; traveler.style.top = positions[index][1]+'%'; if (!initial) { traveler.classList.remove('walking'); void traveler.offsetWidth; traveler.classList.add('walking'); } }
-    else if (initial) { const first = Math.max(0, stages.findIndex(storyOpen)); traveler.style.left = positions[first][0]+'%'; traveler.style.top = positions[first][1]+'%'; }
-    const go = bar.querySelector<HTMLButtonElement>('#j-go')!;
-    go.disabled = !open; go.innerHTML = `<small>${open ? st.when : st.base === 'S6' && !modernUnlocked() ? modernLockText() : '앞선 기억을 먼저 되찾아 주세요'}</small><b>${open ? `▶ ${done.includes(st.id) ? '다시 떠나기' : '여기로 출발'} · ${st.title}` : '아직 도착할 수 없어요'}</b>`;
-    bar.querySelector('.destination-status')!.textContent = open ? `목적지 · ${st.title}` : st.base === 'S6' && !modernUnlocked() ? modernLockText() : '잠긴 지점이에요. 앞선 여정을 마치면 길이 열려요.';
-  };
-  wrap.onclick = event => { const node = (event.target as HTMLElement).closest<HTMLElement>('.roam-node'); if (node) update(STORY_MAP.get(node.dataset.st!)!); };
-  bar.querySelector<HTMLButtonElement>('#j-go')!.onclick = () => { if (storyOpen(selectedStage)) startStory(selectedStage); };
-  bar.querySelector<HTMLButtonElement>('.journey-info')!.onclick = () => { if (storyOpen(selectedStage)) storyInfo(selectedStage); else toast(selectedStage.base === 'S6' && !modernUnlocked() ? modernLockText() : '앞선 여정을 마치면 자세한 기억이 열려요'); };
-  bar.querySelector<HTMLButtonElement>('.journey-current')!.onclick = () => { storyChapter = next.chapter; journeySelectedId = next.id; renderHome(); };
-  update(selectedStage,true);
+  const selectedReady = storyOpen(selectedStage) && (diffId === 'easy' || diffUnlocked(selectedStage.base,diffId));
+  const go = bar.querySelector<HTMLButtonElement>('#j-go')!;
+  go.disabled = !selectedReady; go.innerHTML = `<small>${selectedReady ? selectedStage.when : diffId !== 'easy' && storyOpen(selectedStage) ? '먼저 이전 난이도로 이 거점을 클리어하세요' : selectedStage.base === 'S6' && !modernUnlocked() ? modernLockText() : '앞선 기억을 먼저 되찾아 주세요'}</small><b>${selectedReady ? `▶ ${diffId === 'easy' && done.includes(selectedStage.id) || diffId !== 'easy' && progress.cleared.includes(clearKey(selectedStage.base,diffId)) ? '다시 떠나기' : '출발'} · ${selectedStage.title}` : '아직 출발할 수 없어요'}</b>`;
+  bar.querySelector('.destination-status')!.textContent = `${difficultyName(difficulty)} · ${selectedStage.title} · ${selectedStage.chapter === 0 ? selectedStage.waves : STORY_WAVES}웨이브`;
+  go.onclick = () => { if (!selectedReady) return; if (diffId === 'easy') startStory(selectedStage); else startBattle(STAGES.find(s => s.id === selectedStage.base)!); };
+  bar.querySelector<HTMLButtonElement>('.journey-info')!.onclick = () => storyOpen(selectedStage) ? storyInfo(selectedStage) : toast(selectedStage.base === 'S6' && !modernUnlocked() ? modernLockText() : '앞선 여정을 마치면 자세한 기억이 열려요');
+  bar.querySelector<HTMLButtonElement>('.journey-current')!.onclick = () => { journeySelectedId = next.id; renderHome(); };
+  const selectedEra = wrap.querySelector<HTMLElement>(`.journey-era[data-chapter="${selectedStage.chapter}"]`);
+  const selectedPoint = selectedEra?.querySelector<HTMLElement>(`[data-st="${selectedStage.id}"]`);
+  if (selectedEra && selectedPoint) {
+    const traveler = document.createElement('img'); traveler.className = 'journey-traveler journey-player'; traveler.src = portrait(faceId); traveler.alt = ''; traveler.setAttribute('aria-hidden','true'); selectedPoint.appendChild(traveler);
+    requestAnimationFrame(() => {
+      focusJourney(wrap, [...world.querySelectorAll<HTMLElement>('.roam-node')].indexOf(selectedPoint), journeyFocusInitial);
+      journeyFocusInitial = true;
+    });
+  }
   if (STORY.filter(st => st.chapter === 0).some(st => !done.includes(st.id))) {
     const skip = document.createElement('button'); skip.className = 'ghost small tut-skip-all'; skip.textContent = '튜토리얼 건너뛰기 → 1장으로';
-    skip.onclick = () => { if (!window.confirm('시작 튜토리얼을 건너뛸까요?')) return; progress.storyCleared = [...new Set([...done,...STORY.filter(st => st.chapter===0).map(st=>st.id)])]; saveProgress(progress); storyChapter = 1; renderHome(); }; bar.appendChild(skip);
+    skip.onclick = () => { if (!window.confirm('시작 튜토리얼을 건너뛸까요?')) return; progress.storyCleared = [...new Set([...done,...STORY.filter(st => st.chapter===0).map(st=>st.id)])]; saveProgress(progress); journeySelectedId = STORY.find(st => st.chapter===1)?.id ?? ''; renderHome(); }; bar.appendChild(skip);
   }
+}
+
+function openJourneyDifficulty() {
+  const open = QA_MODE || easyAllCleared();
+  const overlay = document.createElement('div'); overlay.className = 'overlay journey-diff-overlay'; overlay.setAttribute('role','presentation');
+  const current = DIFFICULTIES.find(d => d.id === diffId) ?? DIFFICULTIES[0];
+  overlay.innerHTML = `<section class="pop journey-diff-dialog" role="dialog" aria-modal="true" aria-labelledby="journey-diff-title"><button type="button" class="close journey-diff-close" aria-label="닫기">×</button><h2 id="journey-diff-title">난이도 변경</h2><p class="hint">현재 목적지에서 시작할 난이도를 고르세요.${open ? '' : '<br>쉬움으로 1~6장을 모두 마치면 난이도가 열려요.'}</p><div class="journey-diff-options">${DIFFICULTIES.map(d => `<button type="button" data-diff="${d.id}" ${!open && d.id !== 'easy' ? 'disabled' : ''} aria-pressed="${d.id === current.id}" style="--diff-color:${d.color}"><b>${d.icon} ${difficultyName(d)}</b><small>${d.id === 'easy' ? '이야기 여정' : '이전 난이도 클리어 필요'}</small></button>`).join('')}</div></section>`;
+  document.body.appendChild(overlay);
+  const close = (restoreFocus = true) => { overlay.remove(); if (restoreFocus) requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('#journey-difficulty')?.focus()); };
+  overlay.querySelector('.journey-diff-close')!.addEventListener('click', () => close());
+  overlay.addEventListener('click',event => { if (event.target === overlay) close(); });
+  overlay.addEventListener('keydown',event => {
+    if (event.key === 'Escape') { close(); return; }
+    if (event.key !== 'Tab') return;
+    const focusable = [...overlay.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')];
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
+  overlay.querySelectorAll<HTMLButtonElement>('[data-diff]').forEach(button => button.onclick = () => { diffId = button.dataset.diff!; close(false); renderHome(); });
+  overlay.querySelector<HTMLButtonElement>('[data-diff="easy"]')?.focus();
 }
 
 function storyInfo(st: StoryStage) {
