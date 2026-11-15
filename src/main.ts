@@ -67,9 +67,8 @@ const portrait = (id: string) => {
   return spriteUrl.get(key)!;
 };
 
-let progress = loadProgress();
-let me: Account | null = null;
-const isAdmin = () => me?.role === 'master';
+import { progress, setProgress } from './state/progress';
+import { me, setMe, isAdmin } from './state/account';
 const difficultyName = (d: { id: string; name: string }) => isAdmin() && d.id === 'challenge' ? '챌린지' : d.name;
 
 const clearedStages = () => STAGES.filter((s) => progress.cleared.includes(s.id)).length;
@@ -1670,7 +1669,7 @@ for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.
 for (const id of ['mute', 'mute-b']) { const b = document.getElementById(id); if (b) { b.textContent = isMuted() ? '🔇' : '🔊'; b.onclick = () => { const mu = toggleMute(); for (const x of ['mute', 'mute-b']) { const e = document.getElementById(x); if (e) e.textContent = mu ? '🔇' : '🔊'; } }; } }
 $('b-recipes').onclick = () => recipeSheet();
 $('tut-again').onclick = () => { $('settings').classList.add('hidden'); progress.battleTutDone = false; progress.tabTut = []; pageTutStart(currentTab); saveProgress(progress); toast('🎓 화면마다, 그리고 다음 전투에서 튜토리얼이 다시 나와요'); };
-$('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); progress = loadProgress(); bootQA(); renderHome(); switchTab('stages'); } };
+$('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); setProgress(loadProgress()); bootQA(); renderHome(); switchTab('stages'); } };
 function bootQA() { if (isAdmin() && revealAdminCollection(progress, PHILOSOPHERS.map(p => p.id))) saveProgress(progress); if (QA_MODE && !progress.purchases.includes('qa')) { progress.gonoe += QA_GONOE; progress.gems += QA_GEMS; progress.tickets += 5; progress.purchases.push('qa'); saveProgress(progress); } }
 
 function welcome() {
@@ -1689,13 +1688,13 @@ function welcome() {
 
 /** 로그인 후 계정 진입 */
 function enter(acc: Account) {
-  me = acc;
+  setMe(acc);
   rememberLogin(acc.id);
   setAccount(acc.id);
   setQA(acc.role === 'master' || new URLSearchParams(location.search).get('qa') === '1');
   const isNew = !hasSave();
   freshDevice = isNew;
-  progress = loadProgress();
+  setProgress(loadProgress());
   if (isNew && acc.role === 'veteran') { seedVeteran(progress); saveProgress(progress); }
   bootQA();
   backdropSelect.value = progress.battleBackdrop ?? 'era';
@@ -1710,7 +1709,7 @@ function enter(acc: Account) {
 }
 
 function showLogin() {
-  me = null;
+  setMe(null);
   show('home');
   $('login').classList.remove('hidden');
   const id = $<HTMLInputElement>('login-id'), pw = $<HTMLInputElement>('login-pw');
@@ -1741,7 +1740,7 @@ async function syncCloud(id: string, pw: string) {
     const remote = await cloudLoad();
     // 서버 쪽이 더 최신이거나, 이 기기가 처음이면 서버 것을 쓴다
     if (remote && (freshDevice || (remote.savedAt ?? 0) > (progress.savedAt ?? 0))) {
-      progress = adoptProgress(remote);
+      setProgress(adoptProgress(remote));
       bootQA();
       backdropSelect.value = progress.battleBackdrop ?? 'era';
       spriteUrl.clear(); renderHome(); refreshWallet();
