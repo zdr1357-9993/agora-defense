@@ -54,3 +54,5 @@
 ## 상태 이력
 
 - 2026-11-15 10:36 KST: 코드·UI 점검·최종 빌드 완료. 구현 커밋 `d585a30` 생성. 로컬 서버 실행 중. push 및 운영 배포 없음.
+
+- 2026-11-15 공개 stage 배포: `be00cb6eeb49fdba099c2bfbc4122d89338e890f`를 origin/stage에 push 완료. Pages 실행 https://github.com/zdr1357-9993/agora-defense/actions/runs/43664821702 성공. 공개 /stage/ HTML에서 문답 UI와 새 assets/index-BE_yAyys.js 반영 확인. main/develop 소스 변경 없음.
