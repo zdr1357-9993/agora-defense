@@ -2,7 +2,7 @@
 
 - 기록 시각(Asia/Seoul): 2026-11-15 10:36
 - 담당 / 요청 근거: Codex / `ops/flow-qa/JOURNEY_UX_REQUEST.md` 및 사용자 승인 요청
-- 상태: 검증 완료 · stage 로컬 커밋 예정
+- 상태: 검증 완료 · stage 로컬 커밋 완료
 
 ## 요청과 범위
 
@@ -27,7 +27,7 @@
 ## 소스
 
 - 저장소 / worktree: `projects/random-defense/agora-defense-envs/stage`
-- 브랜치 / 기준 SHA / 변경 커밋: `stage` / `9c98811` / 로컬 작업 커밋에 기록
+- 브랜치 / 기준 SHA / 변경 커밋: `stage` / `9c98811` / 구현 `d585a30` (로컬)
 - 미커밋 변경·데이터 해시: 사용자가 만든 `AGENTS.md`, `public/journey/`, `src/journey-map.ts`, `src/journey-map.css`를 보존·활용. `AGENTS.md`는 이번 변경과 별개라 커밋에서 제외.
 
 ## 검증과 반영 상태
@@ -53,4 +53,4 @@
 
 ## 상태 이력
 
-- 2026-11-15 10:36 KST: 코드·UI 점검·빌드 완료. stage 로컬 커밋 예정. 로컬 서버 실행 중. push 및 운영 배포 없음.
+- 2026-11-15 10:36 KST: 코드·UI 점검·최종 빌드 완료. 구현 커밋 `d585a30` 생성. 로컬 서버 실행 중. push 및 운영 배포 없음.
