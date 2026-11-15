@@ -1745,6 +1745,18 @@ $('admin-cards').onclick = () => { for (const p of PHILOSOPHERS) { progress.card
 const remembered = lastLogin();
 if (remembered) { $<HTMLInputElement>('login-id').value = remembered.id; }
 showLogin();
+// 로그인 없이 허브 화면을 캡처하기 위한 QA 경로(?qa-screen=home|room|gacha|codex|shop|tcg).
+// VITE_QA_ROUTES=1 로 빌드한 개발·스테이지에서만 켜진다. 운영 빌드(npm run build)에는 이 블록이 통째로 빠진다.
+// 가짜 베테랑 진행(seedVeteran)으로 '로컬 브라우저의 qa-preview 계정'에만 저장하며 서버 계정과 무관하다.
+if (import.meta.env.VITE_QA_ROUTES) {
+  const qaScreen = new URLSearchParams(location.search).get('qa-screen');
+  const QA_TABS: Record<string, string> = { home: 'stages', room: 'room', gacha: 'gacha', codex: 'codex', shop: 'shop', tcg: 'codex' };
+  if (qaScreen && QA_TABS[qaScreen]) setTimeout(() => {
+    enter({ id: 'qa-preview', hash: '', role: 'veteran', label: 'QA 미리보기' });
+    switchTab(QA_TABS[qaScreen]);
+    if (qaScreen === 'tcg') openTcg();
+  }, 0);
+}
 // 개발·스테이지 화면에서 실제 전투 루프를 빠르게 캡처하기 위한 명시적 QA 경로.
 // 진행 저장/계정 로그인 없이 보스 웨이브 하나만 띄운다.
 if (new URLSearchParams(location.search).get('boss-preview') === '1') {
