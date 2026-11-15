@@ -25,7 +25,7 @@ import { setCardFilter, settleIdle, idleRate, tapGain, tapUpgradeCost, battleRew
 const STORY_WAVES = 30; // 튜토리얼은 사건별 3~5웨이브, 본편은 30웨이브
 import { ITEMS } from './items';
 
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+import { $ } from './ui/dom';
 const spriteUrl = new Map<string, string>();
 import { cardArt, sceneArt } from './tcg';
 import { STORY, STORY_MAP, CHAPTERS, START_POOL, type StoryStage, type Line } from './story';
