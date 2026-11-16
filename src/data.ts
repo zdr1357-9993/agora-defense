@@ -106,15 +106,15 @@ export const TIER_STATS = [
   { dmg: 2500, range: 3.1, cooldown: 0.5 }, // 근원
 ] as const;
 
-/** 전투 강화. 비용은 임시 밸런스값이며 여기서 조정한다. 비용은 유닛 1명·1회 기준. */
+/** 전투 강화. 비용은 임시 밸런스값이며 여기서 조정한다. 비용은 유닛 1명·1회 기준. 비용 ×1.5·효과 ×0.75 (이전 40/200/650, 0.35). */
 export const UPGRADE = {
   maxLevel: 5,
-  perLevel: 0.35,
+  perLevel: 0.2625, // 0.35 × 0.75 (2026-11-16 현배 결정: 강화는 약하게. results/rd-dev-v4/upgrade3·4-summary.md)
   provisionalCosts: true,
   bands: [
-    { id: 'common', label: '1–3성', minTier: 1, maxTier: 3, baseCost: 40 },
-    { id: 'rare', label: '4–5성', minTier: 4, maxTier: 5, baseCost: 200 },
-    { id: 'high', label: '6–7성', minTier: 6, maxTier: 7, baseCost: 650 },
+    { id: 'common', label: '1–3성', minTier: 1, maxTier: 3, baseCost: 60 },
+    { id: 'rare', label: '4–5성', minTier: 4, maxTier: 5, baseCost: 300 },
+    { id: 'high', label: '6–7성', minTier: 6, maxTier: 7, baseCost: 975 },
   ],
 } as const;
 /** 스테이지 카운터가 보스에게 주는 배율 */
