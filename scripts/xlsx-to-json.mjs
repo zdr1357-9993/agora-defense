@@ -57,7 +57,7 @@ for (const r of recipes) {
     else if (res && !res.origin && p.thoughtYear > res.thoughtYear) errors.push(`${r.id}: 미래 사상이 재료임: ${p.name} → ${res.name}`);
   }
 }
-if (philosophers.length !== 59 || byId.size !== 59) errors.push('활성 카드는 중복 없이 59장이어야 함');
+if (byId.size !== philosophers.length) errors.push('활성 카드 id 가 중복됨');
 const costs = new Map(philosophers.filter(p=>p.tier===1).map(p=>[p.id,1]));
 for (const r of [...recipes].sort((a,b)=>rank(byId.get(a.result))-rank(byId.get(b.result)))) {
   if (!r.materials.length || r.materials.some(id=>!costs.has(id))) { errors.push(`${r.id}: 도달할 수 없는 조합`); continue; }
@@ -66,8 +66,8 @@ for (const r of [...recipes].sort((a,b)=>rank(byId.get(a.result))-rank(byId.get(
   if (byId.get(r.result).materialCost !== cost) errors.push(`${r.id}: 1성 환산값 불일치`);
 }
 for (const p of philosophers) {
-  if (!costs.has(p.id)) errors.push(`${p.name}: 1성에서 도달 불가`);
-  if (p.tier < 5 && !recipes.some(r=>r.materials.includes(p.id))) errors.push(`${p.name}: 상위 조합에 쓰이지 않음`);
+  if (!costs.has(p.id) && !(p.hidden && !recipes.some(r=>r.result===p.id))) errors.push(`${p.name}: 1성에서 도달 불가`); // 조합 없는 hidden(바울: 해금 조건 추후)은 예외
+  if (p.tier < 5 && !recipes.some(r=>r.materials.includes(p.id))) console.warn(`경고 ${p.name}: 상위 조합에 쓰이지 않음 (combo-v4 의도: 재료 쓰임이 없는 카드)`);
   if (!combat.some(c=>c.id===p.id)) errors.push(`${p.name}: 전투 프로필 없음`);
 }
 for (const s of stages) if (!byId.get(s.counter)) errors.push(`${s.id}: 없는 카운터 ${s.counter}`);
