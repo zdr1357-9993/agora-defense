@@ -26,6 +26,8 @@ const STORY_WAVES = 30; // 튜토리얼은 사건별 3~5웨이브, 본편은 30�
 import { ITEMS } from './items';
 
 import { $ } from './ui/dom';
+import { toast, alertBox } from './ui/overlay';
+import { refreshWallet } from './ui/wallet';
 import './ui/mobile';
 import { cardArt, sceneArt } from './tcg';
 import { STORY, STORY_MAP, CHAPTERS, START_POOL, type StoryStage, type Line } from './story';
@@ -219,22 +221,6 @@ function showCard(id: string) {
     if (progress.favorite === id) delete progress.favorite; else { progress.favorite = id; roomThinker = id; sfx.reveal(5); }
     saveProgress(progress); document.querySelector('.overlay')?.remove(); renderCodex(); showCard(id);
   };
-}
-
-function toast(text: string) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.textContent = text;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2200);
-}
-
-function alertBox(html: string) {
-  const o = document.createElement('div');
-  o.className = 'overlay';
-  o.innerHTML = `<div class="pop">${html}<button class="primary chunky gold close">확인</button></div>`;
-  o.onclick = (e) => { const el = e.target as HTMLElement; if (el === o || el.classList.contains('close')) o.remove(); };
-  document.body.appendChild(o);
 }
 
 // =============== 전투 ===============
@@ -1075,13 +1061,6 @@ function switchTab(tab: string) {
   refreshWallet();
   pageTutStart(tab);
 }
-function refreshWallet() {
-  const w = document.getElementById('wallet');
-  if (w) w.innerHTML = `<span class="wallet-part">${iconHtml('coin', '고뇌')} ${Math.floor(progress.gonoe).toLocaleString()}</span><span class="wallet-part">${iconHtml('gem', '지혜석')} ${progress.gems.toLocaleString()}</span>${progress.tickets ? `<span class="wallet-part">${iconHtml('ticket', '초대장')} ${progress.tickets}</span>` : ''}`;
-  const r = document.getElementById('room-gonoe');
-  if (r) r.textContent = Math.floor(progress.gonoe).toLocaleString();
-}
-
 // ---------- 고민방 ----------
 let roomThinker = 'T106';
 function renderRoom() {
