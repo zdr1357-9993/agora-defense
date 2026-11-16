@@ -1340,9 +1340,10 @@ if (import.meta.env.VITE_QA_ROUTES) {
     if (qaScreen === 'tcg') openTcg();
   }, 0);
 }
-// 개발·스테이지 화면에서 실제 전투 루프를 빠르게 캡처하기 위한 명시적 QA 경로.
+// 개발 화면에서 실제 전투 루프를 빠르게 캡처하기 위한 명시적 QA 경로.
 // 진행 저장/계정 로그인 없이 보스 웨이브 하나만 띄운다.
-if (new URLSearchParams(location.search).get('boss-preview') === '1') {
+// VITE_QA_ROUTES=1 빌드(개발·스테이지)에서만 켜진다. 운영 빌드에서는 이 블록이 통째로 빠진다.
+if (import.meta.env.VITE_QA_ROUTES && new URLSearchParams(location.search).get('boss-preview') === '1') {
   // The route is declared before every module-level UI variable has initialized.
   // Defer setup to the next task so startBattle/updateUI cannot hit a temporal dead zone.
   setTimeout(() => {
