@@ -8,7 +8,7 @@
     "dev": "npm run data && VITE_QA_ROUTES=1 vite",
     "dev:local": "VITE_QA_ROUTES=1 vite --host 127.0.0.1 --port 5173 --strictPort",
     "build": "npm run data && tsc --noEmit && vite build",
-    "build:stage": "tsc --noEmit && VITE_QA_ROUTES=1 vite build --outDir dist-stage",
+    "build:stage": "tsc --noEmit && vite build --outDir dist-stage",
     "preview": "vite preview",
     "preview:stage": "vite preview --host 127.0.0.1 --port 4173 --strictPort --outDir dist-stage"
   },
