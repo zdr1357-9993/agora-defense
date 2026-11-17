@@ -40,7 +40,7 @@ import { focusJourney, journeySign } from './journey-map';
 import { mountJourneyField, fieldEnabled } from './field/journey-field';
 import { gainXp, XP_RATE, summonPool, openEras } from './state/story-rules';
 import { initResult, eraWipe, resultPanel } from './screens/result';
-import { initTutorial, tutBegin, tutAbort, tutTick, pageTutStart } from './screens/tutorial';
+import { initTutorial, tutBegin, tutAbort, tutTick, pageTutStart, pageTutMore } from './screens/tutorial';
 /** 이 등급 이상은 카드가 있어야 조합 가능 (6 = 거장, 예전 5성) */
 const LOCK_TIER = 6;
 /** 지름길 조합: 얕지만 그 철학자 카드 Lv.5(11장) 이상이어야 열린다 */
@@ -939,6 +939,7 @@ function switchTab(tab: string) {
   if (tab === 'shop') renderShop();
   refreshWallet();
   pageTutStart(tab);
+  if (tab === 'stages') pageTutMore();
 }
 // ---------- 고민방 ----------
 function burst(host: HTMLElement, tier: number) {

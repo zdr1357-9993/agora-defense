@@ -40,6 +40,7 @@ export function tutTick() {
   const manual = !st.done;
   b.innerHTML = `<div class="tut-step">튜토리얼 ${tutStep + 1}/${TUT.length}</div><p>${st.text}</p><div class="tut-btns"><button class="tut-skip">건너뛰기</button>${manual ? `<button class="tut-next">${tutStep === TUT.length - 1 ? '시작!' : '다음 ▶'}</button>` : ''}</div>`;
   document.body.appendChild(b);
+  if (st.pos !== 'top') { const row = document.querySelector('#merge')?.parentElement; if (row) b.style.bottom = `${Math.round(innerHeight - row.getBoundingClientRect().top + 8)}px`; }   // J031: 행동 버튼(판매·합성·강화·조합표)을 가리지 않는다
   (b.querySelector('.tut-skip') as HTMLElement).onclick = tutFinish;
   const nx = b.querySelector('.tut-next') as HTMLElement | null;
   if (nx) nx.onclick = () => { tutStep++; if (tutStep >= TUT.length) tutFinish(); else tutTick(); };
@@ -51,6 +52,8 @@ const PAGE_TUT: Record<string, { sel: string; text: string }[]> = {
   stages: [
     { sel: '.journey-point.open .j-dot', text: '이 긴 지도에서 거점을 고르면 캐릭터와 카메라가 그곳으로 이동해요. 길은 튜토리얼에서 1~6장으로 이어져요.' },
     { sel: '#j-go', text: '아래 목적지 패널에서 <b>출발</b>을 누르면 전투가 시작돼요. 옆 <b>정보</b> 버튼에서 보스와 돌아오는 기억을 확인할 수 있어요.' },
+  ],
+  stages2: [
     { sel: '#journey-difficulty', text: '난이도는 이 버튼 하나에서 바꿔요. 쉬움으로 튜토리얼과 1~6장을 모두 마치면 난이도 선택과 장 바로가기가 열려요.' },
     { sel: '#open-recipes', text: '📜 <b>조합표</b>에서 모든 조합식을, 🎲 확률에서 소환·등급 정보를 볼 수 있어요. 마음에 드는 조합은 💗로 찜해 두면 전투 중에 따라 보여요.' },
     { sel: '#tabs', text: '아래 탭에서 🤔고민방·🎴뽑기·📖도감·🛍상점으로 가요. 처음 들어가면 거기서도 안내해 드릴게요!' },
@@ -76,6 +79,12 @@ const PAGE_TUT: Record<string, { sel: string; text: string }[]> = {
   ],
 };
 let pageTut: { tab: string; i: number } | null = null, pageShown = '';
+export const tabOf = (k: string) => k.replace(/2$/, '');     // 'stages2'(첫 전투 뒤 더 알려 주는 안내)도 stages 탭에서 보인다
+/** 첫 전투를 마치고 홈으로 돌아왔을 때 나머지 안내 3단계(난이도·조합표·탭)를 한 번 보여 준다(J031: 첫 안내 4단계 → 2단계). */
+export function pageTutMore() {
+  const done = progress.tabTut ?? [];
+  if (done.includes('stages') && !done.includes('stages2') && progress.battleTutDone) pageTutStart('stages2');
+}
 export function pageTutStart(tab: string) {
   if (!PAGE_TUT[tab] || (progress.tabTut ?? []).includes(tab)) return;
   pageTut = { tab, i: 0 }; pageShown = '';
@@ -86,7 +95,7 @@ function pageTutEnd() {
 }
 function pageTutTick() {
   if (!pageTut) return;
-  if (pageTut.tab !== deps.getTab() || $('home').classList.contains('hidden')) { if (pageShown) { tutClear(); pageShown = ''; } if (pageTut.tab !== deps.getTab()) pageTut = null; return; }
+  if (tabOf(pageTut.tab) !== deps.getTab() || $('home').classList.contains('hidden')) { if (pageShown) { tutClear(); pageShown = ''; } if (tabOf(pageTut.tab) !== deps.getTab()) pageTut = null; return; }
   if (document.querySelector('.overlay, .vn, .prologue')) { if (pageShown) { tutClear(); pageShown = ''; } return; }
   const steps = PAGE_TUT[pageTut.tab], st = steps[pageTut.i], key = pageTut.tab + pageTut.i;
   if (pageShown === key) return;
