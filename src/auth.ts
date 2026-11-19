@@ -2,7 +2,7 @@
 // 비밀번호는 sha256("agora:아이디:비밀번호") 앞 16자리로만 보관
 import type { Progress } from './save';
 
-export type Role = 'master' | 'veteran' | 'fresh';
+export type Role = 'master' | 'veteran' | 'fresh' | 'tester';
 export interface Account { id: string; hash: string; role: Role; label: string }
 
 export const ACCOUNTS: Account[] = [
@@ -29,6 +29,19 @@ export function rememberLogin(id: string | null) {
 }
 export function lastLogin(): Account | null {
   try { const id = localStorage.getItem(LAST); return ACCOUNTS.find((a) => a.id === id) ?? null; } catch { return null; }
+}
+
+/** Anonymous demo profile stored only in this browser; never maps to a cloud account. */
+export function testerAccount(): Account {
+  let id = '';
+  try {
+    id = localStorage.getItem('agora_tester_profile') ?? '';
+    if (!id) {
+      id = globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem('agora_tester_profile', id);
+    }
+  } catch { id = 'session'; }
+  return { id: `tester:${id}`, hash: '', role: 'tester', label: '테스터 · 이 브라우저 전용' };
 }
 
 /** 기존 플레이어 계정의 첫 진행 상태: 고대·중세·동양 일부 클리어, 카드와 도구 보유 */

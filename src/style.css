@@ -255,6 +255,7 @@ button.up { margin-top: 6px; padding: 5px 10px; font-size: 13px; background: var
 .login { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 20px;
   background: radial-gradient(circle at 50% 30%, #fff8ec, #ffe1ec 60%, #dff1ff); }
 .login-card { width: 100%; max-width: 340px; }
+#tester-login { border: 2px solid #91b9a7; background: #effaf3; color: #315c4a; }
 #login-card { background: #fff; border: 3px solid var(--line); border-radius: 28px; padding: 24px 20px; box-shadow: 0 6px 0 var(--line); display: flex; flex-direction: column; gap: 10px; text-align: center; }
 .login-art { font-size: 64px; animation: bob 1.6s infinite ease-in-out; }
 #login-card .title { font-size: 30px; }

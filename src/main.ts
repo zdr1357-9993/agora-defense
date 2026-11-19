@@ -6,7 +6,7 @@ import { wrapCanvasText } from './text-layout';
 import { artUrl, artImage, iconHtml, artworkBoss } from './artwork';
 import { journeyArt, drawPastelFloor, arenaArt, drawWaitingBench, GREEK_BACKDROPS } from './pastel-art';
 import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, type Tower, type FxEvent } from './game';
-import { ACCOUNTS, login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
+import { ACCOUNTS, login, lastLogin, rememberLogin, seedVeteran, testerAccount, type Account } from './auth';
 import { STAGE_PATHS } from './paths';
 import { STAGE_STARS, ERA_BONUS, STAR_BONUS } from './affinity';
 import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
@@ -74,6 +74,7 @@ function show(id: 'home' | 'battle') {
 }
 
 let diffId = 'easy';
+const isTester = () => me?.role === 'tester';
 const modernUnlocked = () => QA_MODE || modernUnlockStatus(progress.cleared).unlocked;
 const modernLockText = () => { const status = modernUnlockStatus(progress.cleared); return `현대 해금 · 이전 5개 시대 어려움 ${status.completed}/${status.total} 클리어`; };
 /** 스테이지별 난이도 해금: 쉬움은 항상, 다음 단계는 앞 단계를 깨야 */
@@ -317,6 +318,7 @@ new ResizeObserver(resize).observe($('battle'));
 
 function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   if ((story?.base === 'S6' || (!story && s.id === 'S6')) && !modernUnlocked()) { toast(modernLockText()); return; }
+  if (pageTut) pageTutEnd();
   if (story) { const base = STAGES.find((x) => x.id === story.base)!; s = { ...base, name: story.title, boss10: story.boss, boss20: story.boss, story: story.when }; }
   spawnAt.clear(); signatureCasts.clear(); signatureLast.clear(); speeches.clear(); quoteQueue.length = 0; battleDialogue.length = 0; quoteLeft = 0; $('battle-quote').textContent = '철학자의 한마디 · 전투를 시작해 보세요';
   $('field-wrap').style.backgroundImage = '';
@@ -1628,20 +1630,33 @@ function welcome() {
 /** 로그인 후 계정 진입 */
 function enter(acc: Account) {
   me = acc;
-  rememberLogin(acc.id);
+  if (!isTester()) rememberLogin(acc.id);
   setAccount(acc.id);
-  setQA(acc.role === 'master' || new URLSearchParams(location.search).get('qa') === '1');
+  setQA(acc.role === 'master' || (acc.role !== 'tester' && new URLSearchParams(location.search).get('qa') === '1'));
   const isNew = !hasSave();
   freshDevice = isNew;
   progress = loadProgress();
   if (isNew && acc.role === 'veteran') { seedVeteran(progress); saveProgress(progress); }
+  if (isNew && isTester()) {
+    // S6 story stages remain gated by the live five-map Hard-clear rule; P20 opens Normal.
+    progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), ...STORY.filter((st) => st.base !== 'S6').map((st) => st.id)])];
+    progress.cleared = [...new Set([...progress.cleared, ...STAGES.filter((s) => s.id !== 'S6').map((s) => s.id)])];
+    progress.tutorialDone = true;
+    progress.prologueDone = false;
+    progress.tourDone = true;
+    progress.battleTutDone = false;
+    progress.testerMainTutDone = false;
+    saveProgress(progress);
+  }
   bootQA();
+  if (isTester()) diffId = 'easy';
   backdropSelect.value = progress.battleBackdrop ?? 'era';
   spriteUrl.clear();
-  $('who').textContent = `👤 ${acc.id}${acc.role === 'master' ? ' 👑' : ''}`;
+  $('who').textContent = isTester() ? '👤 테스터 · 이 브라우저에만 저장' : `👤 ${acc.id}${acc.role === 'master' ? ' 👑' : ''}`;
   $('admin-bar').classList.toggle('hidden', acc.role !== 'master');
   $('login').classList.add('hidden');
-  if (!progress.prologueDone && !QA_MODE && acc.role !== 'veteran') playPrologue(); else welcome();
+  if (isTester()) { if (!progress.prologueDone) playPrologue(); }
+  else if (!progress.prologueDone && !QA_MODE && acc.role !== 'veteran') playPrologue(); else welcome();
   renderHome();
   show('home');
   switchTab('stages');
@@ -1667,12 +1682,13 @@ $<HTMLFormElement>('login-form').onsubmit = async (e) => {
   sfx.reveal(5);
   enter(acc);
   lastPw = $<HTMLInputElement>('login-pw').value;
-  void syncCloud(acc.id, lastPw);
+  if (!isTester()) void syncCloud(acc.id, lastPw);
 };
+$('tester-login').onclick = () => { sfx.reveal(5); enter(testerAccount()); cloudBadge(); };
 
 // ---------- ☁️ 서버 저장 동기화 ----------
 let freshDevice = false; // 이 기기에 저장이 없던 상태로 들어왔는지
-setSaveHook((p) => cloudSave(p));
+setSaveHook((p) => { if (!isTester()) cloudSave(p); });
 async function syncCloud(id: string, pw: string) {
   const ok = await cloudLogin(id, pw);
   if (ok) {
@@ -1691,13 +1707,14 @@ async function syncCloud(id: string, pw: string) {
 function cloudBadge() {
   const el = document.getElementById('cloud-state');
   if (!el) return;
+  if (isTester()) { el.textContent = '☁️ 서버 저장 없음 · 이 브라우저에만 저장'; el.className = 'cloud-state'; el.title = '테스터 진행은 방문자별 브라우저 저장소에만 기록됩니다.'; return; }
   el.textContent = cloudState === 'ok' ? '☁️ 서버 저장 켜짐' : cloudState === 'confirm' ? '☁️ 설정 필요: ' + cloudMsg : cloudState === 'error' ? `☁️ 서버 연결 실패 (이 기기에만 저장 중)\n원인: ${cloudMsg || '알 수 없음'}` : '☁️ 서버 저장 꺼짐';
   el.className = `cloud-state ${cloudState}`;
   el.title = cloudMsg;
 }
 // 설정을 열 때마다 서버 상태를 다시 표시하고, 실패 상태면 한 번 더 연결을 시도한다
 let lastPw = '';
-$('logout').onclick = () => { if (window.confirm('로그아웃할까요?')) { void cloudLogout(); cloudBadge(); $('settings').classList.add('hidden'); rememberLogin(null); showLogin(); } };
+$('logout').onclick = () => { if (window.confirm('로그아웃할까요?')) { clearActiveGuides(); if (!isTester()) void cloudLogout(); me = null; cloudBadge(); $('settings').classList.add('hidden'); rememberLogin(null); showLogin(); } };
 $('admin-gems').onclick = () => { progress.gems += 10000; progress.gonoe += 100000; progress.tickets += 10; saveProgress(progress); refreshWallet(); toast('👑 재화 지급 완료'); };
 $('admin-unlock').onclick = () => { for (const s of STAGES) for (const d of DIFFICULTIES) { const k = clearKey(s.id, d.id); if (!progress.cleared.includes(k)) progress.cleared.push(k); } for (const s of STAGES) if (!progress.cleared.includes(s.id)) progress.cleared.push(s.id); saveProgress(progress); renderHome(); toast('👑 전 스테이지·난이도 클리어 처리'); };
 $('admin-cards').onclick = () => { for (const p of PHILOSOPHERS) { progress.cards[p.id] = (progress.cards[p.id] ?? 0) + 16; if (!progress.seen.includes(p.id)) progress.seen.push(p.id); } for (const it of ITEMS) progress.items[it.id] = (progress.items[it.id] ?? 0) + 1; saveProgress(progress); toast('👑 모든 카드 +16장 · 도구 전부 지급'); };
@@ -1769,7 +1786,8 @@ $('cats').addEventListener('click', (e) => {
 const TUT: { sel: string; text: string; done?: (g: Game) => boolean; pos?: 'top' }[] = [
   { sel: '#summon', text: '👋 먼저 <b>소환</b>을 눌러 철학자를 불러 보세요. 흔함 9명 중 한 명이 나와요.', done: (g) => g.towers.length >= 1 },
   { sel: '#summon', text: '좋아요! 철학자는 빈 칸에 자동으로 앉아요. <b>두 번 더</b> 소환해 볼까요?', done: (g) => g.towers.length >= 3 },
-  { sel: '#field', text: '칸에 앉은 철학자를 <b>탭</b>하면 정보·강화·판매가 나와요. 선택한 채로 다른 칸을 탭하면 <b>자리를 옮겨요</b>. 맨 아래 <b>대기석</b> 5칸은 싸우지 않지만 조합 재료로 쓰여요. 필드가 차면 소환된 철학자가 대기석으로 가요.', pos: 'top' },
+  { sel: '#field', text: '칸에 앉은 철학자를 <b>탭</b>해 선택해요. 선택한 채 다른 칸을 탭하면 <b>배치 위치를 옮겨요</b>. 맨 아래 대기석은 싸우지 않지만 조합 재료로 쓰여요.', pos: 'top' },
+  { sel: '#upgrade-btn', text: '선택한 철학자는 여기서 골드를 써 <b>강화</b>할 수 있어요. 강화는 전투 중에도 가능해요.', pos: 'top' },
   { sel: '#merge', text: '조합 재료가 모이면 철학자 머리 위에 <b>✦</b>가 뜨고, 여기 <b>합성</b> 버튼이 결과 얼굴과 함께 반짝여요. 누르기만 하면 돼요!', pos: 'top' },
   { sel: '#start', text: '준비 끝! <b>웨이브 시작</b>을 누르면 도그마(적)가 몰려와요.', done: (g) => g.running },
   { sel: '#lives', text: '🧠 이게 <b>멘탈</b>이에요. 도그마가 길 끝에 닿으면 1(보스는 5)씩 깎이고, 못 잡은 적은 <b>다시 돌아와요</b>. 0이 되면 패배!', pos: 'top' },
@@ -1826,20 +1844,37 @@ const PAGE_TUT: Record<string, { sel: string; text: string }[]> = {
     { sel: '.shop-grid', text: '🛍 <b>상점</b>에서 💎지혜석과 🎫초대장을 살 수 있어요. 지금은 시험판이라 실제 결제 없이 바로 지급돼요.' },
   ],
 };
+const TESTER_STAGE_TUT: { sel: string; text: string }[] = [
+  { sel: '.journey-heading', text: '테스터 진행이에요. 쉬움 여정과 시작 튜토리얼은 완료 상태로 준비되어 있어요. 지도를 눌러 이야기 장면을 다시 볼 수 있어요.' },
+  { sel: '.diffs [data-diff="normal"]', text: '쉬움 여정 전체를 완료해 보통을 열어 두었어요. 아래 난이도에서 보통을 선택해 전투에 입장할 수 있어요.' },
+  { sel: '.diffs [data-diff="hard"]', text: '어려움과 불멸은 이 체험에서 해금하지 않았어요. 기존 운영 규칙대로 앞 난이도를 클리어해야 열립니다.' },
+  { sel: '.journey-chapters', text: '전투는 직접 시작할 때만 진행돼요. 보통을 선택해 전투에 입장하면 소환·배치·합성·강화·웨이브 시작 안내가 차례로 나와요. 건너뛰기와 닫기를 언제든 쓸 수 있어요.' },
+];
 let pageTut: { tab: string; i: number } | null = null, pageShown = '';
 function pageTutStart(tab: string) {
-  if (!PAGE_TUT[tab] || (progress.tabTut ?? []).includes(tab)) return;
+  const done = isTester() && tab === 'stages' ? progress.testerMainTutDone : (progress.tabTut ?? []).includes(tab);
+  if (!PAGE_TUT[tab] || done) return;
   pageTut = { tab, i: 0 }; pageShown = '';
 }
 function pageTutEnd() {
-  if (pageTut) { progress.tabTut = [...new Set([...(progress.tabTut ?? []), pageTut.tab])]; saveProgress(progress); }
+  if (pageTut) {
+    if (isTester() && pageTut.tab === 'stages') progress.testerMainTutDone = true;
+    else progress.tabTut = [...new Set([...(progress.tabTut ?? []), pageTut.tab])];
+    saveProgress(progress);
+  }
   pageTut = null; pageShown = ''; tutClear();
+}
+/** Remove transient guidance on account exit without marking any unfinished guide complete. */
+function clearActiveGuides() {
+  pageTut = null; pageShown = '';
+  tutStep = -1; tutShown = -2;
+  tutClear();
 }
 function pageTutTick() {
   if (!pageTut) return;
   if (pageTut.tab !== currentTab || $('home').classList.contains('hidden')) { if (pageShown) { tutClear(); pageShown = ''; } if (pageTut.tab !== currentTab) pageTut = null; return; }
   if (document.querySelector('.overlay, .vn, .prologue')) { if (pageShown) { tutClear(); pageShown = ''; } return; }
-  const steps = PAGE_TUT[pageTut.tab], st = steps[pageTut.i], key = pageTut.tab + pageTut.i;
+  const steps = isTester() && pageTut.tab === 'stages' ? TESTER_STAGE_TUT : PAGE_TUT[pageTut.tab], st = steps[pageTut.i], key = pageTut.tab + pageTut.i;
   if (pageShown === key) return;
   const target = document.querySelector(st.sel) as HTMLElement | null;
   if (!target) { pageTut.i++; if (pageTut.i >= steps.length) pageTutEnd(); return; }
@@ -2061,6 +2096,7 @@ function playPrologue() {
   const end = () => {
     timers.forEach(clearTimeout); ov.remove();
     progress.prologueDone = true; progress.tutorialDone = true; saveProgress(progress);
+    if (isTester()) { renderHome(); show('home'); switchTab('stages'); return; }
     playDialogue([
       ['나', '꿈인가…? 그런데 저기 사람들을 홀리고 다니는 저 검은 그림자들은 뭐지?'],
       ['소크라테스', '도그마들일세. 생각 없이 믿기만 하게 만드는 것들이지. 자넨 처음 보는 얼굴이군.'],
