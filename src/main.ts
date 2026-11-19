@@ -18,7 +18,9 @@ import { philosopherSprite, skinnedSprite, SKINS, monsterSprite, monsterSprite2,
 import { SKILLS, skillMode, skillModeLabel } from './skills';
 import { sfx, isMuted, toggleMute } from './sfx';
 import { daily, bump, MISSIONS, ALL_CLEAR, ATTEND, claimable, claimMission, missionDone, rewardText, canAttend, attend, attendStreak, adFree, adFreeLabel, passOn, passDaysLeft, claimPass, PASS_DAILY, adsLeft, useAd, give, RAID_PER_DAY } from './live';
-import { cloudSignUp, cloudLogin, cloudLoad, cloudSave, flush as cloudFlush, cloudLogout, cloudState, cloudMsg } from './cloud';
+import { cloudSignUp, cloudLogin, cloudLoad, cloudSave, flush as cloudFlush, cloudLogout, cloudState, cloudMsg, cloudRole, cloudBaseRevision, cloudMarkSynced, setConflictHook } from './cloud';
+import { decideSync } from './syncrule';
+import type { Progress } from './save';
 import { setSaveHook, adoptProgress, setAccount, hasSave, loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, awakenLevel, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL, AWAKEN_MAX, AWAKEN_EVERY } from './save';
 import { LINES, UNLOCK_LEVELS } from './lines';
 import { setCardFilter, settleIdle, idleRate, tapGain, tapUpgradeCost, battleReward, pull, canAfford, PULLS, SHOP, buy, CUR_ICON, PITY_LIMIT, FIRST_CLEAR_GEMS, CARD_RATES, QA_GONOE, QA_GEMS, IDLE_PER_SEC, CARD_COST, type PullOption } from './meta';
@@ -1289,7 +1291,7 @@ $<HTMLFormElement>('login-form').onsubmit = async (e) => {
   const idv = $<HTMLInputElement>('login-id').value.trim(), pwv = $<HTMLInputElement>('login-pw').value;
   let acc = await login(idv, pwv);
   // 미리 정한 계정이 아니면: 서버에 가입된 일반 계정으로 로그인
-  if (!acc && idv && pwv) { $('login-err').textContent = '☁️ 서버 확인 중…'; if (await cloudLogin(idv, pwv, false)) acc = { id: idv, hash: '', role: 'fresh', label: '일반 계정' }; }
+  if (!acc && idv && pwv) { $('login-err').textContent = '☁️ 서버 확인 중…'; if (await cloudLogin(idv, pwv, false)) acc = { id: idv, hash: '', role: (await cloudRole()) ?? 'fresh', label: '일반 계정' }; }
   if (!acc) { $('login-err').textContent = '아이디 또는 비밀번호가 맞지 않아요'; shakeEl($('login-card')); return; }
   $('login-err').textContent = '';
   sfx.reveal(5);
@@ -1301,16 +1303,25 @@ $<HTMLFormElement>('login-form').onsubmit = async (e) => {
 // ---------- ☁️ 서버 저장 동기화 ----------
 let freshDevice = false; // 이 기기에 저장이 없던 상태로 들어왔는지
 setSaveHook((p) => cloudSave(p));
+function applyRemote(remote: { data: Progress; revision: number }) {
+  cloudMarkSynced(remote.revision);
+  setProgress(adoptProgress(remote.data));
+  bootQA();
+  backdropSelect.value = progress.battleBackdrop ?? 'era';
+  spriteUrl.clear(); renderHome(); refreshWallet();
+}
+// 저장하려는데 서버가 이미 다른 기기의 더 새로운 저장을 갖고 있으면 서버 값이 이긴다
+setConflictHook(async () => {
+  const remote = await cloudLoad();
+  if (remote) { applyRemote(remote); toast('☁️ 다른 기기에 더 새로운 저장이 있어 서버 값으로 맞췄어요'); }
+});
 async function syncCloud(id: string, pw: string) {
   const ok = await cloudLogin(id, pw);
   if (ok) {
     const remote = await cloudLoad();
-    // 서버 쪽이 더 최신이거나, 이 기기가 처음이면 서버 것을 쓴다
-    if (remote && (freshDevice || (remote.savedAt ?? 0) > (progress.savedAt ?? 0))) {
-      setProgress(adoptProgress(remote));
-      bootQA();
-      backdropSelect.value = progress.battleBackdrop ?? 'era';
-      spriteUrl.clear(); renderHome(); refreshWallet();
+    // 승자는 기기 시계가 아니라 서버 revision 으로 정한다 (src/syncrule.ts · docs/SAVE_CONFLICT.md)
+    if (remote && decideSync({ hasRemote: true, freshDevice, remoteRevision: remote.revision, baseRevision: cloudBaseRevision() }) === 'adopt') {
+      applyRemote(remote);
       toast('☁️ 서버에 저장된 진행을 불러왔어요');
     } else { cloudSave(progress); void cloudFlush(); }
   }

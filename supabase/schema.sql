@@ -1,5 +1,6 @@
 -- AGORA 철학사 랜덤 디펜스 · Supabase 테이블
 -- Supabase 대시보드 → SQL Editor → 새 쿼리에 전체를 붙여 넣고 Run
+-- 그다음 supabase/migrations/ 의 파일을 날짜순으로 이어서 Run (20261119_qa_rls_fix.sql: 재화 검사·role 표·revision 저장. 이 파일만으로는 직접 쓰기가 열려 있다)
 
 -- 1) 플레이어 진행 상황: 로그인한 사람(auth.users) 한 명당 한 줄
 create table if not exists public.progress (
