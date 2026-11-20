@@ -5,17 +5,20 @@
   "type": "module",
   "scripts": {
     "data": "node scripts/xlsx-to-json.mjs",
-    "dev": "npm run data && vite",
-    "dev:local": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "dev": "npm run data && VITE_QA_ROUTES=1 vite",
+    "dev:local": "VITE_QA_ROUTES=1 vite --host 127.0.0.1 --port 5173 --strictPort",
     "build": "npm run data && tsc --noEmit && vite build",
     "build:stage": "tsc --noEmit && vite build --outDir dist-stage",
     "preview": "vite preview",
-    "preview:stage": "vite preview --host 127.0.0.1 --port 4173 --strictPort --outDir dist-stage"
+    "preview:stage": "vite preview --host 127.0.0.1 --port 4173 --strictPort --outDir dist-stage",
+    "test": "node scripts/check-roster-v3.mjs && node scripts/check-skill-visuals.mjs && node scripts/check-modern-story.mjs && node qa/check-current-mechanics.cjs && node qa/check-gacha-rates.mjs",
+    "e2e": "playwright test"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
     "vite": "^5.4.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "@playwright/test": "^1.65.1"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

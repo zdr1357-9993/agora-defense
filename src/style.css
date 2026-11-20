@@ -965,3 +965,6 @@ button.ghost { border: 2px dashed #d8c3ae; box-shadow: none; }
 .j-road { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 1; }
 .jch > .j-path, .jch > .j-title, .jch > .j-reward { z-index: 2; }
 .jch::before { z-index: 0; }
+
+/* J031: 전투 상단 작은 버튼(✕·📜·배속·소리)을 터치 기준 44px 이상으로 */
+#hud #quit, #hud #b-recipes, #hud #speed, #hud #mute-b { min-width: 44px; min-height: 44px; }

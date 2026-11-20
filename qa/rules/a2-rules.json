@@ -1,0 +1,1532 @@
+{
+ "generatedFrom": "data/roster-v3.json",
+ "rosterVersion": "20261110v3",
+ "recipeCount": 60,
+ "recipes": [
+  {
+   "id": "V3_T212",
+   "result": "T212",
+   "resultName": "맹자",
+   "materials": [
+    "T108",
+    "T108"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T108": 2
+    },
+    "produce": {
+     "T212": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T212].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T213",
+   "result": "T213",
+   "resultName": "순자",
+   "materials": [
+    "T108",
+    "T107"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T108": 1,
+     "T107": 1
+    },
+    "produce": {
+     "T213": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T213].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T211",
+   "result": "T211",
+   "resultName": "장자",
+   "materials": [
+    "T107",
+    "T107"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T107": 2
+    },
+    "produce": {
+     "T211": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T211].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T309",
+   "result": "T309",
+   "resultName": "나가르주나",
+   "materials": [
+    "T109",
+    "T109"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T109": 2
+    },
+    "produce": {
+     "T309": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T309].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T306",
+   "result": "T306",
+   "resultName": "플로티노스",
+   "materials": [
+    "T207",
+    "T301"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T207": 1,
+     "T301": 1
+    },
+    "produce": {
+     "T306": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T306].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T210",
+   "result": "T210",
+   "resultName": "피론",
+   "materials": [
+    "T106",
+    "T105"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T106": 1,
+     "T105": 1
+    },
+    "produce": {
+     "T210": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T210].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T209",
+   "result": "T209",
+   "resultName": "에피쿠로스",
+   "materials": [
+    "T105",
+    "T105"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T105": 2
+    },
+    "produce": {
+     "T209": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T209].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T303",
+   "result": "T303",
+   "resultName": "세네카",
+   "materials": [
+    "T106",
+    "T301"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T106": 1,
+     "T301": 1
+    },
+    "produce": {
+     "T303": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T303].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T308",
+   "result": "T308",
+   "resultName": "아우구스티누스",
+   "materials": [
+    "T306",
+    "T106",
+    "T106"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T306": 1,
+     "T106": 2
+    },
+    "produce": {
+     "T308": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T308].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T315",
+   "result": "T315",
+   "resultName": "육구연",
+   "materials": [
+    "T212",
+    "T211"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T212": 1,
+     "T211": 1
+    },
+    "produce": {
+     "T315": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T315].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T311",
+   "result": "T311",
+   "resultName": "원효",
+   "materials": [
+    "T309",
+    "T107"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T309": 1,
+     "T107": 1
+    },
+    "produce": {
+     "T311": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T311].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T401",
+   "result": "T401",
+   "resultName": "토마스 아퀴나스",
+   "materials": [
+    "T308",
+    "T314",
+    "T301"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T308": 1,
+     "T314": 1,
+     "T301": 1
+    },
+    "produce": {
+     "T401": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T401].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T312",
+   "result": "T312",
+   "resultName": "주희",
+   "materials": [
+    "T108",
+    "T212",
+    "T107"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T108": 1,
+     "T212": 1,
+     "T107": 1
+    },
+    "produce": {
+     "T312": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T312].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T402",
+   "result": "T402",
+   "resultName": "오컴의 윌리엄",
+   "materials": [
+    "T308",
+    "T106",
+    "T301"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T308": 1,
+     "T106": 1,
+     "T301": 1
+    },
+    "produce": {
+     "T402": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T402].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T405",
+   "result": "T405",
+   "resultName": "르네 데카르트",
+   "materials": [
+    "T308",
+    "T210"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T308": 1,
+     "T210": 1
+    },
+    "produce": {
+     "T405": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T405].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T409",
+   "result": "T409",
+   "resultName": "존 로크",
+   "materials": [
+    "T402",
+    "T301"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T402": 1,
+     "T301": 1
+    },
+    "produce": {
+     "T409": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T409].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T410",
+   "result": "T410",
+   "resultName": "고트프리트 라이프니츠",
+   "materials": [
+    "T306",
+    "T301",
+    "T301",
+    "T207",
+    "T207"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T306": 1,
+     "T301": 2,
+     "T207": 2
+    },
+    "produce": {
+     "T410": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T410].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T408",
+   "result": "T408",
+   "resultName": "바뤼흐 스피노자",
+   "materials": [
+    "T306",
+    "T301",
+    "T301",
+    "T105",
+    "T105"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T306": 1,
+     "T301": 2,
+     "T105": 2
+    },
+    "produce": {
+     "T408": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T408].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T407",
+   "result": "T407",
+   "resultName": "블레즈 파스칼",
+   "materials": [
+    "T308",
+    "T303"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T308": 1,
+     "T303": 1
+    },
+    "produce": {
+     "T407": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T407].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T412",
+   "result": "T412",
+   "resultName": "왕양명",
+   "materials": [
+    "T315",
+    "T212"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T315": 1,
+     "T212": 1
+    },
+    "produce": {
+     "T412": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T412].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T413",
+   "result": "T413",
+   "resultName": "퇴계 이황",
+   "materials": [
+    "T312",
+    "T212"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T312": 1,
+     "T212": 1
+    },
+    "produce": {
+     "T413": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T413].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T415",
+   "result": "T415",
+   "resultName": "율곡 이이",
+   "materials": [
+    "T312",
+    "T211"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T312": 1,
+     "T211": 1
+    },
+    "produce": {
+     "T415": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T415].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T411",
+   "result": "T411",
+   "resultName": "데이비드 흄",
+   "materials": [
+    "T210",
+    "T301",
+    "T301",
+    "T106",
+    "T106"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T210": 1,
+     "T301": 2,
+     "T106": 2
+    },
+    "produce": {
+     "T411": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T411].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T414",
+   "result": "T414",
+   "resultName": "장 자크 루소",
+   "materials": [
+    "T315",
+    "T213"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T315": 1,
+     "T213": 1
+    },
+    "produce": {
+     "T414": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T414].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T416",
+   "result": "T416",
+   "resultName": "임마누엘 칸트",
+   "materials": [
+    "T411",
+    "T410"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T411": 1,
+     "T410": 1
+    },
+    "produce": {
+     "T416": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T416].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T417",
+   "result": "T417",
+   "resultName": "제러미 벤담",
+   "materials": [
+    "T411",
+    "T209"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T411": 1,
+     "T209": 1
+    },
+    "produce": {
+     "T417": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T417].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T507",
+   "result": "T507",
+   "resultName": "고틀로프 프레게",
+   "materials": [
+    "T410",
+    "T301",
+    "T301"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T410": 1,
+     "T301": 2
+    },
+    "produce": {
+     "T507": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T507].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T501",
+   "result": "T501",
+   "resultName": "게오르크 헤겔",
+   "materials": [
+    "T416",
+    "T408"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T416": 1,
+     "T408": 1
+    },
+    "produce": {
+     "T501": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T501].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T502",
+   "result": "T502",
+   "resultName": "아르투어 쇼펜하우어",
+   "materials": [
+    "T416",
+    "T207",
+    "T109"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T416": 1,
+     "T207": 1,
+     "T109": 1
+    },
+    "produce": {
+     "T502": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T502].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T510",
+   "result": "T510",
+   "resultName": "에드문트 후설",
+   "materials": [
+    "T405",
+    "T507"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T405": 1,
+     "T507": 1
+    },
+    "produce": {
+     "T510": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T510].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T508",
+   "result": "T508",
+   "resultName": "버트런드 러셀",
+   "materials": [
+    "T507",
+    "T410"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T507": 1,
+     "T410": 1
+    },
+    "produce": {
+     "T508": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T508].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T506",
+   "result": "T506",
+   "resultName": "존 스튜어트 밀",
+   "materials": [
+    "T417",
+    "T409"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T417": 1,
+     "T409": 1
+    },
+    "produce": {
+     "T506": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T506].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T511",
+   "result": "T511",
+   "resultName": "페르디낭 드 소쉬르",
+   "materials": [
+    "T507",
+    "T402"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T507": 1,
+     "T402": 1
+    },
+    "produce": {
+     "T511": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T511].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T505",
+   "result": "T505",
+   "resultName": "프리드리히 니체",
+   "materials": [
+    "T502",
+    "T408"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T502": 1,
+     "T408": 1
+    },
+    "produce": {
+     "T505": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T505].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T504",
+   "result": "T504",
+   "resultName": "카를 마르크스",
+   "materials": [
+    "T501",
+    "T209",
+    "T105"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T501": 1,
+     "T209": 1,
+     "T105": 1
+    },
+    "produce": {
+     "T504": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T504].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T503",
+   "result": "T503",
+   "resultName": "쇠렌 키르케고르",
+   "materials": [
+    "T501",
+    "T308",
+    "T106",
+    "T106"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T501": 1,
+     "T308": 1,
+     "T106": 2
+    },
+    "produce": {
+     "T503": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T503].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T509",
+   "result": "T509",
+   "resultName": "지그문트 프로이트",
+   "materials": [
+    "T502",
+    "T207",
+    "T207",
+    "T207",
+    "T207"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T502": 1,
+     "T207": 4
+    },
+    "produce": {
+     "T509": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T509].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T611",
+   "result": "T611",
+   "resultName": "다산 정약용",
+   "materials": [
+    "T413",
+    "T401",
+    "T213"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T413": 1,
+     "T401": 1,
+     "T213": 1
+    },
+    "produce": {
+     "T611": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T611].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T601",
+   "result": "T601",
+   "resultName": "마르틴 하이데거",
+   "materials": [
+    "T510",
+    "T505",
+    "T308"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T510": 1,
+     "T505": 1,
+     "T308": 1
+    },
+    "produce": {
+     "T601": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T601].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T604",
+   "result": "T604",
+   "resultName": "자크 라캉",
+   "materials": [
+    "T509",
+    "T511",
+    "T405"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T509": 1,
+     "T511": 1,
+     "T405": 1
+    },
+    "produce": {
+     "T604": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T604].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T605",
+   "result": "T605",
+   "resultName": "미셸 푸코",
+   "materials": [
+    "T505",
+    "T416",
+    "T213"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T505": 1,
+     "T416": 1,
+     "T213": 1
+    },
+    "produce": {
+     "T605": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T605].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T607",
+   "result": "T607",
+   "resultName": "질 들뢰즈",
+   "materials": [
+    "T505",
+    "T408",
+    "T411"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T505": 1,
+     "T408": 1,
+     "T411": 1
+    },
+    "produce": {
+     "T607": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T607].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T614",
+   "result": "T614",
+   "resultName": "발터 벤야민",
+   "materials": [
+    "T504",
+    "T416",
+    "T207",
+    "T207",
+    "T207"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T504": 1,
+     "T416": 1,
+     "T207": 3
+    },
+    "produce": {
+     "T614": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T614].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T615",
+   "result": "T615",
+   "resultName": "존 롤스",
+   "materials": [
+    "T416",
+    "T416",
+    "T409",
+    "T414"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T416": 2,
+     "T409": 1,
+     "T414": 1
+    },
+    "produce": {
+     "T615": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T615].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T606",
+   "result": "T606",
+   "resultName": "한나 아렌트",
+   "materials": [
+    "T510",
+    "T308",
+    "T416",
+    "T301",
+    "T301",
+    "T301"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T510": 1,
+     "T308": 1,
+     "T416": 1,
+     "T301": 3
+    },
+    "produce": {
+     "T606": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T606].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T703",
+   "result": "T703",
+   "resultName": "자크 데리다",
+   "materials": [
+    "T510",
+    "T511",
+    "T414",
+    "T207",
+    "T301",
+    "T301"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T510": 1,
+     "T511": 1,
+     "T414": 1,
+     "T207": 1,
+     "T301": 2
+    },
+    "produce": {
+     "T703": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T703].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T701",
+   "result": "T701",
+   "resultName": "델포이의 소크라테스",
+   "materials": [
+    "T106",
+    "T106",
+    "T106",
+    "T503",
+    "T503",
+    "T407"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T106": 3,
+     "T503": 2,
+     "T407": 1
+    },
+    "produce": {
+     "T701": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T701].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T704",
+   "result": "T704",
+   "resultName": "대성지성 공자",
+   "materials": [
+    "T108",
+    "T108",
+    "T108",
+    "T312",
+    "T312",
+    "T412",
+    "T412"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T108": 3,
+     "T312": 2,
+     "T412": 2
+    },
+    "produce": {
+     "T704": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T704].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T705",
+   "result": "T705",
+   "resultName": "고타마 붓다",
+   "materials": [
+    "T109",
+    "T109",
+    "T109",
+    "T309",
+    "T309",
+    "T309",
+    "T309",
+    "T311",
+    "T311",
+    "T311"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T109": 3,
+     "T309": 4,
+     "T311": 3
+    },
+    "produce": {
+     "T705": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T705].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T706",
+   "result": "T706",
+   "resultName": "예수",
+   "materials": [
+    "T308",
+    "T308",
+    "T401",
+    "T407",
+    "T407",
+    "T503"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T308": 2,
+     "T401": 1,
+     "T407": 2,
+     "T503": 1
+    },
+    "produce": {
+     "T706": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T706].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T602",
+   "result": "T602",
+   "resultName": "루트비히 비트겐슈타인",
+   "materials": [
+    "T507",
+    "T507",
+    "T508",
+    "T106",
+    "T106"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T507": 2,
+     "T508": 1,
+     "T106": 2
+    },
+    "produce": {
+     "T602": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T602].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T702",
+   "result": "T702",
+   "resultName": "쾨니히스베르크의 칸트",
+   "materials": [
+    "T416",
+    "T416",
+    "T411",
+    "T411",
+    "T410",
+    "T410"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T416": 2,
+     "T411": 2,
+     "T410": 2
+    },
+    "produce": {
+     "T702": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T702].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T214",
+   "result": "T214",
+   "resultName": "한비자",
+   "materials": [
+    "T108",
+    "T107"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T108": 1,
+     "T107": 1
+    },
+    "produce": {
+     "T214": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T214].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T310",
+   "result": "T310",
+   "resultName": "혜능",
+   "materials": [
+    "T309",
+    "T211"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T309": 1,
+     "T211": 1
+    },
+    "produce": {
+     "T310": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T310].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T314",
+   "result": "T314",
+   "resultName": "이븐 루시드",
+   "materials": [
+    "T301",
+    "T301",
+    "T207"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T301": 2,
+     "T207": 1
+    },
+    "produce": {
+     "T314": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T314].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T603",
+   "result": "T603",
+   "resultName": "장 폴 사르트르",
+   "materials": [
+    "T510",
+    "T503"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T510": 1,
+     "T503": 1
+    },
+    "produce": {
+     "T603": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T603].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T608",
+   "result": "T608",
+   "resultName": "에마뉘엘 레비나스",
+   "materials": [
+    "T510",
+    "T405",
+    "T207",
+    "T416"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T510": 1,
+     "T405": 1,
+     "T207": 1,
+     "T416": 1
+    },
+    "produce": {
+     "T608": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T608].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T609",
+   "result": "T609",
+   "resultName": "테오도어 아도르노",
+   "materials": [
+    "T614",
+    "T509"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T614": 1,
+     "T509": 1
+    },
+    "produce": {
+     "T609": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T609].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T610",
+   "result": "T610",
+   "resultName": "니시다 기타로",
+   "materials": [
+    "T310",
+    "T501",
+    "T416"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T310": 1,
+     "T501": 1,
+     "T416": 1
+    },
+    "produce": {
+     "T610": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T610].materials/result/catalyst (version 20261110v3)"
+  },
+  {
+   "id": "V3_T613",
+   "result": "T613",
+   "resultName": "알베르 카뮈",
+   "materials": [
+    "T505",
+    "T308",
+    "T306",
+    "T407"
+   ],
+   "catalyst": null,
+   "expect": {
+    "consume": {
+     "T505": 1,
+     "T308": 1,
+     "T306": 1,
+     "T407": 1
+    },
+    "produce": {
+     "T613": 1
+    },
+    "catalystDelta": {},
+    "goldDelta": 0,
+    "resultLevel": 0
+   },
+   "source": "data/roster-v3.json recipes[id=V3_T613].materials/result/catalyst (version 20261110v3)"
+  }
+ ],
+ "upgrade": {
+  "status": "규칙 있음",
+  "source": "data/upgrade-bands.json (2026-11-20 현배 확정: 코드값을 정답으로)",
+  "maxLevel": 5,
+  "perLevel": 0.2625,
+  "plusCostMult": 1.5,
+  "bands": [
+   {
+    "id": "common",
+    "minTier": 1,
+    "maxTier": 3,
+    "baseCost": 60
+   },
+   {
+    "id": "rare",
+    "minTier": 4,
+    "maxTier": 5,
+    "baseCost": 300
+   },
+   {
+    "id": "high",
+    "minTier": 6,
+    "maxTier": 7,
+    "baseCost": 975
+   }
+  ],
+  "costRule": "round(baseCost × (plus ? plusCostMult : 1) × (현재 레벨+1)); 구간 강화는 전장 배치·Lv<maxLevel 전원 합계, 각 +1; 대기석·최대 레벨은 대상·비용 제외",
+  "failureRule": "없음(의도, 2026-11-20 현배 확정) — 골드가 있으면 항상 성공. 시험의 실패 쪽은 해당 없음으로 분류",
+  "decisionLock": {
+   "decided": {
+    "baseCost": {
+     "common": 60,
+     "rare": 300,
+     "high": 975
+    },
+    "perLevel": 0.2625,
+    "plusCostMult": 1.5,
+    "maxLevel": 5
+   },
+   "ok": true,
+   "errors": []
+  }
+ }
+}

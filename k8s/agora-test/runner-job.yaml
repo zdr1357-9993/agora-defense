@@ -1,0 +1,27 @@
+# 시험 실행기. run.sh 가 매번 지우고 다시 만든다. 결과는 로그 마지막의 RESULT_JSON 줄.
+apiVersion: batch/v1
+kind: Job
+metadata: { name: agora-runner, namespace: agora-test }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata: { labels: { app: agora-runner } }
+    spec:
+      serviceAccountName: agora-runner
+      restartPolicy: Never
+      containers:
+        - name: runner
+          image: node:22-alpine
+          command: [node, /runner/runner.mjs, all]
+          env:
+            - { name: API_URL, value: "http://agora-api:3000" }
+            - { name: JWT_SECRET, valueFrom: { secretKeyRef: { name: agora-secrets, key: jwt_secret } } }
+            - { name: KILL_POD, value: agora-db-0 }
+            - { name: P95_MS, value: "1000" }
+            - { name: LOSS_S, value: "30" }
+            - { name: HOLD_S, value: "90" }
+          ports: [{ containerPort: 9100 }]
+          resources: { requests: { cpu: 100m, memory: 64Mi }, limits: { cpu: "1", memory: 256Mi } }
+          volumeMounts: [{ name: runner, mountPath: /runner }]
+      volumes: [{ name: runner, configMap: { name: agora-runner-script } }]

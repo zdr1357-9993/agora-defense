@@ -19,5 +19,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Data, probability and mechanics checks
+        run: npm run data && npm test
       - run: npm run build
+      - name: Production bundle check (QA routes, secrets)
+        run: node scripts/check-prod-bundle.mjs dist
       - run: npm run build:stage

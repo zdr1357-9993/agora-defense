@@ -6,7 +6,7 @@ import { wrapCanvasText } from './text-layout';
 import { artUrl, artImage, iconHtml, artworkBoss } from './artwork';
 import { journeyArt, drawPastelFloor, arenaArt, drawWaitingBench, GREEK_BACKDROPS } from './pastel-art';
 import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, RECRUIT_BANDS, type Tower, type FxEvent } from './game';
-import { ACCOUNTS, login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
+import { lastLoginId, rememberLogin, seedVeteran, offlineAccount, type Account } from './auth';
 import { STAGE_PATHS } from './paths';
 import { STAGE_STARS, ERA_BONUS, STAR_BONUS } from './affinity';
 import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
@@ -18,18 +18,31 @@ import { philosopherSprite, skinnedSprite, SKINS, monsterSprite, monsterSprite2,
 import { SKILLS, skillMode, skillModeLabel } from './skills';
 import { sfx, isMuted, toggleMute } from './sfx';
 import { daily, bump, MISSIONS, ALL_CLEAR, ATTEND, claimable, claimMission, missionDone, rewardText, canAttend, attend, attendStreak, adFree, adFreeLabel, passOn, passDaysLeft, claimPass, PASS_DAILY, adsLeft, useAd, give, RAID_PER_DAY } from './live';
-import { cloudSignUp, cloudLogin, cloudLoad, cloudSave, flush as cloudFlush, cloudLogout, cloudState, cloudMsg } from './cloud';
+import { cloudSignUp, cloudLogin, cloudLoad, cloudSave, flush as cloudFlush, cloudLogout, cloudState, cloudMsg, cloudRole, cloudBaseRevision, cloudMarkSynced, setConflictHook, setClampHook, cloudFailKind } from './cloud';
+import { decideSync } from './syncrule';
+import type { Progress } from './save';
 import { setSaveHook, adoptProgress, setAccount, hasSave, loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, awakenLevel, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL, AWAKEN_MAX, AWAKEN_EVERY } from './save';
 import { LINES, UNLOCK_LEVELS } from './lines';
 import { setCardFilter, settleIdle, idleRate, tapGain, tapUpgradeCost, battleReward, pull, canAfford, PULLS, SHOP, buy, CUR_ICON, PITY_LIMIT, FIRST_CLEAR_GEMS, CARD_RATES, QA_GONOE, QA_GEMS, IDLE_PER_SEC, CARD_COST, type PullOption } from './meta';
 const STORY_WAVES = 30; // 튜토리얼은 사건별 3~5웨이브, 본편은 30웨이브
 import { ITEMS } from './items';
 
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const spriteUrl = new Map<string, string>();
+import { $ } from './ui/dom';
+import { toast, alertBox } from './ui/overlay';
+import { renderRoom, setRoomThinker } from './screens/room';
+import { renderGacha, initGacha } from './screens/gacha';
+import { renderCodex, showCard } from './screens/codex';
+import { recipeSheet, rateSheet, initRecipes } from './screens/recipes';
+import { renderHome, initHome } from './screens/home';
+import { refreshWallet } from './ui/wallet';
+import './ui/mobile';
 import { cardArt, sceneArt } from './tcg';
 import { STORY, STORY_MAP, CHAPTERS, START_POOL, type StoryStage, type Line } from './story';
 import { focusJourney, journeySign } from './journey-map';
+import { mountJourneyField, fieldEnabled } from './field/journey-field';
+import { gainXp, XP_RATE, summonPool, openEras } from './state/story-rules';
+import { initResult, eraWipe, resultPanel } from './screens/result';
+import { initTutorial, tutBegin, tutAbort, tutTick, pageTutStart, pageTutMore } from './screens/tutorial';
 /** 이 등급 이상은 카드가 있어야 조합 가능 (6 = 거장, 예전 5성) */
 const LOCK_TIER = 6;
 /** 지름길 조합: 얕지만 그 철학자 카드 Lv.5(11장) 이상이어야 열린다 */
@@ -56,20 +69,17 @@ function lockReason(r: { result: string; logic: string }): string {
   if (isShortcut(r)) return `🔒카드 Lv.${SHORTCUT_LV}`;
   return '🔒';
 }
-const itemUrl = (id: string) => itemSprite(id).toDataURL();
-/** 착용 스킨이 반영된 도트 */
-const spriteFor = (id: string) => skinnedSprite(PHIL.get(id)!, canWearSkin(PHIL.get(id)!.tier) ? progress?.skinOn?.[id] : undefined);
-const monUrl = new Map<string, string>();
-const monsterUrl = (era: string, k: 'normal' | 'fast' | 'tank' | 'swarm' | 'boss') => { const key = era + k; if (!monUrl.has(key)) monUrl.set(key, monsterSprite2(era, k).toDataURL()); return monUrl.get(key)!; };
-const portrait = (id: string) => {
-  const key = id + (progress?.skinOn?.[id] ?? '');
-  if (!spriteUrl.has(key)) spriteUrl.set(key, spriteFor(id).toDataURL());
-  return spriteUrl.get(key)!;
-};
-
-let progress = loadProgress();
-let me: Account | null = null;
-const isAdmin = () => me?.role === 'master';
+import { itemUrl, spriteFor, monsterUrl, portrait, spriteUrl } from './ui/sprites';
+import { progress, setProgress } from './state/progress';
+import { initDaily } from './screens/daily';
+import { watchAd, initAd } from './screens/ad';
+import { openTcg, tcgCard, initTcg } from './screens/tcg';
+import { renderShop, initShop } from './screens/shop';
+import { raidReward, raidTierText } from './screens/raid';
+import { me, setMe, isAdmin } from './state/account';
+// 주소 ?qa=1 로 QA 모드 켜기: VITE_QA_ROUTES=1 빌드(개발)에서만(RD-T054). 운영 빌드에서는 이 판정이 false 로 접혀 URL 을 읽는 코드가 남지 않는다.
+const QA_PARAM = !!import.meta.env.VITE_QA_ROUTES && new URLSearchParams(location.search).get('qa') === '1';
+setQA(QA_PARAM);
 const difficultyName = (d: { id: string; name: string }) => isAdmin() && d.id === 'challenge' ? '챌린지' : d.name;
 
 const clearedStages = () => STAGES.filter((s) => progress.cleared.includes(s.id)).length;
@@ -97,152 +107,6 @@ const isUnlocked = (s: Stage) => s.id === 'S6' ? modernUnlocked() : QA_MODE || !
 /** 쉬움을 모든 스테이지에서 깨야 난이도 탭이 열린다 (신규 유저는 쉬움만) */
 /** 쉬움 = 스토리. 스토리를 끝까지 깨면 난이도 탭(보통 이상 본편)이 열린다 */
 const easyAllCleared = () => STORY.every((s) => (progress.storyCleared ?? []).includes(s.id));
-function stageInfo(s: Stage) {
-  const hero = PHIL.get(s.counter)!;
-  const marks = DIFFICULTIES.map((d) => `<span class="${progress.cleared.includes(clearKey(s.id, d.id)) ? 'on' : ''}">${d.icon}</span>`).join('');
-  alertBox(`<h2>${ERA_ICON[s.era]} ${s.name}</h2>
-    <p class="hint">${s.story}</p>
-    <div class="stage-info">
-      <div>🗺 ${STAGE_PATHS[s.id].caption}</div>
-      <div>👑 최종 보스 <b>${s.boss20}</b> · 10웨이브마다 <b>${s.boss10}</b></div>
-      <div>⚔ 보스 카운터 <b>${hero.name}</b> (보스에게 피해 3배)</div>
-      <div>🏠 강해지는 철학자 <b>${(STAGE_STARS[s.id] ?? []).map((n) => PHILOSOPHERS.find((p) => p.realName === n)?.name ?? n).join(', ')}</b> +${STAR_BONUS * 100}%<br>${s.era === '현대' ? '근현대의 기억을 가진' : s.era} 철학자 모두 +${ERA_BONUS * 100}%</div>
-      <div>🏅 클리어 ${marks}</div>
-    </div><h3>이 시대의 도그마</h3><div class="enemy-guide">${ENEMY_ROLES.map((role,i)=>`<figure><img src="${monsterUrl(s.era,role.kind)}" alt="${role.label}"><figcaption><b>${ENEMY_NAMES[s.era]?.[i] ?? role.label}</b><small>${role.label} · ${role.tip}</small></figcaption></figure>`).join('')}</div>`);
-}
-function renderHome() {
-  const box = $('stages');
-  box.innerHTML = '';
-  const diffOpen = QA_MODE || easyAllCleared();
-  if (!diffOpen) diffId = 'easy';
-  renderStory(box);
-  if (progress.favorite && PHIL.has(progress.favorite) && progress.cards[progress.favorite]) {
-    const fav = PHIL.get(progress.favorite)!;
-    const ot = document.createElement('div');
-    ot.className = 'srow onetool-row';
-    ot.innerHTML = `<button class="sgo"><img src="${portrait(fav.id)}"><span class="sname">💗 ${shortName(fav.name)} 원툴 도전</span><small>최고 ${progress.oneToolBest[fav.id] ?? 0}웨이브</small></button><button class="sinfo">i</button>`;
-    (ot.querySelector('.sgo') as HTMLButtonElement).onclick = () => startBattle(STAGES[0], fav.id);
-    (ot.querySelector('.sinfo') as HTMLButtonElement).onclick = () => alertBox(`<h2>💗 최애 원툴 도전</h2><p>${fav.name} 한 명 + 흔함만으로 어디까지 버틸 수 있을까요? 조합 없이 끝없이 이어지는 웨이브예요.</p>`);
-    box.appendChild(ot);
-  }
-}
-
-// =============== 도감 ===============
-let codexTier = 1;
-function renderCodex() {
-  const box = $('codex-list');
-  box.innerHTML = '';
-  const seen = new Set(progress.seen);
-  $('codex-count').textContent = `${PHILOSOPHERS.filter((p) => seen.has(p.id)).length} / ${PHILOSOPHERS.length}`;
-  // 등급 탭: 한 번에 한 등급만 (스크롤 없이)
-  const tabs = document.createElement('div');
-  tabs.className = 'codex-tabs';
-  tabs.innerHTML = GRADE_STEPS.map(t=>`<button class="tier-chip t${Math.floor(t)} ${t===codexTier?'on':''}" data-ct="${t}">${gradeCode(gradeAt(t))}</button>`).join('');
-  box.appendChild(tabs);
-  for (const b of tabs.querySelectorAll<HTMLButtonElement>('[data-ct]')) b.onclick = () => { codexTier = Number(b.dataset.ct); renderCodex(); };
-  const grid = document.createElement('div');
-  grid.className = 'codex-grid';
-  for (const p of PHILOSOPHERS.filter((x) => gradeRank(x) === codexTier)) {
-    const known = seen.has(p.id) || !!progress.cards[p.id] || (isAdmin() || (QA_MODE && !p.hidden));
-    const n = progress.cards[p.id] ?? 0, lv = cardLevel(n);
-    const d = document.createElement('div');
-    d.className = `card t${p.tier} ${known ? '' : 'unknown'} ${n ? 'owned' : ''}`;
-    d.innerHTML = `${progress.favorite === p.id ? '<span class="fav">💗</span>' : ''}${lv ? `<span class="lv ${awakenLevel(n) ? 'aw' : ''}">${awakenLevel(n) ? '✦' + awakenLevel(n) : 'Lv.' + lv}</span>` : ''}<img src="${portrait(p.id)}"><b>${known ? p.name : '???'}</b>`;
-    if (known) d.onclick = () => openTcg(p.id);
-    grid.appendChild(d);
-  }
-  box.appendChild(grid);
-  const archived=ARCHIVED_PHILOSOPHERS.filter(p=>(progress.cards[p.id]??0)>0);
-  if(archived.length){
-    const archive=document.createElement('details'); archive.className='collection-archive';
-    archive.innerHTML=`<summary>이전 카드 보관함 · ${archived.length}종</summary><p>이전 버전의 카드·경험치·장착·스킨 기록은 그대로 보존돼요. 현재 소환과 조합에는 사용하지 않아요.</p>${archived.map(p=>`<div><b>${homage(p.name)}</b><span>${progress.cards[p.id]}장 · Lv.${cardLevel(progress.cards[p.id])}</span></div>`).join('')}`;
-    box.appendChild(archive);
-  }
-}
-
-function cardHtml(id: string) {
-  const p = PHIL.get(id)!;
-  const recipes = RECIPES.filter((r) => r.result === id);
-  const st = statsOf(id);
-  const bar = (v: number, max: number) => `<span class="sbar"><i style="width:${Math.min(100, (v / max) * 100)}%"></i></span>`;
-  return `<div class="pcard tc${p.tier}">
-    <div class="pc-head"><span class="pc-tier tier-chip t${p.tier}">${gradeLabel(p)}</span><b>${p.name}</b><span class="pc-era">${ERA_ICON[p.era] ?? ''} ${p.era} · ${p.school}</span></div>
-    <div class="pc-art" style="background-color:#f5f0e7;background-image:url('${journeyArt(p.era)}')"><img src="${portrait(id)}"></div>
-    <div class="pc-quote">“${p.quote}”</div>
-    <div class="pc-skill"><b>✦ ${p.skill}</b><span>${p.skillDesc}</span></div>
-    <div class="pc-combat"><b>${TYPE_ICON[st.type]} ${st.type}</b> · 노리는 대상 <b>${st.target}</b><small>${st.note}</small></div>
-    <details class="card-section"><summary>전투 능력치 자세히 보기</summary><div class="pc-stats2">
-      <div>⚔ 위력 ${bar(st.dmg, 1800)}<em>${Math.round(st.dmg)}</em></div>
-      <div>◎ 사거리 ${bar(st.range, 3.5)}<em>${st.range}칸</em></div>
-      <div>⏱ 공속 ${bar(1 / st.cooldown, 2.2)}<em>${(1 / st.cooldown).toFixed(2)}/초</em></div>
-      <div>📈 초당 피해 ${bar(st.dmg / st.cooldown, 3200)}<em>${Math.round(st.dmg / st.cooldown)}</em></div>
-    </div></details>
-    <div class="pc-lore">${p.lore}</div>
-    ${recipes.length ? `<details class="card-section"><summary>만드는 방법 · 조합 ${recipes.length}개</summary>${recipes.map((r) => `<div class="pc-recipe">⚗ ${materialGroups(r.materials).map(({id,count})=>PHIL.get(id)!.name+(count>1 ? ' ×'+count : '')).join(' + ')}${r.catalyst ? ' + ' + CAT_ICON[r.catalyst] : ''}<small>${r.logic}</small></div>`).join('')}</details>` : '<p class="hint">기본 소환으로 만나는 철학자예요.</p>'}
-    <div class="pc-foot">AGORA · ${gradeLabel(p)}</div>
-  </div>`;
-}
-function showCard(id: string) {
-  const p = PHIL.get(id)!;
-  const n = progress.cards[id] ?? 0, lv = cardLevel(n), next = nextLevelAt(n);
-  const ownedTools = ITEMS.filter((it) => progress.items[it.id]).sort((a, b) => Number(isOwner(b.id, p.realName)) - Number(isOwner(a.id, p.realName)));
-  const cur = progress.loadout[id];
-  const aw = awakenLevel(n);
-  const lines = LINES[p.realName] ?? [p.lore, `대표 문장: ${p.quote}`, `${p.school} 계열의 철학자.`];
-  const growth = `<div class="pc-growth"><b>🎴 카드 Lv.${lv}</b>${aw ? ` <b class="awaken">✦ 각성 ${'★'.repeat(aw)}${'☆'.repeat(AWAKEN_MAX - aw)}</b>` : ''} <span>${n}장${next ? ` · 다음 ${lv < CARD_MAX_LEVEL ? '레벨' : '각성'}까지 ${next - n}장` : ' · 완전 각성'}</span>
-    <div class="bar"><i style="width:${next ? Math.min(100, (n / next) * 100) : 100}%"></i></div>
-    <small>전투 공격력 ×${cardMult(n).toFixed(2)}${aw ? ` · 스킬 위력 +${aw * 20}%` : ''}</small></div>
-    <div class="pc-lines"><b>📜 일화</b>${UNLOCK_LEVELS.map((L, i) => lv >= L ? `<p>“${homage(lines[i])}”</p>` : `<p class="locked">🔒 카드 Lv.${L}에 열려요</p>`).join('')}</div>
-    ${n && canWearSkin(p.tier) ? `<div class="pc-skins"><b>👗 스킨</b>${Object.entries(SKINS).map(([k, s]) => {
-      const own = progress.skins.includes(id + ':' + k), on = progress.skinOn[id] === k;
-      return `<button data-skin="${k}" class="${on ? 'on' : ''}">${s.icon} ${s.name}${on ? ' (착용 중)' : own ? '' : ' · 💎' + s.price}</button>`;
-    }).join('')}${progress.skinOn[id] ? '<button data-skin="">기본 모습</button>' : ''}</div>` : ''}
-    ${n && !canWearSkin(p.tier) ? '<p class="skin-lock-note">스킨은 거장·근원 철학자부터 착용할 수 있어요.</p>' : ''}
-    <div class="pc-tools"><b>🧰 장착 도구</b>${ownedTools.length ? ownedTools.map((it) => `<button data-equip="${it.id}" class="${cur === it.id ? 'on' : ''} ${isOwner(it.id, p.realName) ? 'own' : ''}"><img src="${itemUrl(it.id)}">${it.name}${isOwner(it.id, p.realName) ? ' ★' : ''}</button>`).join('') + (cur ? '<button data-equip="">해제</button>' : '') : '<small>도구 상자에서 도구를 뽑아 오세요</small>'}</div>
-    ${n ? `<button class="chunky ${progress.favorite === id ? 'pink' : 'blue'} fav-set">${progress.favorite === id ? '💗 나의 최애 (해제하기)' : '💗 최애로 지정 · 고민방 주인'}</button>` : ''}`;
-  alertBox(cardHtml(id).replace('<div class="pc-foot">', growth + '<button class="chunky blue tcg-from">🃏 카드로 보기</button><div class="pc-foot">'));
-  const tf = document.querySelector<HTMLButtonElement>('.tcg-from');
-  if (tf) tf.onclick = (e) => { e.stopPropagation(); document.querySelector('.overlay')?.remove(); openTcg(id); };
-  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-equip]')) b.onclick = (e) => {
-    e.stopPropagation();
-    if (b.dataset.equip) progress.loadout[id] = b.dataset.equip; else delete progress.loadout[id];
-    saveProgress(progress); document.querySelector('.overlay')?.remove(); renderCodex(); showCard(id);
-  };
-  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-skin]')) b.onclick = (e) => {
-    e.stopPropagation();
-    if (!canWearSkin(p.tier)) { toast('스킨은 거장 이상부터 열려요'); return; }
-    const k = b.dataset.skin!;
-    if (!k) delete progress.skinOn[id];
-    else if (progress.skins.includes(id + ':' + k)) progress.skinOn[id] = k;
-    else if (progress.gems >= SKINS[k].price && window.confirm(`${SKINS[k].icon} ${SKINS[k].name} 스킨을 💎${SKINS[k].price}에 살까요?`)) { progress.gems -= SKINS[k].price; progress.skins.push(id + ':' + k); progress.skinOn[id] = k; sfx.reveal(5); }
-    else if (progress.gems < SKINS[k].price) { toast('💎 지혜석이 부족해요'); return; }
-    else return;
-    saveProgress(progress); refreshWallet(); document.querySelector('.overlay')?.remove(); renderCodex(); showCard(id);
-  };
-  const fs = document.querySelector<HTMLButtonElement>('.fav-set');
-  if (fs) fs.onclick = (e) => {
-    e.stopPropagation();
-    if (progress.favorite === id) delete progress.favorite; else { progress.favorite = id; roomThinker = id; sfx.reveal(5); }
-    saveProgress(progress); document.querySelector('.overlay')?.remove(); renderCodex(); showCard(id);
-  };
-}
-
-function toast(text: string) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.textContent = text;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2200);
-}
-
-function alertBox(html: string) {
-  const o = document.createElement('div');
-  o.className = 'overlay';
-  o.innerHTML = `<div class="pop">${html}<button class="primary chunky gold close">확인</button></div>`;
-  o.onclick = (e) => { const el = e.target as HTMLElement; if (el === o || el.classList.contains('close')) o.remove(); };
-  document.body.appendChild(o);
-}
-
 // =============== 전투 ===============
 const canvas = $<HTMLCanvasElement>('field');
 const ctx = canvas.getContext('2d')!;
@@ -319,7 +183,7 @@ function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   introT = 2.8;
   lastSynthKey = lastInfoKey = lastCatKey = ''; $('merge').dataset.k = '';
   show('battle');
-  tutStep = progress.battleTutDone || oneTool ? -1 : 0; tutShown = -2;
+  tutBegin(!!(progress.battleTutDone || oneTool));
   updateUI();
 }
 
@@ -1080,172 +944,9 @@ function switchTab(tab: string) {
   if (tab === 'shop') renderShop();
   refreshWallet();
   pageTutStart(tab);
+  if (tab === 'stages') pageTutMore();
 }
-function refreshWallet() {
-  const w = document.getElementById('wallet');
-  if (w) w.innerHTML = `<span class="wallet-part">${iconHtml('coin', '고뇌')} ${Math.floor(progress.gonoe).toLocaleString()}</span><span class="wallet-part">${iconHtml('gem', '지혜석')} ${progress.gems.toLocaleString()}</span>${progress.tickets ? `<span class="wallet-part">${iconHtml('ticket', '초대장')} ${progress.tickets}</span>` : ''}`;
-  const r = document.getElementById('room-gonoe');
-  if (r) r.textContent = Math.floor(progress.gonoe).toLocaleString();
-}
-
 // ---------- 고민방 ----------
-let roomThinker = 'T106';
-function renderRoom() {
-  const idle = settleIdle(progress, clearedStages());
-  saveProgress(progress);
-  if (progress.favorite && PHIL.has(progress.favorite) && progress.cards[progress.favorite]) roomThinker = progress.favorite;
-  const owned = PHILOSOPHERS.filter((p) => progress.cards[p.id]);
-  if ((!PHIL.has(roomThinker) || !progress.cards[roomThinker]) && owned.length) roomThinker = owned.sort((a, b) => gradeRank(b) - gradeRank(a))[0].id;
-  const p = PHIL.get(roomThinker)!;
-  const cost = tapUpgradeCost(progress);
-  const rate = idleRate(progress, clearedStages());
-  const next = { ...progress, tapLevel: progress.tapLevel + 1 };
-  $('tab-room').innerHTML = `
-    <div class="room">
-      <div class="room-head"><h2>${iconHtml('room')} 고민방</h2><button class="info-btn" id="room-info" aria-label="고민방 안내">i</button></div>
-      <div class="room-sky" style="background-image:url(${artUrl('room')})"><div class="room-bubble">“${p.quote}”</div>
-        <button id="thinker" class="thinker t${p.tier}" aria-label="${p.name}와 고민하고 고뇌 얻기"><img src="${portrait(p.id)}" alt="${p.name}"></button>
-        <div class="room-floor"></div></div>
-      <div class="room-favorite"><small>${progress.favorite === p.id ? '💗 나의 최애 철학자' : '오늘의 고민 친구'}</small><b id="room-favorite-name">${p.name}</b></div>
-      <label class="room-owner-select">함께 고민할 최애<select id="room-owner-select">${owned.map(o => `<option value="${o.id}" ${o.id === p.id ? 'selected' : ''}>${o.name}</option>`).join('')}</select></label>
-      <div class="room-stat"><span>고뇌</span><b id="room-gonoe">${Math.floor(progress.gonoe).toLocaleString()}</b></div>
-      <div class="room-rates"><span>👆 탭당 <b>+${tapGain(progress)}</b></span><span>⏳ 초당 <b>+${rate.toFixed(1)}</b></span></div>
-      ${idle ? `<p class="hint">자리를 비운 사이 고뇌 <b>+${idle.toLocaleString()}</b></p>` : ''}
-      <div class="room-owners">${[...owned].sort((a,b) => Number(b.id === p.id) - Number(a.id === p.id)).slice(0, 7).map((o) => `<button data-owner="${o.id}" aria-label="${o.name}를 고민방 주인으로 선택" aria-pressed="${o.id === roomThinker}" class="${o.id === roomThinker ? 'on' : ''}"><img src="${portrait(o.id)}"></button>`).join('')}</div>
-      <button id="room-ad" class="chunky pink">${adFree(progress) ? '✨' : '📺'} 30분치 고뇌 바로 받기 <small>(+${Math.round(rate * 1800).toLocaleString()} · 오늘 ${adsLeft(progress)}회)</small></button>
-      <button id="tap-up" class="chunky blue">💭 고민의 깊이 Lv.${progress.tapLevel + 1} → ${progress.tapLevel + 2}<small>탭 +${tapGain(progress)}→+${tapGain(next)} · 초당 ${rate.toFixed(1)}→${idleRate(next, clearedStages()).toFixed(1)} · 🤔${cost.toLocaleString()}</small></button>
-    </div>`;
-  const roomSelect = $('room-owner-select') as HTMLSelectElement;
-  roomSelect.onchange = () => { roomThinker = roomSelect.value; progress.favorite = roomThinker; saveProgress(progress); renderRoom(); };
-  for (const b of $('tab-room').querySelectorAll<HTMLButtonElement>('[data-owner]')) b.onclick = () => { roomThinker = b.dataset.owner!; progress.favorite = roomThinker; saveProgress(progress); sfx.click(); renderRoom(); }; // 고민방 주인 = 💗최애
-  const ra = $<HTMLButtonElement>('room-ad');
-  ra.disabled = adsLeft(progress) <= 0;
-  ra.onclick = () => watchAd(() => { if (adFree(progress)) useAd(progress); progress.gonoe += Math.round(rate * 1800); saveProgress(progress); refreshWallet(); sfx.reveal(5); toast(`🤔 고뇌 +${Math.round(rate * 1800).toLocaleString()}`); renderRoom(); });
-  $('room-info').onclick = () => alertBox(`<h2>${iconHtml('room')} 고민방</h2><p>철학자를 톡톡 두드리면 고뇌가 나와요.<br>가만히 둬도 쌓이고(최대 ${8}시간), 스테이지를 깰수록 더 빨리 쌓여요.</p><p><b>고민의 깊이</b>를 올리면 탭당 고뇌와 초당 고뇌가 함께 올라요.</p><p>고뇌는 🎴 카드·🧰 도구 뽑기에 써요. 고민방 주인은 도감에서 💗최애로 바꿀 수 있어요.</p>`);
-  $('thinker').onclick = (ev) => {
-    progress.gonoe += tapGain(progress);
-    bump(progress, 'taps');
-    saveProgress(progress);
-    refreshWallet();
-    sfx.tap();
-    const f = document.createElement('span');
-    f.className = 'float'; f.textContent = `+${tapGain(progress)}`;
-    f.style.left = `${(ev as MouseEvent).offsetX + 20}px`;
-    $('thinker').appendChild(f); setTimeout(() => f.remove(), 900);
-    $('thinker').classList.remove('squish'); void $('thinker').offsetWidth; $('thinker').classList.add('squish');
-  };
-  const up = $<HTMLButtonElement>('tap-up');
-  up.disabled = progress.gonoe < cost;
-  up.onclick = () => { if (progress.gonoe >= cost) { progress.gonoe -= cost; progress.tapLevel++; saveProgress(progress); renderRoom(); } };
-}
-
-// ---------- 뽑기 ----------
-function pullBtn(id: string, cls: string) {
-  const o = PULLS.find((x) => x.id === id)!;
-  return `<button class="chunky ${cls}" data-pull="${id}">${o.label}<small>${CUR_ICON[o.currency]} ${o.cost.toLocaleString()}</small></button>`;
-}
-function renderGacha() {
-  const rates = CARD_RATES.map((r) => `<span class="tier-chip t${r.tier}">${gradeLabel(r)} ${(r.rate * 100).toFixed(2)}%</span>`).join(' ');
-  $('tab-gacha').innerHTML = `
-    <div class="gacha-box master-box">
-      <div class="gb-head"><h2>${iconHtml('gacha')} 거장 초대</h2><button class="info-btn" aria-label="거장 초대 안내" data-ginfo="m">i</button></div>
-      <div class="banner-art" style="background-image:url(${artUrl('memory-banner')})">${PHILOSOPHERS.filter((p) => p.tier === 7 && !p.hidden).map((p) => `<img src="${pedArt(p.id)}">`).join('')}</div>
-      <div class="row">${pullBtn('m10', 'gold')}${pullBtn('m1', 'pink')}</div>
-    </div>
-    <div class="gacha-box card-box">
-      <div class="gb-head"><h2>${iconHtml('codex')} 기억 떠올리기</h2><button class="info-btn" aria-label="기억 떠올리기 안내" data-ginfo="c">i</button></div>
-      <div class="row">${pullBtn('c1', 'pink')}${pullBtn('c10', 'gold')}${pullBtn('c10g', 'blue')}</div>
-    </div>
-    <div class="gacha-box tool-box">
-      <div class="gb-head"><h2>🧰 도구 상자</h2><button class="info-btn" aria-label="도구 상자 안내" data-ginfo="t">i</button></div>
-      <div class="row">${pullBtn('t1', 'mint')}${pullBtn('t10', 'gold')}${pullBtn('t10g', 'blue')}</div>
-    </div>`;
-  const INFO: Record<string, string> = {
-    m: `<h2>${iconHtml('gacha')} 거장 초대</h2><p>💎 지혜석 10회 뽑기의 마지막 1장은 반드시 <b>거장 또는 근원</b>이에요.<br>🎫 초대장 1장으로 거장 이상 1명을 바로 불러올 수도 있어요.</p>`,
-    c: `<h2>${iconHtml('codex')} 기억 떠올리기</h2><p>고뇌를 써서 잊어버린 철학자의 <b>기억(카드)</b>을 떠올려요. <b>거장·근원</b>은 카드가 있어야 전투에서 조합할 수 있어요. 고뇌 뽑기는 열린 시대 또는 이미 가진 카드에서 뽑아요. 지혜석·초대장은 모든 시대에서 뽑아요 (지금: ${[...openEras()].join(', ')}).</p><p>같은 카드가 모이면 레벨업(Lv.${CARD_MAX_LEVEL}까지) · 레벨당 공격력 +${CARD_ATK_PER_LEVEL * 100}%<br>그 뒤 ${AWAKEN_EVERY}장마다 <b>각성</b>(최대 ${AWAKEN_MAX}단계): 공격력 +15%, 스킬 강화<br>레벨이 오르면 일화가 열려요.</p><p class="hint">아래는 전체 등급 기본 확률이에요. 고뇌 뽑기는 열린 등급끼리 합계 100%로 다시 나눠요.</p><div class="rates-line">${rates}</div><p><b>천장</b>: 거장 이상이 안 나와도 ${PITY_LIMIT}회째엔 확정 (열린 거장 등급이 없으면 모든 시대에서 해금) · 지금 ${PITY_LIMIT - progress.pity}회 남음</p>`,
-    t: `<h2>🧰 도구 상자</h2><p>뽑은 도구는 도감에서 철학자에게 장착해요.<br>그 도구의 주인에게 끼우면 <b>찰떡!</b> 공격력 +60%</p>`,
-  };
-  for (const b of $('tab-gacha').querySelectorAll<HTMLButtonElement>('[data-ginfo]')) b.onclick = () => alertBox(INFO[b.dataset.ginfo!]);
-  for (const b of $('tab-gacha').querySelectorAll<HTMLButtonElement>('[data-pull]')) {
-    const o = PULLS.find((x) => x.id === b.dataset.pull)!;
-    b.disabled = !canAfford(progress, o);
-    b.onclick = () => {
-      const before = { ...progress.cards };
-      const got = pull(progress, o);
-      if (got) bump(progress, 'pulls');
-      if (!got) return;
-      saveProgress(progress); refreshWallet(); renderGacha();
-      gachaShow(o, got, before);
-    };
-  }
-}
-
-/** A rare result takes center stage once; the rest stay visible together. */
-function gachaShow(o: PullOption, got: string[], before: Record<string, number>) {
-  if (!got.length) return;
-  const isTool = o.kind === 'tool';
-  const tiers = got.map(id => isTool ? 3 : gradeRank(PHIL.get(id)!));
-  const { top, hero, rest } = gachaLayout(tiers, isTool);
-  const rare = hero >= 0, multiple = got.length > 1;
-  const ov = document.createElement('div');
-  ov.className = `gacha-stage memory-reveal result-board ${rare ? 'has-spotlight' : 'ordinary-results'} rarity-${Math.floor(top)}`;
-  ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', '뽑기 결과');
-  const previousFocus = document.activeElement as HTMLElement | null;
-  ov.innerHTML = `<header class="memory-caption"><small>아고라 기억 우체국</small><h2>${rare ? '잠깐, 묵직한 기억이 도착했어요' : '기억이 도착했어요'}</h2><p class="reveal-progress" aria-live="polite">${rare ? '리본이 풀리는 중…' : `${got.length}개의 결과를 모두 확인해 보세요`}</p></header>
-    ${rare ? `<section class="memory-spotlight" aria-label="최고 등급 카드"><div class="spotlight-rays" aria-hidden="true"><i></i><i></i><i></i></div><div class="rare-card-back"><img src="${artUrl('memory-seal')}" alt="봉인된 기억"><b>어떤 철학자일까요?</b></div><div class="rare-card-front"></div></section>` : ''}
-    <section class="result-rest"><p class="rest-caption">${rare && multiple ? '함께 도착한 나머지 기억' : '전체 결과'}</p><div class="cards ${!multiple ? 'single' : ''}"></div></section>
-    <div class="g-actions"><button class="chunky blue skip ${rare ? '' : 'hidden'}">연출 건너뛰기</button><button class="chunky gold done ${rare ? 'hidden' : ''}">확인</button></div>`;
-  document.body.appendChild(ov);
-  const counted = { ...before };
-  // Build in original draw order, so duplicate-card level changes remain correct.
-  const cards = got.map((id, i) => {
-    const el = document.createElement('div');
-    el.dataset.resultIndex = String(i);
-    if (isTool) {
-      const it = ITEMS.find(x => x.id === id)!;
-      el.className = 'gcard tool';
-      el.innerHTML = `<img src="${itemUrl(id)}"><b>${it.name}</b><small>${it.owners.map(x => homage(x).split(' ').pop()).join('·')}의 찰떡</small>`;
-    } else {
-      const p = PHIL.get(id)!, prev = cardLevel(counted[id] ?? 0);
-      counted[id] = (counted[id] ?? 0) + 1;
-      const now = cardLevel(counted[id]);
-      const tag = prev === 0 ? '<i class="new">NEW</i>' : now > prev ? `<i class="lvup">Lv.${now}!</i>` : '';
-      el.className = `gcard t${Math.floor(tiers[i])} ${i === hero ? 'spotlight-card' : ''}`;
-      el.innerHTML = `${tag}<img src="${pedArt(id)}"><b>${p.name}</b><small>${gradeLabel(p)}</small>`;
-    }
-    return el;
-  });
-  const grid = ov.querySelector('.cards')!;
-  for (const i of rest) grid.appendChild(cards[i]);
-  if (rare) ov.querySelector('.rare-card-front')!.appendChild(cards[hero]);
-  if (rare && !multiple) ov.querySelector('.result-rest')!.classList.add('hidden');
-  let timer = 0, revealed = !rare, closed = false;
-  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-  const skip = ov.querySelector<HTMLButtonElement>('.skip')!, done = ov.querySelector<HTMLButtonElement>('.done')!;
-  const reveal = (animate: boolean) => {
-    if (revealed || closed) return;
-    revealed = true; window.clearTimeout(timer);
-    ov.classList.add('results-ready'); ov.classList.toggle('instant-reveal', !animate);
-    ov.querySelector('h2')!.textContent = `${gradeLabel(PHIL.get(got[hero])!)}의 기억을 찾았어요!`;
-    ov.querySelector('.reveal-progress')!.textContent = multiple ? `최고 등급 1장과 나머지 ${rest.length}장 · 총 ${got.length}장` : '소중한 기억이 한 장 더해졌어요';
-    skip.classList.add('hidden'); done.classList.remove('hidden'); done.focus();
-    if (animate) sfx.reveal(Math.floor(top) - 1);
-  };
-  skip.onclick = () => reveal(false);
-  done.onclick = () => {
-    if (closed) return; closed = true; window.clearTimeout(timer); ov.remove(); renderGacha();
-    if (previousFocus?.isConnected) previousFocus.focus(); else $('tab-gacha').querySelector<HTMLButtonElement>('button')?.focus();
-  };
-  ov.addEventListener('keydown', event => {
-    if (event.key === 'Escape') { event.preventDefault(); if (!revealed) reveal(false); else done.click(); }
-    if (event.key === 'Tab') { event.preventDefault(); (revealed ? done : skip).focus(); }
-  });
-  if (rare) {
-    skip.focus(); sfx.drumroll(.6);
-    timer = window.setTimeout(() => reveal(!reduced), reduced ? 0 : top >= 7 ? 1300 : top >= 6 ? 1050 : 800);
-  } else { ov.classList.add('results-ready'); done.focus(); sfx.reveal(1); }
-}
-
 function burst(host: HTMLElement, tier: number) {
   for (let i = 0; i < (tier >= 6 ? 60 : 30); i++) {
     const s = document.createElement('span');
@@ -1259,121 +960,6 @@ function burst(host: HTMLElement, tier: number) {
   }
 }
 function shakeEl(el: HTMLElement) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
-
-// ---------- 상점 ----------
-let skinShopId = '';
-function renderShop() {
-  const item = (x: (typeof SHOP)[number]) => {
-    const sold = x.once && progress.purchases.includes(x.id);
-    const active = x.sub === 'pass30' && passOn(progress) ? `<i class="tag-on">이용 중 · ${passDaysLeft(progress)}일</i>` : x.sub?.startsWith('adfree') && adFreeLabel(progress) && (x.sub === 'adfreeLife' ? adFreeLabel(progress) === '평생' : true) ? `<i class="tag-on">${adFreeLabel(progress)}</i>` : '';
-    return `<div class="shop-item ${sold ? 'sold' : ''} ${x.big ? 'big' : ''}">${x.tag ? `<i class="tag-hot">${x.tag}</i>` : ''}${active}<div class="shop-icon">${iconHtml(x.tickets ? 'ticket' : x.gems ? 'gem' : x.gonoe ? 'coin' : 'codex', x.icon)}</div><b>${x.name}</b><small>${x.desc}</small>
-      <button class="chunky ${x.costGems ? 'blue' : 'gold'}" data-buy="${x.id}" ${sold ? 'disabled' : ''}>${sold ? '구매 완료' : x.price}</button></div>`;
-  };
-  const skinCandidates = PHILOSOPHERS.filter(p => progress.cards[p.id] && canWearSkin(p.tier));
-  const fav = skinShopId && skinCandidates.some(p => p.id === skinShopId) ? skinShopId : progress.favorite && skinCandidates.some(p => p.id === progress.favorite) ? progress.favorite : skinCandidates[0]?.id;
-  $('tab-shop').innerHTML = `<div class="tab-head"><h2>🛍 상점</h2><span class="proto-chip">시험판 · 실제 결제 없음</span></div>
-    <h3 class="shop-sec">멤버십</h3><div class="shop-grid">${SHOP.filter((x) => x.sub).map(item).join('')}</div>
-    <h3 class="shop-sec">지혜석 · 초대장</h3><div class="shop-grid">${SHOP.filter((x) => !x.sub).map(item).join('')}</div>
-    ${fav ? `<label class="skin-target">스킨을 입힐 철학자<select id="skin-target">${skinCandidates.map(p => `<option value="${p.id}" ${p.id === fav ? 'selected' : ''}>${p.name}</option>`).join('')}</select></label><h3 class="shop-sec">👗 스킨 <small>(${PHIL.get(fav)!.name})</small></h3><div class="skin-shop">${Object.entries(SKINS).map(([k, sk]) => {
-      const own = progress.skins.includes(fav + ':' + k), on = progress.skinOn[fav] === k;
-      return `<button class="skin-card ${on ? 'on' : ''} r-${sk.rank}" data-skinbuy="${k}"><img src="${skinnedSprite(PHIL.get(fav)!, k).toDataURL()}"><b>${sk.icon} ${sk.name}</b><small>${sk.fxName}</small><em>${on ? '착용 중' : own ? '착용하기' : '💎' + sk.price}</em></button>`;
-    }).join('')}</div><p class="hint">보유한 거장·근원 철학자를 위에서 고른 뒤 스킨을 착용해요. 도감 정보보기에서도 바꿀 수 있어요.</p>` : '<p class="skin-lock-note">거장 이상 철학자의 기억을 얻으면 스킨이 열려요.</p>'}`;
-  for (const b of $('tab-shop').querySelectorAll<HTMLButtonElement>('[data-buy]')) b.onclick = () => {
-    const it = SHOP.find((x) => x.id === b.dataset.buy)!;
-    if (!it.costGems && !window.confirm(`[모의 결제] ${it.name} (${it.price})\n실제 결제는 일어나지 않아요. 지급할까요?`)) return;
-    if (buy(progress, it)) { saveProgress(progress); refreshWallet(); renderShop(); sfx.reveal(5); toast(`🎉 ${it.name} 지급 완료!`); }
-    else toast('💎 지혜석이 부족해요');
-  };
-  const skinTarget = document.getElementById('skin-target') as HTMLSelectElement | null;
-  if (skinTarget) skinTarget.onchange = () => { skinShopId = skinTarget.value; renderShop(); };
-  for (const b of $('tab-shop').querySelectorAll<HTMLButtonElement>('[data-skinbuy]')) b.onclick = () => {
-    const k = b.dataset.skinbuy!, sk = SKINS[k];
-    if (!fav || !canWearSkin(PHIL.get(fav)!.tier)) return;
-    if (!progress.skins.includes(fav + ':' + k)) {
-      if (progress.gems < sk.price) { toast('💎 지혜석이 부족해요'); return; }
-      if (!window.confirm(`${sk.icon} ${sk.name} 스킨을 💎${sk.price}에 살까요?`)) return;
-      progress.gems -= sk.price; progress.skins.push(fav + ':' + k); sfx.reveal(5);
-    }
-    progress.skinOn[fav] = k; spriteUrl.clear(); saveProgress(progress); refreshWallet(); renderShop(); toast(`👗 ${sk.name} 착용!`);
-  };
-}
-
-// ---------- 조합표 · 확률표 ----------
-let recipeQuery='', recipeTier=0;
-function recipeSheet(filter: 'all' | 'ready' | 'liked' = 'all') {
-  const g = game;
-  const liked = new Set(progress.likedRecipes ?? []);
-  const canNow = (r: Recipe) => !!g && g.ownedMaterials(r).every(Boolean) && g.hasCatalyst(r) && !g.isLocked(r);
-  const all = RECIPES.filter((r) => !PHIL.get(r.result)!.hidden || progress.seen.includes(r.result) || QA_MODE);
-  const rows = all.filter((r) => filter === 'all' || (filter === 'ready' ? canNow(r) : liked.has(r.id)))
-    .sort((a, b) => Number(canNow(b)) - Number(canNow(a)) || Number(liked.has(b.id)) - Number(liked.has(a.id)) || gradeRank(PHIL.get(a.result)!) - gradeRank(PHIL.get(b.result)!));
-  const face = (id: string, on: boolean, unknown = false, count = 1) => `<span class="rf t${PHIL.get(id)!.tier} ${on ? 'on' : ''} ${unknown ? 'unk' : ''}"><img src="${portrait(id)}" alt=""><small>${unknown ? '???' : shortName(PHIL.get(id)!.name)}${count>1 ? ' ×'+count : ''}</small><i class="recipe-rank">${gradeCode(PHIL.get(id)!)}</i></span>`;
-  const html = rows.map((r) => {
-    const own = g ? g.ownedMaterials(r) : r.materials.map(() => false);
-    const known = QA_MODE || progress.seen.includes(r.result) || !PHIL.get(r.result)!.hidden;
-    const cat = r.catalyst ? `<b>+</b><span class="rf cat ${g && g.catalysts[r.catalyst] ? 'on' : ''}"><i>${CAT_ICON[r.catalyst]}</i><small>촉매</small></span>` : '';
-    return `<div class="req ${canNow(r) ? 'ready' : ''}" data-id="${r.id}" data-grade="${gradeRank(PHIL.get(r.result)!)}" data-search="${PHIL.get(r.result)!.name} ${PHIL.get(r.result)!.realName} ${r.materials.map(id=>PHIL.get(id)!.name+' '+PHIL.get(id)!.realName).join(' ')}">${liked.has(r.id) ? '<em class="hrt">💗</em>' : ''}
-      ${materialGroups(r.materials).map(({id,count})=>face(id,!!g && g.towers.filter(t=>t.philId===id).length>=count,false,count)).join('<b>+</b>')}${cat}<b class="eq">=</b>${face(r.result, true, !known)}
-      <button class="req-i" data-info="${r.id}" aria-label="상세">i</button></div>`;
-  }).join('') || `<p class="hint" style="text-align:center">${filter === 'ready' ? '지금 바로 할 수 있는 조합이 없어요' : '💗 표시한 조합이 없어요'}</p>`;
-  document.querySelector('.overlay.recipes')?.remove();
-  const o = document.createElement('div');
-  o.className = 'overlay recipes';
-  o.innerHTML = `<div class="pop rsheet"><div class="rs-head"><h2>📜 조합표</h2><button class="rs-x" aria-label="닫기">✕</button></div>
-    <div class="rs-tabs">${(['all', 'ready', 'liked'] as const).map((f) => `<button data-f="${f}" class="${f === filter ? 'on' : ''}">${{ all: `전체 ${all.length}`, ready: `지금 가능 ${all.filter(canNow).length}`, liked: `💗 목표 ${liked.size}` }[f]}</button>`).join('')}</div>
-    <div class="recipe-filters"><label>찾기<input id="recipe-search" placeholder="철학자 이름 또는 재료"></label><label>완성 등급<select id="recipe-grade"><option value="0">모든 등급</option>${GRADE_STEPS.filter(t=>t>1).map(t=>`<option value="${t}">${gradeCode(gradeAt(t))}</option>`).join('')}</select></label></div><p class="hint rs-hint">진한 얼굴 = 재료 수량 충족 · ×숫자 = 필요한 인원 · +는 별도 조합 단계</p>
-    <div class="rs-list">${html}</div></div>`;
-  const search=o.querySelector<HTMLInputElement>('#recipe-search')!, grade=o.querySelector<HTMLSelectElement>('#recipe-grade')!;
-  search.value=recipeQuery; grade.value=String(recipeTier);
-  const applyFilters=()=>{for(const row of o.querySelectorAll<HTMLElement>('.req')) row.hidden=!!((recipeTier && Number(row.dataset.grade)!==recipeTier) || !(row.dataset.search??'').toLowerCase().includes(recipeQuery.toLowerCase().trim()));};
-  search.oninput=()=>{recipeQuery=search.value;applyFilters();}; grade.onchange=()=>{recipeTier=Number(grade.value);applyFilters();};applyFilters();
-  o.onclick = (e) => {
-    const el = e.target as HTMLElement;
-    if (el === o || el.closest('.rs-x')) { o.remove(); return; }
-    const f = el.closest('[data-f]') as HTMLElement | null; if (f) { recipeSheet(f.dataset.f as 'all'); return; }
-    const info = el.closest('[data-info]') as HTMLElement | null;
-    const row = el.closest('.req') as HTMLElement | null;
-    const id = info?.dataset.info ?? row?.dataset.id;
-    if (id) recipeDetail(RECIPES.find((r) => r.id === id)!, filter);
-  };
-  document.body.appendChild(o);
-}
-
-function recipeDetail(r: Recipe, back: 'all' | 'ready' | 'liked') {
-  const g = game, res = PHIL.get(r.result)!;
-  const known = QA_MODE || progress.seen.includes(res.id) || !res.hidden;
-  const own = g ? g.ownedMaterials(r) : r.materials.map(() => false);
-  const ready = !!g && own.every(Boolean) && g.hasCatalyst(r) && !g.isLocked(r);
-  const liked = (progress.likedRecipes ?? []).includes(r.id);
-  const o = document.createElement('div');
-  o.className = 'overlay rdetail';
-  o.innerHTML = `<div class="pop rd-pop t${res.tier}">
-    <div class="rd-hero"><img src="${pedArt(res.id)}" alt="" class="${known ? '' : 'unk'}"><div><span class="tier-chip t${res.tier}">${gradeLabel(res)}</span><h2>${known ? res.name : '??? (처음 조합하면 공개)'}</h2>${known ? `<p class="rd-skill"><b>✦ ${res.skill}</b> ${res.skillDesc}</p>` : ''}</div></div>
-    <div class="rd-mats">${materialGroups(r.materials).map(({id,count})=>{const p=PHIL.get(id)!,have=g?g.towers.filter(t=>t.philId===id).length:0;return `<div class="${have>=count?'have':''}"><img src="${portrait(id)}" alt=""><b>${p.name} ×${count}</b><small>${gradeLabel(p)} · ${g?`보유 ${have}/${count}`:'필요 '+count+'명'}</small></div>`;}).join('')}
-      ${r.catalyst ? `<div class="${g && g.catalysts[r.catalyst] ? 'have' : ''}"><i>${CAT_ICON[r.catalyst]}</i><b>촉매 ${CAT_NAME[r.catalyst]}</b><small>보유 ${g ? g.catalysts[r.catalyst] : 0}</small></div>` : ''}</div>
-    <p class="recipe-cost">1성부터 모두 조합할 때: <b>${res.materialCost}명분</b> · 지금 필요한 직접 재료 ${r.materials.length}명</p>${res.origin?'<p class="hint">근원은 후대의 기억을 모아 원래 인물을 깨우는 특별 조합이에요.</p>':''}${r.logic ? `<p class="rd-logic">${r.provisional?'🧩 게임적 축약 · ':''}${r.logic}</p>` : ''}
-    ${g && g.isLocked(r) ? `<p class="hint">🔒 ${lockReason(r)}</p>` : ''}
-    <div class="rd-btns"><button class="chunky rd-like">${liked ? '💔 목표 해제' : '💗 목표로 저장'}</button>${ready ? '<button class="chunky gold rd-go">⚗ 지금 조합</button>' : '<button class="chunky blue rd-back">← 목록</button>'}</div></div>`;
-  o.onclick = (e) => {
-    const el = e.target as HTMLElement;
-    if (el === o || el.closest('.rd-back')) { o.remove(); return; }
-    if (el.closest('.rd-like')) {
-      const list = new Set(progress.likedRecipes ?? []);
-      if (list.has(r.id)) list.delete(r.id); else list.add(r.id);
-      progress.likedRecipes = [...list]; saveProgress(progress); lastSynthKey = '';
-      o.remove(); recipeSheet(back); return;
-    }
-    if (el.closest('.rd-go')) { o.remove(); document.querySelector('.overlay.recipes')?.remove(); doMerge(r); }
-  };
-  document.body.appendChild(o);
-}
-
-function rateSheet() {
- const ids=summonPool(), pool=ids.length?PHILOSOPHERS.filter(p=>ids.includes(p.id)):PHILOSOPHERS;
- const bands=SUMMON_RATES.filter(r=>pool.some(p=>gradeRank(p)===gradeRank(r))), total=bands.reduce((n,r)=>n+r.rate,0);
- const rows=GRADE_STEPS.map(t=>{const r=bands.find(r=>gradeRank(r)===t);return `<tr><td><span class="tier-chip t${Math.floor(t)}">${gradeLabel(gradeAt(t))}</span></td><td>${PHILOSOPHERS.filter(p=>gradeRank(p)===t).length}명</td><td>${r?((r.rate/total)*100).toFixed(4)+'%':'기억 해금 필요'}</td></tr>`;}).join('');
- alertBox(`<h2>🎲 전투 소환과 등급</h2><p>기본 1성에 더해, <b>카드를 보유한 상위 철학자</b>도 낮은 확률로 등장해요. 열린 등급끼리 확률을 다시 나눠요. 해금한 근원은 첫 소환부터 등장할 수 있어요.</p><p class="hint">튜토리얼은 지정된 1성만 나와요. 3성+·4성+·5성+·6성+는 별도 조합 단계이며 전투 강화 +1과 달라요.</p><table class="rates"><tr><th>등급</th><th>전체 인원</th><th>현재 확률</th></tr>${rows}</table><p class="hint">카드 뽑기의 확률은 뽑기 화면의 안내에서 확인해요.</p>`);
-}
 
 // ---------- 타격감 연출 ----------
 interface Shape { kind: string; x: number; y: number; tx?: number; ty?: number; r?: number; life: number; max: number }
@@ -1645,21 +1231,6 @@ function loop(now: number) {
   requestAnimationFrame(loop);
 }
 
-// ---------- 모바일: 두 번 탭 확대 / 핀치 확대 막기 (iOS 사파리는 viewport 설정을 무시함) ----------
-let lastTouchEnd = 0;
-document.addEventListener('touchend', (e) => {
-  const now = Date.now();
-  const el = e.target as HTMLElement;
-  if (now - lastTouchEnd < 350 && !el.closest('input')) {
-    e.preventDefault(); // 확대 막기
-    const b = el.closest('button') as HTMLButtonElement | null;
-    if (b && !b.disabled) b.click(); // 대신 연타는 그대로 눌리게
-  }
-  lastTouchEnd = now;
-}, { passive: false });
-// Browser pinch zoom stays available for reading.
-document.addEventListener('dblclick', (e) => e.preventDefault());
-
 // ---------- 시작 ----------
 const backdropSelect = $('backdrop-select') as HTMLSelectElement;
 backdropSelect.onchange = () => { progress.battleBackdrop = backdropSelect.value; saveProgress(progress); toast('고대 배경을 바꿨어요 · 다른 시대는 전용 배경을 사용해요'); };
@@ -1670,7 +1241,7 @@ for (const b of document.querySelectorAll<HTMLButtonElement>('#tabs button')) b.
 for (const id of ['mute', 'mute-b']) { const b = document.getElementById(id); if (b) { b.textContent = isMuted() ? '🔇' : '🔊'; b.onclick = () => { const mu = toggleMute(); for (const x of ['mute', 'mute-b']) { const e = document.getElementById(x); if (e) e.textContent = mu ? '🔇' : '🔊'; } }; } }
 $('b-recipes').onclick = () => recipeSheet();
 $('tut-again').onclick = () => { $('settings').classList.add('hidden'); progress.battleTutDone = false; progress.tabTut = []; pageTutStart(currentTab); saveProgress(progress); toast('🎓 화면마다, 그리고 다음 전투에서 튜토리얼이 다시 나와요'); };
-$('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); progress = loadProgress(); bootQA(); renderHome(); switchTab('stages'); } };
+$('reset').onclick = () => { if (window.confirm('클리어 기록·카드·도구를 모두 지울까요?')) { resetProgress(); setProgress(loadProgress()); bootQA(); renderHome(); switchTab('stages'); } };
 function bootQA() { if (isAdmin() && revealAdminCollection(progress, PHILOSOPHERS.map(p => p.id))) saveProgress(progress); if (QA_MODE && !progress.purchases.includes('qa')) { progress.gonoe += QA_GONOE; progress.gems += QA_GEMS; progress.tickets += 5; progress.purchases.push('qa'); saveProgress(progress); } }
 
 function welcome() {
@@ -1689,13 +1260,13 @@ function welcome() {
 
 /** 로그인 후 계정 진입 */
 function enter(acc: Account) {
-  me = acc;
+  setMe(acc);
   rememberLogin(acc.id);
   setAccount(acc.id);
-  setQA(acc.role === 'master' || new URLSearchParams(location.search).get('qa') === '1');
+  setQA(acc.role === 'master' || QA_PARAM);
   const isNew = !hasSave();
   freshDevice = isNew;
-  progress = loadProgress();
+  setProgress(loadProgress());
   if (isNew && acc.role === 'veteran') { seedVeteran(progress); saveProgress(progress); }
   bootQA();
   backdropSelect.value = progress.battleBackdrop ?? 'era';
@@ -1710,7 +1281,7 @@ function enter(acc: Account) {
 }
 
 function showLogin() {
-  me = null;
+  setMe(null);
   show('home');
   $('login').classList.remove('hidden');
   const id = $<HTMLInputElement>('login-id'), pw = $<HTMLInputElement>('login-pw');
@@ -1721,10 +1292,12 @@ function showLogin() {
 $<HTMLFormElement>('login-form').onsubmit = async (e) => {
   e.preventDefault();
   const idv = $<HTMLInputElement>('login-id').value.trim(), pwv = $<HTMLInputElement>('login-pw').value;
-  let acc = await login(idv, pwv);
-  // 미리 정한 계정이 아니면: 서버에 가입된 일반 계정으로 로그인
-  if (!acc && idv && pwv) { $('login-err').textContent = '☁️ 서버 확인 중…'; if (await cloudLogin(idv, pwv, false)) acc = { id: idv, hash: '', role: 'fresh', label: '일반 계정' }; }
-  if (!acc) { $('login-err').textContent = '아이디 또는 비밀번호가 맞지 않아요'; shakeEl($('login-card')); return; }
+  let acc: Account | null = null;
+  // 로그인은 서버(Supabase Auth)만 기준. 역할도 서버에서 받는다
+  if (idv && pwv) { $('login-err').textContent = '☁️ 서버 확인 중…'; if (await cloudLogin(idv, pwv, false)) acc = { id: idv, role: (await cloudRole()) ?? 'fresh', label: '서버 계정' }; }
+  // 서버에 못 닿으면: 이 기기에서 마지막으로 쓰던 아이디만 기기 저장으로 계속(관리자 권한 없음)
+  if (!acc && idv && cloudFailKind === 'network' && lastLoginId() === idv) { acc = offlineAccount(idv); toast('☁️ 서버에 닿지 않아 이 기기 저장으로 계속해요'); }
+  if (!acc) { $('login-err').textContent = cloudFailKind === 'network' ? '서버에 닿지 않아요. 잠시 뒤 다시 시도해 주세요' : '아이디 또는 비밀번호가 맞지 않아요'; shakeEl($('login-card')); return; }
   $('login-err').textContent = '';
   sfx.reveal(5);
   enter(acc);
@@ -1735,16 +1308,41 @@ $<HTMLFormElement>('login-form').onsubmit = async (e) => {
 // ---------- ☁️ 서버 저장 동기화 ----------
 let freshDevice = false; // 이 기기에 저장이 없던 상태로 들어왔는지
 setSaveHook((p) => cloudSave(p));
+function applyRemote(remote: { data: Progress; revision: number }) {
+  cloudMarkSynced(remote.revision);
+  setProgress(adoptProgress(remote.data));
+  bootQA();
+  backdropSelect.value = progress.battleBackdrop ?? 'era';
+  spriteUrl.clear(); renderHome(); refreshWallet();
+}
+// 저장하려는데 서버가 이미 다른 기기의 더 새로운 저장을 갖고 있으면 서버 값이 이긴다
+setConflictHook(async () => {
+  const remote = await cloudLoad();
+  if (remote) { applyRemote(remote); toast('☁️ 다른 기기에 더 새로운 저장이 있어 서버 값으로 맞췄어요'); }
+});
+// 서버가 재화 증가를 한도로 잘랐으면 이 기기 값도 서버 값으로 맞춘다
+setClampHook((v) => {
+  for (const k of ['gonoe', 'gems', 'tickets'] as const) if (typeof v[k] === 'number') progress[k] = v[k]!;
+  saveProgress(progress); refreshWallet();
+  toast('☁️ 서버 한도를 넘은 재화는 저장되지 않았어요');
+});
+/** 서버가 준 역할을 화면에 반영 (오프라인으로 들어왔다가 나중에 연결된 경우 포함) */
+async function refreshRole() {
+  const r = await cloudRole();
+  if (!me || !r || r === me.role) return;
+  setMe({ ...me, role: r, offline: false });
+  setQA(r === 'master' || QA_PARAM);
+  $('who').textContent = `👤 ${me.id}${r === 'master' ? ' 👑' : ''}`;
+  $('admin-bar').classList.toggle('hidden', r !== 'master');
+}
 async function syncCloud(id: string, pw: string) {
-  const ok = await cloudLogin(id, pw);
+  const ok = await cloudLogin(id, pw, false);
   if (ok) {
+    await refreshRole();
     const remote = await cloudLoad();
-    // 서버 쪽이 더 최신이거나, 이 기기가 처음이면 서버 것을 쓴다
-    if (remote && (freshDevice || (remote.savedAt ?? 0) > (progress.savedAt ?? 0))) {
-      progress = adoptProgress(remote);
-      bootQA();
-      backdropSelect.value = progress.battleBackdrop ?? 'era';
-      spriteUrl.clear(); renderHome(); refreshWallet();
+    // 승자는 기기 시계가 아니라 서버 revision 으로 정한다 (src/syncrule.ts · docs/SAVE_CONFLICT.md)
+    if (remote && decideSync({ hasRemote: true, freshDevice, remoteRevision: remote.revision, baseRevision: cloudBaseRevision() }) === 'adopt') {
+      applyRemote(remote);
       toast('☁️ 서버에 저장된 진행을 불러왔어요');
     } else { cloudSave(progress); void cloudFlush(); }
   }
@@ -1764,12 +1362,25 @@ $('admin-gems').onclick = () => { progress.gems += 10000; progress.gonoe += 1000
 $('admin-unlock').onclick = () => { for (const s of STAGES) for (const d of DIFFICULTIES) { const k = clearKey(s.id, d.id); if (!progress.cleared.includes(k)) progress.cleared.push(k); } for (const s of STAGES) if (!progress.cleared.includes(s.id)) progress.cleared.push(s.id); saveProgress(progress); renderHome(); toast('👑 전 스테이지·난이도 클리어 처리'); };
 $('admin-cards').onclick = () => { for (const p of PHILOSOPHERS) { progress.cards[p.id] = (progress.cards[p.id] ?? 0) + 16; if (!progress.seen.includes(p.id)) progress.seen.push(p.id); } for (const it of ITEMS) progress.items[it.id] = (progress.items[it.id] ?? 0) + 1; saveProgress(progress); toast('👑 모든 카드 +16장 · 도구 전부 지급'); };
 
-const remembered = lastLogin();
-if (remembered) { $<HTMLInputElement>('login-id').value = remembered.id; }
+const remembered = lastLoginId();
+if (remembered) { $<HTMLInputElement>('login-id').value = remembered; }
 showLogin();
-// 개발·스테이지 화면에서 실제 전투 루프를 빠르게 캡처하기 위한 명시적 QA 경로.
+// 로그인 없이 허브 화면을 캡처하기 위한 QA 경로(?qa-screen=home|room|gacha|codex|shop|tcg).
+// VITE_QA_ROUTES=1 로 빌드한 개발·스테이지에서만 켜진다. 운영 빌드(npm run build)에는 이 블록이 통째로 빠진다.
+// 가짜 베테랑 진행(seedVeteran)으로 '로컬 브라우저의 qa-preview 계정'에만 저장하며 서버 계정과 무관하다.
+if (import.meta.env.VITE_QA_ROUTES) {
+  const qaScreen = new URLSearchParams(location.search).get('qa-screen');
+  const QA_TABS: Record<string, string> = { home: 'stages', room: 'room', gacha: 'gacha', codex: 'codex', shop: 'shop', tcg: 'codex' };
+  if (qaScreen && QA_TABS[qaScreen]) setTimeout(() => {
+    enter({ id: 'qa-preview', role: 'veteran', label: 'QA 미리보기' });
+    switchTab(QA_TABS[qaScreen]);
+    if (qaScreen === 'tcg') openTcg();
+  }, 0);
+}
+// 개발 화면에서 실제 전투 루프를 빠르게 캡처하기 위한 명시적 QA 경로.
 // 진행 저장/계정 로그인 없이 보스 웨이브 하나만 띄운다.
-if (new URLSearchParams(location.search).get('boss-preview') === '1') {
+// VITE_QA_ROUTES=1 빌드(개발·스테이지)에서만 켜진다. 운영 빌드에서는 이 블록이 통째로 빠진다.
+if (import.meta.env.VITE_QA_ROUTES && new URLSearchParams(location.search).get('boss-preview') === '1') {
   // The route is declared before every module-level UI variable has initialized.
   // Defer setup to the next task so startBattle/updateUI cannot hit a temporal dead zone.
   setTimeout(() => {
@@ -1778,8 +1389,7 @@ if (new URLSearchParams(location.search).get('boss-preview') === '1') {
       progress.battleTutDone = true;
       $('login').classList.add('hidden');
       startBattle(STAGES[0]);
-      tutStep = -1;
-      tutClear();
+      tutAbort();
       const previewGame = game as unknown as Game | null;
       if (previewGame) {
         previewGame.wave = 9;
@@ -1809,57 +1419,21 @@ if (new URLSearchParams(location.search).get('boss-preview') === '1') {
     }
   }, 0);
 }
+// QA-A2(조합·강화 소모 시험) 경로: 전투 판은 진행 저장에 없어서 localStorage 주입으로는 시작 상태를 못 만든다.
+// 로컬 qa-preview 계정으로 첫 스테이지 전투를 띄우고, 시험이 판을 주입·읽도록 전투 객체 접근자만 넘긴다(규칙 계산은 넘기지 않음).
+// VITE_QA_ROUTES=1 빌드(개발)에서만 켜진다. 운영 빌드에서는 이 블록이 통째로 빠진다(qa-screen·boss-preview 와 같은 차단).
+if (import.meta.env.VITE_QA_ROUTES && new URLSearchParams(location.search).get('qa-a2') === '1') {
+  setTimeout(() => {
+    enter({ id: 'qa-preview', role: 'veteran', label: 'QA 미리보기' });
+    progress.battleTutDone = true;
+    startBattle(STAGES[0]);
+    tutAbort();
+    (window as unknown as { __qaA2?: { game: () => Game | null } }).__qaA2 = { game: () => game as unknown as Game | null };
+  }, 0);
+}
 setInterval(() => { if (!game && me) { settleIdle(progress, clearedStages()); saveProgress(progress); refreshWallet(); } }, 1000);
 requestAnimationFrame(loop);
 
-// ---------- 🃏 TCG 카드 넘겨보기 ----------
-function tcgCard(id: string) {
-  const p = PHIL.get(id)!, st = statsOf(id);
-  const n = progress.cards[id] ?? 0, lv = cardLevel(n);
-  const art = cardArt(p, spriteFor(id), progress?.skinOn?.[id] ?? '');
-  return `<div class="tcg tcg-t${p.tier}" data-id="${id}"><div class="tcg-inner">
-    <div class="tcg-face tcg-front">
-      <div class="tcg-top"><b>${p.name}</b><span class="tcg-type">${TYPE_ICON[st.type]} ${st.type}</span></div>
-      <div class="tcg-stars">${'★'.repeat(p.tier)}${p.plus ? '⁺' : ''}<small>${gradeLabel(p)} · ${ERA_ICON[p.era] ?? ''} ${p.school}</small></div>
-      <div class="tcg-art"><img src="${art}">${lv ? `<span class="tcg-lv">Lv.${lv}</span>` : ''}</div>
-      <div class="tcg-skill"><b>✦ ${p.skill}</b><p>${p.skillDesc}</p></div>
-      <div class="tcg-stat"><span>⚔ ${Math.round(st.dmg)}</span><span>◎ ${st.range}칸</span><span>⏱ ${(1 / st.cooldown).toFixed(2)}/초</span></div>
-      <div class="tcg-quote">“${p.quote}”</div>
-      <div class="tcg-no">No.${p.id} · AGORA</div>
-    </div>
-    <div class="tcg-face tcg-back">
-      <div class="tcg-backlogo">AGORA</div>
-      <b>${p.name}</b>
-      <p>${p.lore}</p>
-      <small>🎯 ${st.target} 우선 · ${st.note}</small>
-      <small class="tcg-tip">탭하면 앞면으로</small>
-    </div>
-  </div></div>`;
-}
-function openTcg(startId?: string) {
-  const seen = new Set(progress.seen);
-  const list = [...PHILOSOPHERS].filter((p) => seen.has(p.id) || !!progress.cards[p.id] || (isAdmin() || (QA_MODE && !p.hidden))).sort((a, b) => gradeRank(a) - gradeRank(b) || a.id.localeCompare(b.id));
-  if (!list.length) { toast('아직 만난 철학자가 없어요'); return; }
-  const ov = document.createElement('div');
-  ov.className = 'overlay tcg-ov';
-  ov.innerHTML = `<button class="close">✕</button><div class="tcg-track">${list.map((p) => tcgCard(p.id)).join('')}</div>
-    <div class="tcg-nav"><button class="prev">◀</button><span class="tcg-count"></span><button class="next">▶</button></div><button class="chunky gold tcg-detail">📋 정보보기</button>`;
-  document.body.appendChild(ov);
-  const track = ov.querySelector('.tcg-track') as HTMLElement;
-  const count = ov.querySelector('.tcg-count') as HTMLElement;
-  const cardW = () => (track.firstElementChild as HTMLElement).offsetWidth + 16;
-  const idx = () => Math.round(track.scrollLeft / cardW());
-  const upd = () => { count.textContent = `${idx() + 1} / ${list.length}`; };
-  const go = (i: number) => track.scrollTo({ left: Math.max(0, Math.min(list.length - 1, i)) * cardW(), behavior: 'smooth' });
-  track.addEventListener('scroll', upd);
-  (ov.querySelector('.prev') as HTMLElement).onclick = () => go(idx() - 1);
-  (ov.querySelector('.next') as HTMLElement).onclick = () => go(idx() + 1);
-  (ov.querySelector('.close') as HTMLElement).onclick = () => ov.remove();
-  (ov.querySelector('.tcg-detail') as HTMLElement).onclick = () => { const id = list[idx()].id; ov.remove(); showCard(id); };
-  track.querySelectorAll('.tcg').forEach((el) => el.addEventListener('click', () => el.classList.toggle('flip')));
-  requestAnimationFrame(() => { const i = startId ? list.findIndex((p) => p.id === startId) : 0; track.scrollLeft = Math.max(0, i) * cardW(); upd(); });
-}
-$('tcg-open').onclick = () => openTcg();
 // 촉매 칩을 누르면 무엇인지 알려 준다
 $('cats').addEventListener('click', (e) => {
   const el = (e.target as HTMLElement).closest('.c');
@@ -1869,112 +1443,9 @@ $('cats').addEventListener('click', (e) => {
   toast(`${CAT_ICON[id]} 촉매 「${CAT_NAME[id]}」 — 희귀 이상 조합 재료예요. 웨이브를 깰 때마다 1개, 보스 웨이브는 추가로, 적 처치 시 가끔 떨어져요`);
 });
 
-// ---------- 🎓 전투 튜토리얼 (첫 전투에서 단계별 안내) ----------
-const TUT: { sel: string; text: string; done?: (g: Game) => boolean; pos?: 'top' }[] = [
-  { sel: '#summon', text: '👋 먼저 <b>소환</b>을 눌러 철학자를 불러 보세요. 흔함 9명 중 한 명이 나와요.', done: (g) => g.towers.length >= 1 },
-  { sel: '#summon', text: '좋아요! 철학자는 빈 칸에 자동으로 앉아요. <b>두 번 더</b> 소환해 볼까요?', done: (g) => g.towers.length >= 3 },
-  { sel: '#field', text: '칸에 앉은 철학자를 <b>탭</b>하면 정보·강화·판매가 나와요. 선택한 채로 다른 칸을 탭하면 <b>자리를 옮겨요</b>. 맨 아래 <b>대기석</b> 5칸은 싸우지 않지만 조합 재료로 쓰여요. 필드가 차면 소환된 철학자가 대기석으로 가요.', pos: 'top' },
-  { sel: '#merge', text: '조합 재료가 모이면 철학자 머리 위에 <b>✦</b>가 뜨고, 여기 <b>합성</b> 버튼이 결과 얼굴과 함께 반짝여요. 누르기만 하면 돼요!', pos: 'top' },
-  { sel: '#start', text: '준비 끝! <b>웨이브 시작</b>을 누르면 도그마(적)가 몰려와요.', done: (g) => g.running },
-  { sel: '#lives', text: '🧠 이게 <b>멘탈</b>이에요. 도그마가 길 끝에 닿으면 1(보스는 5)씩 깎이고, 못 잡은 적은 <b>다시 돌아와요</b>. 0이 되면 패배!', pos: 'top' },
-  { sel: '#cats', text: '웨이브를 깨면 골드와 <b>촉매</b>(🔥💎🌀⚙️🪞)를 얻어요. 촉매는 희귀 이상 조합 재료예요. 보스를 잡으면 🎟 무료 소환권도 줘요. 칩을 누르면 설명이 나와요.', pos: 'top' },
-  { sel: '#b-recipes', text: '📜 은 조합표, 1x 는 배속이에요. 이제 20웨이브까지 버텨 보세요. 화이팅! 🏛', pos: 'top' },
-];
-let tutStep = -1, tutShown = -2;
-function tutClear() { document.querySelector('.tut-bubble')?.remove(); document.querySelectorAll('.tut-glow').forEach((e) => e.classList.remove('tut-glow')); }
-function tutFinish() { tutStep = -1; tutClear(); progress.battleTutDone = true; saveProgress(progress); }
-function tutTick() {
-  if (document.querySelector('.vn')) { if (tutShown !== -2) { tutClear(); tutShown = -2; } return; }
-  if (tutStep < 0 || !game || $('battle').classList.contains('hidden')) { if (tutShown !== -2 && tutStep < 0) { tutClear(); tutShown = -2; } return; }
-  const st = TUT[tutStep];
-  if (st.done?.(game)) { tutStep++; if (tutStep >= TUT.length) { tutFinish(); return; } return tutTick(); }
-  if (tutShown === tutStep) return;
-  tutShown = tutStep; tutClear();
-  document.querySelector(st.sel)?.classList.add('tut-glow');
-  const b = document.createElement('div');
-  b.className = `tut-bubble ${st.pos === 'top' ? 'top' : ''}`;
-  const manual = !st.done;
-  b.innerHTML = `<div class="tut-step">튜토리얼 ${tutStep + 1}/${TUT.length}</div><p>${st.text}</p><div class="tut-btns"><button class="tut-skip">건너뛰기</button>${manual ? `<button class="tut-next">${tutStep === TUT.length - 1 ? '시작!' : '다음 ▶'}</button>` : ''}</div>`;
-  document.body.appendChild(b);
-  (b.querySelector('.tut-skip') as HTMLElement).onclick = tutFinish;
-  const nx = b.querySelector('.tut-next') as HTMLElement | null;
-  if (nx) nx.onclick = () => { tutStep++; if (tutStep >= TUT.length) tutFinish(); else tutTick(); };
-}
-setInterval(tutTick, 300);
-
-// ---------- 🎓 화면별 튜토리얼 (탭을 처음 열 때) ----------
-const PAGE_TUT: Record<string, { sel: string; text: string }[]> = {
-  stages: [
-    { sel: '.journey-point.open .j-dot', text: '이 긴 지도에서 거점을 고르면 캐릭터와 카메라가 그곳으로 이동해요. 길은 튜토리얼에서 1~6장으로 이어져요.' },
-    { sel: '#j-go', text: '아래 목적지 패널에서 <b>출발</b>을 누르면 전투가 시작돼요. 옆 <b>정보</b> 버튼에서 보스와 돌아오는 기억을 확인할 수 있어요.' },
-    { sel: '#journey-difficulty', text: '난이도는 이 버튼 하나에서 바꿔요. 쉬움으로 튜토리얼과 1~6장을 모두 마치면 난이도 선택과 장 바로가기가 열려요.' },
-    { sel: '#open-recipes', text: '📜 <b>조합표</b>에서 모든 조합식을, 🎲 확률에서 소환·등급 정보를 볼 수 있어요. 마음에 드는 조합은 💗로 찜해 두면 전투 중에 따라 보여요.' },
-    { sel: '#tabs', text: '아래 탭에서 🤔고민방·🎴뽑기·📖도감·🛍상점으로 가요. 처음 들어가면 거기서도 안내해 드릴게요!' },
-  ],
-  room: [
-    { sel: '#thinker', text: '여기는 <b>고민방</b>. 철학자를 톡톡 두드리면 <b>🤔 고뇌</b>가 나와요.' },
-    { sel: '.room-stat', text: '고뇌는 가만히 둬도 쌓여요(최대 8시간). 스테이지를 깰수록 더 빨리 쌓이고, <b>카드·도구 뽑기</b>에 써요.' },
-    { sel: '#tap-up', text: '고뇌를 써서 <b>고민의 깊이</b>를 올리면 탭할 때와 가만히 둘 때 나오는 고뇌가 <b>둘 다</b> 늘어요.' },
-  ],
-  gacha: [
-    { sel: '.card-box', text: '🧠 <b>기억 떠올리기</b>: 고뇌를 써서 철학자 카드를 얻어요. 같은 카드가 모이면 레벨이 올라 전투에서 세지고, 일화도 열려요.' },
-    { sel: '.card-box .info-btn', text: '<b>i</b>를 누르면 확률, 천장(거장 이상 확정까지 남은 횟수), 성장 규칙을 볼 수 있어요.' },
-    { sel: '.master-box', text: '✨ <b>거장 초대</b>는 💎지혜석이나 🎫초대장으로 거장 이상을 확정으로 뽑아요.' },
-    { sel: '.tool-box', text: '🧰 <b>도구</b>를 뽑아 도감에서 철학자에게 장착해요. 주인에게 맞는 도구면 <b>찰떡!</b> 공격 +60%.' },
-  ],
-  codex: [
-    { sel: '.codex-tabs', text: '등급별로 나눠 봐요. 만난 철학자를 누르면 <b>카드</b>로 보여요.' },
-    { sel: '.codex-grid', text: '카드 아래 <b>📋 정보보기</b>를 누르면 스탯·도구 장착·스킨·💗최애 지정을 할 수 있어요.' },
-    { sel: '#tcg-open', text: '🃏 여기를 누르면 카드처럼 <b>옆으로 넘겨 보고</b>, 탭하면 뒤집어서 이야기를 읽을 수 있어요.' },
-  ],
-  shop: [
-    { sel: '.shop-grid', text: '🛍 <b>상점</b>에서 💎지혜석과 🎫초대장을 살 수 있어요. 지금은 시험판이라 실제 결제 없이 바로 지급돼요.' },
-  ],
-};
-let pageTut: { tab: string; i: number } | null = null, pageShown = '';
-function pageTutStart(tab: string) {
-  if (!PAGE_TUT[tab] || (progress.tabTut ?? []).includes(tab)) return;
-  pageTut = { tab, i: 0 }; pageShown = '';
-}
-function pageTutEnd() {
-  if (pageTut) { progress.tabTut = [...new Set([...(progress.tabTut ?? []), pageTut.tab])]; saveProgress(progress); }
-  pageTut = null; pageShown = ''; tutClear();
-}
-function pageTutTick() {
-  if (!pageTut) return;
-  if (pageTut.tab !== currentTab || $('home').classList.contains('hidden')) { if (pageShown) { tutClear(); pageShown = ''; } if (pageTut.tab !== currentTab) pageTut = null; return; }
-  if (document.querySelector('.overlay, .vn, .prologue')) { if (pageShown) { tutClear(); pageShown = ''; } return; }
-  const steps = PAGE_TUT[pageTut.tab], st = steps[pageTut.i], key = pageTut.tab + pageTut.i;
-  if (pageShown === key) return;
-  const target = document.querySelector(st.sel) as HTMLElement | null;
-  if (!target) { pageTut.i++; if (pageTut.i >= steps.length) pageTutEnd(); return; }
-  pageShown = key; tutClear();
-  target.classList.add('tut-glow');
-  target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  const b = document.createElement('div');
-  const low = target.getBoundingClientRect().top > innerHeight * 0.5;
-  b.className = `tut-bubble ${low ? 'upper' : ''}`;
-  b.innerHTML = `<div class="tut-step">안내 ${pageTut.i + 1}/${steps.length}</div><p>${st.text}</p><div class="tut-btns"><button class="tut-skip">건너뛰기</button><button class="tut-next">${pageTut.i === steps.length - 1 ? '알겠어요!' : '다음 ▶'}</button></div>`;
-  document.body.appendChild(b);
-  (b.querySelector('.tut-skip') as HTMLElement).onclick = pageTutEnd;
-  (b.querySelector('.tut-next') as HTMLElement).onclick = () => { if (!pageTut) return; pageTut.i++; if (pageTut.i >= steps.length) pageTutEnd(); else pageTutTick(); };
-}
-setInterval(pageTutTick, 300);
 
 
 // =============== 📖 스토리 모드 ===============
-/** 난이도별 카드 기억 경험치 */
-const XP_RATE: Record<string, number> = { easy: 0.2, normal: 0.5, hard: 0.8, immortal: 1, challenge: 1 };
-function gainXp(id: string, rate: number): string {
-  const xp = (progress.cardXp ??= {});
-  xp[id] = (xp[id] ?? 0) + rate;
-  let got = 0;
-  while (xp[id] >= 1 - 1e-9) { xp[id] -= 1; got++; }
-  xp[id] = Math.round(xp[id] * 100) / 100;
-  if (got) { progress.cards[id] = (progress.cards[id] ?? 0) + got; if (!progress.seen.includes(id)) progress.seen.push(id); }
-  const name = PHIL.get(id)!.name;
-  return got ? `📈 ${name}의 기억이 또렷해졌다! 카드 +${got}장` : `📈 ${name}의 기억 +${Math.round(rate * 100)}% (${Math.round(xp[id] * 100)}%)`;
-}
 /** 시작 튜토리얼 뒤: 소크라테스가 화면을 하나씩 짚어 주며 이야기와 버튼을 설명 */
 function playTour() {
   progress.tourDone = true; progress.tabTut = [...new Set([...(progress.tabTut ?? []), 'stages'])]; saveProgress(progress); // 홈 안내는 소크라테스가 했으니 홈 말풍선은 생략
@@ -1992,23 +1463,6 @@ function playTour() {
     ['소크라테스', '자, 첫 사건일세. 밀레토스로 가 보게. 하늘의 해가 사라지고 있다는군.', '#j-go'],
   ], null, () => renderHome(), '고대', true);
 }
-/** 소환되는 흔함: 그리스 여섯 명 + 스토리에서 만난 동양의 셋 */
-function summonPool(st?: StoryStage): string[] {
-  if (QA_MODE) return [];
-  const toIds = (names: Set<string>) => PHILOSOPHERS.filter((p) => p.tier === 1 && names.has(p.realName)).map((p) => p.id);
-  if (st?.pool) return toIds(new Set(st.pool)); // 시작 튜토리얼은 판마다 정해진 철학자만
-  const names = new Set(START_POOL);
-  for (const st of STORY) if ((progress.storyCleared ?? []).includes(st.id)) for (const n of st.unlock ?? []) names.add(n);
-  return PHILOSOPHERS.filter(p=>(p.tier===1 && names.has(p.realName)) || (p.tier>1 && (progress.cards[p.id]??0)>0)).map(p=>p.id);
-}
-/** 기억이 열린 시대: 지금 진행 중인 장까지 */
-function openEras(): Set<string> {
-  if (isAdmin()) return new Set(PHILOSOPHERS.map(p => p.era));
-  const done = progress.storyCleared ?? [];
-  const next = STORY.find((s) => !done.includes(s.id));
-  const upto = QA_MODE || !next ? Math.max(...CHAPTERS.map(c=>c.n)) : next.chapter;
-  return new Set(CHAPTERS.filter((c) => c.n <= upto).map((c) => c.era));
-}
 setCardFilter((p) => openEras().has(p.era) || !!progress.cards[p.id]);
 const storyOpen = (st: StoryStage) => { const i = STORY.indexOf(st); return (st.base !== 'S6' || modernUnlocked()) && (QA_MODE || i === 0 || (progress.storyCleared ?? []).includes(STORY[i - 1].id)); };
 let storyChapter = -1;
@@ -2017,6 +1471,7 @@ let replayTutorial = false;
 let journeySelectedId = '';
 let journeyFocusInitial = true;
 function renderStory(box: HTMLElement) {
+  const useField = fieldEnabled(); // ?field=0 이면 기존 DOM 지도
   if (!replayTutorial && (progress.storyCleared ?? []).some(id => STORY_MAP.get(id)?.chapter) && !(progress.storyCleared ?? []).includes('A5')) {
     progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), 'A1','A2','A3','A4','A5'])]; saveProgress(progress);
   }
@@ -2037,6 +1492,7 @@ function renderStory(box: HTMLElement) {
     shortcuts.innerHTML = CHAPTERS.filter(ch => ch.n > 0).map(ch => `<button type="button" data-chapter="${ch.n}">${ch.n}장 ${ch.era}</button>`).join('');
     box.appendChild(shortcuts);
     shortcuts.querySelectorAll<HTMLButtonElement>('[data-chapter]').forEach(button => button.onclick = () => {
+      if (useField) { const st = STORY.find(s => s.chapter === Number(button.dataset.chapter) && storyOpen(s)); if (st) { journeySelectedId = st.id; journeyFocusInitial = false; renderHome(); } return; }
       const era = wrapEra(button.dataset.chapter!);
       if (era) wrap.scrollTo({top:era.offsetTop,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
     });
@@ -2044,7 +1500,7 @@ function renderStory(box: HTMLElement) {
   const wrap = document.createElement('div'); wrap.className = 'journey roam-map pixel-journey long-journey'; wrap.setAttribute('aria-label','튜토리얼부터 6장까지 이어지는 여정 지도');
   wrap.dataset.era = '고대';
   const world = document.createElement('div'); world.className = 'journey-world long-journey-world';
-  for (const chapter of [...CHAPTERS].reverse()) {
+  for (const chapter of useField ? [] : [...CHAPTERS].reverse()) {
     const stages = STORY.filter(st => st.chapter === chapter.n);
     const era = document.createElement('section'); era.className = `journey-era ${chapter.n === 0 ? 'tutorial-era' : ''}`; era.dataset.chapter = String(chapter.n);
     era.style.backgroundImage = `linear-gradient(180deg,rgba(255,251,236,.10),rgba(255,251,236,.18)),url(${chapter.n <= 1 ? '/journey/greek-tile-map.png' : journeyArt(chapter.era)})`;
@@ -2072,7 +1528,19 @@ function renderStory(box: HTMLElement) {
     });
     era.appendChild(track); world.appendChild(era);
   }
-  wrap.appendChild(world); box.appendChild(wrap);
+  if (useField) mountJourneyField(box, {
+    stages: STORY, chapters: CHAPTERS, selectedId: selectedStage.id,
+    sprite: () => spriteFor(faceId),
+    status: (st) => {
+      const storyReady = storyOpen(st), unlocked = storyReady && (diffId === 'easy' || diffUnlocked(st.base, diffId));
+      const cleared = diffId === 'easy' ? done.includes(st.id) : progress.cleared.includes(clearKey(st.base, diffId));
+      return { cleared, unlocked, lockText: diffId !== 'easy' && storyReady ? '먼저 이전 난이도로 이 거점을 클리어하세요' : st.base === 'S6' && !modernUnlocked() ? modernLockText() : '앞선 기억을 먼저 되찾아 주세요' };
+    },
+    select: (id) => { journeySelectedId = id; journeyFocusInitial = false; renderHome(); },
+    enter: () => document.querySelector<HTMLButtonElement>('#j-go')?.click(),
+    openTab: switchTab,
+  });
+  else { wrap.appendChild(world); box.appendChild(wrap); }
   const wrapEra = (chapter: string) => wrap.querySelector<HTMLElement>(`.journey-era[data-chapter="${chapter}"]`);
   const bar = document.createElement('div'); bar.className = 'j-bar journey-destination';
   bar.innerHTML = `<p class="destination-status" role="status"></p><div class="destination-actions"><button id="j-go" class="chunky mint j-go"></button><button class="journey-info" aria-label="선택한 목적지 상세 정보">정보</button></div><div class="j-prog"><small>쉬움 기억 ${done.length}/${STORY.length}</small><i style="--v:${done.length/STORY.length}"></i><button class="journey-current">다음 열린 거점</button></div>`;
@@ -2255,66 +1723,9 @@ $('replay-start').onclick = () => {
 
 
 // =============== 결과 화면: 보상 · 📺2배 · ▶다음 (한 판 더 하게 만드는 동선) ===============
-/** 시대 전환 연출: 시대 화풍이 종이처럼 쓸고 지나가며 이름이 뜬다 */
-const ERA_LABEL: Record<string, string> = { 고대: '고대 · 그리스', 중세: '중세 · 신앙의 시대', 동양: '동양 · 백가쟁명', 근대: '근대 · 이성의 시대', 근현대: '근현대 · 언어와 실존', 현대: '현대 · 연결과 책임' };
-let lastEra = '';
-function eraWipe(era: string, title: string, when: string) {
-  const changed = era !== lastEra; lastEra = era;
-  const ov = document.createElement('div');
-  ov.className = `era-wipe ${changed ? 'big' : ''} era-${era}`;
-  ov.innerHTML = `<div class="ew-art" style="background-image:url(${eraSky(era)})"></div><div class="ew-text">${changed ? `<small>${ERA_LABEL[era] ?? era}</small>` : ''}<b>${title}</b>${when ? `<em>${when}</em>` : ''}</div>`;
-  document.body.appendChild(ov);
-  setTimeout(() => ov.remove(), changed ? 2100 : 1500);
-}
-
-function resultPanel(g: Game, html: string) {
-  const base: { gonoe?: number; gems?: number } = g.raid ? raidReward(g.raidDamage) : { gonoe: Math.round(battleReward(g.wave, g.over === 'win') * g.diff.reward) };
-  const win = g.over === 'win';
-  const story = g.storyId ? STORY_MAP.get(g.storyId) : undefined;
-  const nextLabel = g.raid ? '' : story ? (win || story.chapter === 0 ? '▶ 다음 이야기' : '↻ 다시 도전') : g.oneTool ? '' : win ? '▶ 다음 스테이지' : '↻ 다시 도전';
-  const ov = document.createElement('div');
-  ov.className = 'overlay result';
-  const mvp = [...g.towers].sort((a, b) => gradeRank(PHIL.get(b.philId)!) - gradeRank(PHIL.get(a.philId)!))[0];
-  const hero = mvp ? `<div class="res-hero ${win ? 'win' : 'lose'}" style="background-image:url(${eraSky(g.stage.era)})">
-      ${win ? '<i class="cf"></i><i class="cf"></i><i class="cf"></i><i class="cf"></i><i class="cf"></i><i class="cf"></i>' : ''}
-      <img src="${heroPortrait(mvp.philId)}" alt=""><span class="res-ribbon">${win ? '논파 성공' : g.raid ? '레이드 종료' : '다음엔 꼭'}</span><span class="res-mvp">MVP · ${shortName(PHIL.get(mvp.philId)!.name)}</span></div>` : '';
-  ov.innerHTML = `<div class="pop">${hero}${html}
-    <div class="res-reward">🎁 보상 <b>${rewardText(base)}</b></div>
-    <button class="chunky pink res-double">${adFree(progress) ? '✨ 보상 2배 받기 (광고 제거)' : `📺 광고 보고 보상 2배 (오늘 ${adsLeft(progress)}회)`}</button>
-    <div class="res-btns"><button class="chunky blue res-home">🏠 홈</button>${nextLabel ? `<button class="chunky gold res-next">${nextLabel}</button>` : ''}</div>
-    ${claimable(progress) ? `<p class="hint">📋 받을 수 있는 임무 보상이 있어요!</p>` : ''}</div>`;
-  document.body.appendChild(ov);
-  let double = false;
-  const dbl = ov.querySelector('.res-double') as HTMLButtonElement;
-  if (!adFree(progress) && adsLeft(progress) <= 0) dbl.disabled = true;
-  dbl.onclick = () => watchAd(() => { double = true; dbl.disabled = true; dbl.textContent = '✅ 보상 2배 적용!'; (ov.querySelector('.res-reward b') as HTMLElement).textContent = rewardText({ gonoe: (base.gonoe ?? 0) * 2, gems: (base.gems ?? 0) * 2 }); });
-  (ov.querySelector('.res-home') as HTMLElement).onclick = () => { ov.remove(); endBattle({ double }); };
-  const nx = ov.querySelector('.res-next') as HTMLElement | null;
-  if (nx) nx.onclick = () => { ov.remove(); endBattle({ double, next: true }); };
-}
-
-/** 광고(시험판): 광고 제거·패스가 있으면 바로, 없으면 3초 광고 화면 뒤 보상 */
-function watchAd(done: () => void) {
-  if (adFree(progress)) { done(); return; }
-  if (adsLeft(progress) <= 0) { toast('오늘 볼 수 있는 광고를 다 봤어요'); return; }
-  const ov = document.createElement('div');
-  ov.className = 'ad-mock';
-  ov.innerHTML = `<div class="ad-box"><small>광고 · 시험판 예시</small><b>🏛 여기에 광고가 나와요</b><p class="ad-count">3</p><p class="hint">광고 제거 상품을 사면 이 화면 없이 바로 보상을 받아요</p></div>`;
-  document.body.appendChild(ov);
-  let n = 3;
-  const t = window.setInterval(() => { n--; (ov.querySelector('.ad-count') as HTMLElement).textContent = String(n); if (n <= 0) { clearInterval(t); ov.remove(); useAd(progress); saveProgress(progress); done(); } }, 1000);
-}
+initAd({ toast });
 
 // =============== 👑 보스 레이드: 하루 3번, 90초 동안 거대 보스에게 준 피해로 보상 ===============
-const RAID_TIERS = [20_000, 100_000, 300_000, 1_000_000, 3_000_000];
-const RAID_GONOE = [300, 1000, 2500, 5000, 9000, 15000];
-const RAID_GEMS = [0, 10, 20, 40, 70, 120];
-const raidTier = (d: number) => RAID_TIERS.filter((t) => d >= t).length;
-function raidReward(d: number) { const k = raidTier(d); return { gonoe: RAID_GONOE[k], gems: RAID_GEMS[k] }; }
-function raidTierText(d: number) {
-  const k = raidTier(d);
-  return `등급 <b>${['🥉 입문', '🥈 수련', '🥇 숙련', '🏅 대가', '👑 현자', '✨ 전설'][k]}</b>${k < RAID_TIERS.length ? ` · 다음 등급까지 ${(RAID_TIERS[k] - Math.round(d)).toLocaleString()}` : ''}`;
-}
 /** 요일마다 바뀌는 레이드 보스 */
 function raidBoss() { const pool = STAGES.filter(s => s.id !== 'S6' || modernUnlocked()); const s = pool[new Date().getDay() % pool.length]; return { stage: s, name: `${s.boss20}` }; }
 function startRaid() {
@@ -2331,43 +1742,14 @@ function startRaid() {
   alertBox(`<h2>👑 보스 레이드</h2><p>오늘의 보스: <b>${name}</b></p><p>골드 1,500과 무료 소환권 15장으로 진형을 짜고 <b>레이드 시작</b>을 누르세요.<br>90초 동안 준 피해만큼 보상을 받아요. 멘탈은 깎이지 않아요.</p><p class="hint">최고 기록 ${(progress.raidBest ?? 0).toLocaleString()}</p>`);
 }
 
-// =============== 📋 오늘의 할 일: 출석 · 구독 패스 · 일일 임무 ===============
-function missionsPanel() {
-  const d = daily(progress);
-  const streak = attendStreak(progress);
-  const dayIdx = canAttend(progress) ? streak % 7 : (streak - 1 + 7) % 7;
-  const ov = document.createElement('div');
-  ov.className = 'overlay missions-ov';
-  const allDone = MISSIONS.every((m) => d.claimed.includes(m.id));
-  ov.innerHTML = `<div class="pop"><h2>📋 오늘의 할 일</h2>
-    <div class="attend"><b>출석 ${canAttend(progress) ? '' : '✅'}</b><div class="att-row">${ATTEND.map((r, i) => `<span class="${i < dayIdx || (!canAttend(progress) && i === dayIdx) ? 'got' : i === dayIdx && canAttend(progress) ? 'today' : ''}"><small>${i + 1}일</small>${rewardText(r)}</span>`).join('')}</div>
-      ${canAttend(progress) ? '<button class="chunky gold" data-act="attend">출석 보상 받기</button>' : ''}</div>
-    ${passOn(progress) ? `<div class="pass-box">📜 구독 패스 (${passDaysLeft(progress)}일 남음) · 매일 ${rewardText(PASS_DAILY)} ${d.day && progress ? '' : ''}<button class="chunky pink" data-act="pass" ${claimPassOk() ? '' : 'disabled'}>${claimPassOk() ? '받기' : '받음'}</button></div>` : '<div class="pass-box off">📜 구독 패스가 있으면 매일 💎50 + 🤔2,000, 광고 제거, 고뇌 2배 <button class="chunky blue" data-act="shop">보러 가기</button></div>'}
-    <div class="m-list">${MISSIONS.map((m) => { const c = Math.min(d.count[m.key], m.goal), got = d.claimed.includes(m.id); return `<div class="m-row ${got ? 'got' : missionDone(progress, m) ? 'ready' : ''}"><div><b>${m.text}</b><small>${c}/${m.goal} · ${rewardText(m.reward)}</small><i class="bar"><i style="width:${(c / m.goal) * 100}%"></i></i></div><button class="chunky ${got ? '' : 'gold'}" data-m="${m.id}" ${got || !missionDone(progress, m) ? 'disabled' : ''}>${got ? '완료' : '받기'}</button></div>`; }).join('')}
-      <div class="m-row all ${d.claimed.includes('all') ? 'got' : allDone ? 'ready' : ''}"><div><b>🎉 오늘 임무 모두 완료</b><small>${rewardText(ALL_CLEAR)}</small></div><button class="chunky gold" data-m="all" ${allDone && !d.claimed.includes('all') ? '' : 'disabled'}>${d.claimed.includes('all') ? '완료' : '받기'}</button></div></div>
-    <button class="primary chunky blue close">닫기</button></div>`;
-  ov.onclick = (e) => {
-    const el = e.target as HTMLElement;
-    if (el === ov || el.classList.contains('close')) { ov.remove(); renderHome(); return; }
-    let r = null;
-    if (el.dataset.act === 'attend') r = attend(progress);
-    if (el.dataset.act === 'pass') r = claimPass(progress);
-    if (el.dataset.act === 'shop') { ov.remove(); switchTab('shop'); return; }
-    if (el.dataset.m) r = claimMission(progress, el.dataset.m);
-    if (r) { saveProgress(progress); refreshWallet(); sfx.reveal(5); toast(`🎁 ${rewardText(r)}`); ov.remove(); missionsPanel(); }
-  };
-  document.body.appendChild(ov);
-}
-const claimPassOk = () => passOn(progress) && claimable(progress) >= 0 && (progress as unknown as { sub?: { passDay?: string } }).sub?.passDay !== daily(progress).day;
-
-/** 탭 빨간 점: 할 일이 있는 곳을 알려 준다 */
-function refreshBadges() {
-  const set = (tab: string, on: boolean) => document.querySelector(`#tabs [data-tab=${tab}]`)?.classList.toggle('badge-on', on);
-  set('stages', claimable(progress) > 0);
-  set('gacha', progress.gonoe >= CARD_COST);
-  set('room', progress.gonoe >= tapUpgradeCost(progress));
-}
-setInterval(() => { if (me) refreshBadges(); }, 1500);
+initDaily({ toast, refreshWallet, renderHome, switchTab });
+initTcg({ toast, showCard });
+initGacha({ pedArt, openEras });
+initResult({ endBattle, eraSky, heroPortrait, shortName });
+initTutorial({ getGame: () => game, getTab: () => currentTab });
+initHome({ easyAllCleared, setDiffId: (id) => { diffId = id; }, renderStory, startBattle, shortName });
+initRecipes({ game: () => game, lockReason, doMerge, resetSynthKey: () => { lastSynthKey = ''; }, shortName, pedArt, summonPool });
+initShop({ toast, refreshWallet });
 
 // ---------- 회원가입 (서버 계정) ----------
 $('signup').onclick = async () => {
@@ -2375,14 +1757,13 @@ $('signup').onclick = async () => {
   const err = $('login-err');
   if (!/^[a-zA-Z0-9]{3,12}$/.test(id)) { err.textContent = '아이디는 영문·숫자 3~12자로 만들어 주세요'; shakeEl($('login-card')); return; }
   if (pw.length < 4) { err.textContent = '비밀번호는 4자 이상이에요'; shakeEl($('login-card')); return; }
-  if (ACCOUNTS.some((a) => a.id === id.toLowerCase())) { err.textContent = '이미 쓰고 있는 아이디예요'; return; }
   err.textContent = '☁️ 가입 중…';
   const r = await cloudSignUp(id, pw);
   if (!r.ok) { err.textContent = r.msg; shakeEl($('login-card')); return; }
   err.textContent = '';
   sfx.reveal(5);
   lastPw = pw;
-  enter({ id, hash: '', role: 'fresh', label: '일반 계정' });
+  enter({ id, role: 'fresh', label: '서버 계정' });
   void syncCloud(id, pw);
 };
 

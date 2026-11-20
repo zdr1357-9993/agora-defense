@@ -1,0 +1,14 @@
+{
+  "_설명": "전투 구간 강화 수치 원본(손으로 관리, xlsx→JSON 생성물 아님). src/data.ts UPGRADE 가 읽는다. 설명 docs/UPGRADE_BANDS.md. 값을 바꾸면 qa/rules/build-a2-rules.mjs 의 결정 고정 검사도 갱신한다.",
+  "_결정": "2026-11-20 현배 확정: 정답은 이 값(RD-T024 이후). 강화 실패는 없음 — 골드가 있으면 항상 성공(의도).",
+  "_이력": "2026-11-16 RD-T024 강화는 약하게: baseCost ×1.5(40/200/650→60/300/975), perLevel ×0.75(0.35→0.2625)",
+  "maxLevel": 5,
+  "perLevel": 0.2625,
+  "plusCostMult": 1.5,
+  "provisionalCosts": true,
+  "bands": [
+    { "id": "common", "label": "1–3성", "minTier": 1, "maxTier": 3, "baseCost": 60 },
+    { "id": "rare", "label": "4–5성", "minTier": 4, "maxTier": 5, "baseCost": 300 },
+    { "id": "high", "label": "6–7성", "minTier": 6, "maxTier": 7, "baseCost": 975 }
+  ]
+}

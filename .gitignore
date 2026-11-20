@@ -2,3 +2,7 @@ node_modules
 dist
 dist-stage
 src/data/
+e2e-results.*
+test-results/
+playwright-report/
+qa/.env.testrail
