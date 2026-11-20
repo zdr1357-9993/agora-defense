@@ -252,7 +252,7 @@ export class Game {
     const eligible = fielded.filter((t) => t.level < UPGRADE.maxLevel);
     const costOf = (t: Tower) => {
       const p = PHIL.get(t.philId)!;
-      return Math.round(band.baseCost * (p.plus ? 1.5 : 1) * (t.level + 1));
+      return Math.round(band.baseCost * (p.plus ? UPGRADE.plusCostMult : 1) * (t.level + 1));
     };
     return { band, fielded, eligible, totalCost: eligible.reduce((sum, t) => sum + costOf(t), 0), costOf };
   }
@@ -270,7 +270,7 @@ export class Game {
     const p = PHIL.get(t.philId)!;
     const band = UPGRADE.bands.find((x) => p.tier >= x.minTier && p.tier <= x.maxTier);
     if (!band || t.level >= UPGRADE.maxLevel) return null;
-    return Math.round(band.baseCost * (p.plus ? 1.5 : 1) * (t.level + 1));
+    return Math.round(band.baseCost * (p.plus ? UPGRADE.plusCostMult : 1) * (t.level + 1));
   }
 
   upgrade(t: Tower) {

@@ -5,6 +5,7 @@ import stagesJson from './data/stages.json';
 import ratesJson from './data/rates.json';
 import combatJson from './data/combat.json';
 import archiveJson from '../data/roster-v2-archive.json';
+import upgradeJson from '../data/upgrade-bands.json';
 
 export interface Philosopher {
   /** 표시 이름 (오마주 이름 적용) / realName: 내부 키로 쓰는 실제 이름 */
@@ -106,16 +107,17 @@ export const TIER_STATS = [
   { dmg: 2500, range: 3.1, cooldown: 0.5 }, // 근원
 ] as const;
 
-/** 전투 강화. 비용은 임시 밸런스값이며 여기서 조정한다. 비용은 유닛 1명·1회 기준. 비용 ×1.5·효과 ×0.75 (이전 40/200/650, 0.35). */
-export const UPGRADE = {
-  maxLevel: 5,
-  perLevel: 0.2625, // 0.35 × 0.75 (2026-11-16 현배 결정: 강화는 약하게. results/rd-dev-v4/upgrade3·4-summary.md)
-  provisionalCosts: true,
-  bands: [
-    { id: 'common', label: '1–3성', minTier: 1, maxTier: 3, baseCost: 60 },
-    { id: 'rare', label: '4–5성', minTier: 4, maxTier: 5, baseCost: 300 },
-    { id: 'high', label: '6–7성', minTier: 6, maxTier: 7, baseCost: 975 },
-  ],
-} as const;
+/** 전투 강화. 수치 원본은 data/upgrade-bands.json(손으로 관리). 비용은 유닛 1명·1회 기준, + 등급은 plusCostMult 배.
+ * 2026-11-20 현배 확정: 60/300/975G·레벨당 +26.25%(RD-T024 이전 40/200/650, 0.35). 강화 실패 없음(의도). */
+export const UPGRADE: {
+  maxLevel: number; perLevel: number; plusCostMult: number; provisionalCosts: boolean;
+  bands: { id: string; label: string; minTier: number; maxTier: number; baseCost: number }[];
+} = {
+  maxLevel: upgradeJson.maxLevel,
+  perLevel: upgradeJson.perLevel,
+  plusCostMult: upgradeJson.plusCostMult,
+  provisionalCosts: upgradeJson.provisionalCosts,
+  bands: upgradeJson.bands.map((b) => ({ id: b.id, label: b.label, minTier: b.minTier, maxTier: b.maxTier, baseCost: b.baseCost })),
+};
 /** 스테이지 카운터가 보스에게 주는 배율 */
 export const COUNTER_MULT = 3;

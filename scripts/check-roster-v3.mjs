@@ -40,5 +40,14 @@ try {
  const old={cards,seen:previous.map(p=>p.id),favorite:'T101',skinOn:{T101:'night'},skins:['T101:night'],loadout:{T101:'cup'},cardXp:{T101:.9},gonoe:1234,gems:567,cleared:['S1:hard'],idv2:true};
  mem.set('agora_progress_v3:regression',JSON.stringify(old));const loaded=save.loadProgress();assert.deepEqual(loaded.cards,cards);assert.equal(loaded.favorite,'T101');assert.deepEqual(loaded.skinOn,old.skinOn);assert.deepEqual(loaded.cardXp,old.cardXp);
  const adopted=save.adoptProgress({...loaded,cards:{T101:52}});assert.equal(adopted.cards.T101,52);assert.equal(adopted.cards.T106,1);assert.equal(adopted.gems,567);assert.equal(save.loadProgress().cards.T106,1);assert.equal(adopted.favorite,'T101');
+ // 강화 수치 데이터(data/upgrade-bands.json, RD-T055): 키·음수·구간이 모든 성 수를 빈틈·겹침 없이 덮는지
+ {const U=JSON.parse(fs.readFileSync('data/upgrade-bands.json','utf8'));
+  for(const k of ['maxLevel','perLevel','plusCostMult','provisionalCosts','bands'])assert.ok(k in U,`upgrade-bands.json: ${k} 없음`);
+  assert.ok(Number.isInteger(U.maxLevel)&&U.maxLevel>=1,'maxLevel');for(const k of ['perLevel','plusCostMult'])assert.ok(typeof U[k]==='number'&&U[k]>=0,`${k} 음수/숫자 아님`);
+  const tiers=[...new Set(P.map(p=>p.tier))].sort((a,b)=>a-b);const covered=new Map();
+  for(const b of U.bands){for(const k of ['id','label','minTier','maxTier','baseCost'])assert.ok(k in b,`band ${b.id}: ${k} 없음`);assert.ok(b.baseCost>=0&&b.minTier<=b.maxTier,`band ${b.id} 값`);for(let t=b.minTier;t<=b.maxTier;t++){assert.ok(!covered.has(t),`성 ${t} 구간 겹침(${covered.get(t)}·${b.id})`);covered.set(t,b.id);}}
+  for(const t of tiers)assert.ok(covered.has(t),`성 ${t} 을 덮는 강화 구간 없음`);
+  for(let t=Math.min(...covered.keys());t<=Math.max(...covered.keys());t++)assert.ok(covered.has(t),`강화 구간 빈틈: 성 ${t}`);
+  console.log(`PASS: upgrade-bands.json ${U.bands.length}구간이 성 ${tiers.join('·')} 을 빈틈·겹침 없이 덮음, 음수 없음`);}
  console.log('PASS: 68 cards / 60 recipes; strict + ranks; chronology; recursive costs; every recipe consumes exact quantities; all skills/FX; all tutorial/reward pools; all probability bands; first-pull root; local/cloud archive compatibility');
 }finally{await server.close();}
