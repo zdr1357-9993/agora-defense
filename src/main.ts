@@ -19,6 +19,7 @@ import { SKILLS, skillMode, skillModeLabel } from './skills';
 import { sfx, isMuted, toggleMute } from './sfx';
 import { daily, bump, MISSIONS, ALL_CLEAR, ATTEND, claimable, claimMission, missionDone, rewardText, canAttend, attend, attendStreak, adFree, adFreeLabel, passOn, passDaysLeft, claimPass, PASS_DAILY, adsLeft, useAd, give, RAID_PER_DAY } from './live';
 import { cloudSignUp, cloudLogin, cloudLoad, cloudSave, flush as cloudFlush, cloudLogout, cloudState, cloudMsg, cloudRole, cloudBaseRevision, cloudMarkSynced, setConflictHook, setClampHook, cloudFailKind } from './cloud';
+import { setFriendsAccount, stopFriends } from './friends';
 import { decideSync } from './syncrule';
 import type { Progress } from './save';
 import { setSaveHook, adoptProgress, setAccount, hasSave, loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, awakenLevel, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL, AWAKEN_MAX, AWAKEN_EVERY } from './save';
@@ -1272,6 +1273,7 @@ function enter(acc: Account) {
   backdropSelect.value = progress.battleBackdrop ?? 'era';
   spriteUrl.clear();
   $('who').textContent = `👤 ${acc.id}${acc.role === 'master' ? ' 👑' : ''}`;
+  setFriendsAccount(acc.id, !acc.offline && cloudState === 'ok');
   $('admin-bar').classList.toggle('hidden', acc.role !== 'master');
   $('login').classList.add('hidden');
   if (!progress.prologueDone && !QA_MODE && acc.role !== 'veteran') playPrologue(); else welcome();
@@ -1338,6 +1340,7 @@ async function refreshRole() {
 async function syncCloud(id: string, pw: string) {
   const ok = await cloudLogin(id, pw, false);
   if (ok) {
+    setFriendsAccount(id, true);
     await refreshRole();
     const remote = await cloudLoad();
     // 승자는 기기 시계가 아니라 서버 revision 으로 정한다 (src/syncrule.ts · docs/SAVE_CONFLICT.md)
@@ -1357,7 +1360,7 @@ function cloudBadge() {
 }
 // 설정을 열 때마다 서버 상태를 다시 표시하고, 실패 상태면 한 번 더 연결을 시도한다
 let lastPw = '';
-$('logout').onclick = () => { if (window.confirm('로그아웃할까요?')) { void cloudLogout(); cloudBadge(); $('settings').classList.add('hidden'); rememberLogin(null); showLogin(); } };
+$('logout').onclick = () => { if (window.confirm('로그아웃할까요?')) { stopFriends(); void cloudLogout(); cloudBadge(); $('settings').classList.add('hidden'); rememberLogin(null); showLogin(); } };
 $('admin-gems').onclick = () => { progress.gems += 10000; progress.gonoe += 100000; progress.tickets += 10; saveProgress(progress); refreshWallet(); toast('👑 재화 지급 완료'); };
 $('admin-unlock').onclick = () => { for (const s of STAGES) for (const d of DIFFICULTIES) { const k = clearKey(s.id, d.id); if (!progress.cleared.includes(k)) progress.cleared.push(k); } for (const s of STAGES) if (!progress.cleared.includes(s.id)) progress.cleared.push(s.id); saveProgress(progress); renderHome(); toast('👑 전 스테이지·난이도 클리어 처리'); };
 $('admin-cards').onclick = () => { for (const p of PHILOSOPHERS) { progress.cards[p.id] = (progress.cards[p.id] ?? 0) + 16; if (!progress.seen.includes(p.id)) progress.seen.push(p.id); } for (const it of ITEMS) progress.items[it.id] = (progress.items[it.id] ?? 0) + 1; saveProgress(progress); toast('👑 모든 카드 +16장 · 도구 전부 지급'); };
