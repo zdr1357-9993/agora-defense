@@ -31,8 +31,10 @@ export const RECRUIT_BANDS = [
   { id: 'high', label: '6–7성', min: 6, max: 7, cost: 6 },
 ] as const;
 
-// QA 모드: 주소 뒤에 ?qa=1 (전 스테이지 해금·재화 지급). 기본은 처음 시작하는 상태
-export let QA_MODE = typeof location === 'undefined' ? false : new URLSearchParams(location.search).get('qa') === '1';
+// QA 모드: 전 스테이지 해금·재화 지급. 기본은 처음 시작하는 상태(false).
+// 켜는 길은 main.ts 에만 있다: master 역할(enter()/역할 갱신의 setQA), 그리고 주소 ?qa=1 은 VITE_QA_ROUTES=1 빌드(개발)에서만(RD-T054).
+// 여기서 URL·import.meta 를 읽지 않는다(노드 시뮬레이터가 이 파일을 CJS 로 불러 쓴다).
+export let QA_MODE = false;
 /** 마스터 계정 로그인 시 QA(전부 해금) 권한 */
 export function setQA(on: boolean) { QA_MODE = on; }
 /** 전투 시작 골드: 마스터(QA) 10000, 일반 200 */

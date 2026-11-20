@@ -9,6 +9,8 @@ if (!fs.existsSync(root)) { console.error(`BLOCKED: ${root} 이 없습니다 (�
 const rules = [
   { name: 'QA 경로 qa-screen', re: /qa-screen/ },
   { name: 'QA 경로 boss-preview', re: /boss-preview/ },
+  { name: 'QA 경로 qa-a2', re: /qa-a2|__qaA2/ },
+  { name: 'QA 모드 주소 파라미터 ?qa=1 읽기', re: /get\(\s*["'`]qa["'`]\s*\)/ },   // RD-T054
   { name: 'JWT 형태 토큰', re: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/ },
   { name: 'Supabase 비밀 키', re: /sb_secret_[A-Za-z0-9_-]+|service_role/ },
   { name: '개인 키', re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },

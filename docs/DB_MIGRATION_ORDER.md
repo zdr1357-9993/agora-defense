@@ -8,6 +8,7 @@
 | 2 | **1단계 적용** | `supabase/migrations/20261120_1_additive.sql` | 오류 없음 |
 | 3 | 1단계 확인 | `supabase/ops/verify_1.sql` | 전부 `true` (`still_direct_update_for_old_client` 도 true = 옛 클라이언트 아직 동작) |
 | 4 | master 지정(선택) | `supabase/ops/grant_master.sql` | 이메일·created_at 을 보고 내 계정일 때만 주석 풀어 실행 |
+| 4.5 | 배포 전 번들 점검: `npm run build` 뒤 `node scripts/check-prod-bundle.mjs dist` 가 **PASS**(QA 경로·`?qa=1`·비밀값 0건, RD-T054) | 게임 저장소 | FAIL 이면 배포하지 않는다 |
 | 5 | **새 클라이언트 배포**(develop → stage 확인 → main) | 게임 저장소 | 새 클라이언트로 로그인·저장·불러오기 확인 |
 | 6 | 옛 클라이언트가 빠질 시간 두기(열린 탭 새로고침 — 하루 정도) | — | `precheck_2.sql` 의 `rows_saved_since_stage1` 증가 |
 | 7 | 2단계 전 점검 | `supabase/ops/precheck_2.sql` | 1단계 객체 true, master 목록 확인 |

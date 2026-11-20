@@ -77,6 +77,9 @@ import { openTcg, tcgCard, initTcg } from './screens/tcg';
 import { renderShop, initShop } from './screens/shop';
 import { raidReward, raidTierText } from './screens/raid';
 import { me, setMe, isAdmin } from './state/account';
+// 주소 ?qa=1 로 QA 모드 켜기: VITE_QA_ROUTES=1 빌드(개발)에서만(RD-T054). 운영 빌드에서는 이 판정이 false 로 접혀 URL 을 읽는 코드가 남지 않는다.
+const QA_PARAM = !!import.meta.env.VITE_QA_ROUTES && new URLSearchParams(location.search).get('qa') === '1';
+setQA(QA_PARAM);
 const difficultyName = (d: { id: string; name: string }) => isAdmin() && d.id === 'challenge' ? '챌린지' : d.name;
 
 const clearedStages = () => STAGES.filter((s) => progress.cleared.includes(s.id)).length;
@@ -1260,7 +1263,7 @@ function enter(acc: Account) {
   setMe(acc);
   rememberLogin(acc.id);
   setAccount(acc.id);
-  setQA(acc.role === 'master' || new URLSearchParams(location.search).get('qa') === '1');
+  setQA(acc.role === 'master' || QA_PARAM);
   const isNew = !hasSave();
   freshDevice = isNew;
   setProgress(loadProgress());
@@ -1328,7 +1331,7 @@ async function refreshRole() {
   const r = await cloudRole();
   if (!me || !r || r === me.role) return;
   setMe({ ...me, role: r, offline: false });
-  setQA(r === 'master' || new URLSearchParams(location.search).get('qa') === '1');
+  setQA(r === 'master' || QA_PARAM);
   $('who').textContent = `👤 ${me.id}${r === 'master' ? ' 👑' : ''}`;
   $('admin-bar').classList.toggle('hidden', r !== 'master');
 }
