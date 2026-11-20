@@ -139,47 +139,44 @@ test('A2-2 조합 직후 새로고침 100회: 이중 지급·이중 소모 0회'
   expect(weird, JSON.stringify(weird.slice(0, 2))).toEqual([]);
 });
 
-// 강화: 구간(1–3성·4–5성·6–7성) × plus 여부 × 현재 레벨 0~4, + Lv.5 제외 + 대기석 제외 + 여러 명 합산
-const BANDS = [{ id: 'common', min: 1, max: 3 }, { id: 'rare', min: 4, max: 5 }, { id: 'high', min: 6, max: 7 }];
+// 강화: 구간 × plus 여부 × 현재 레벨 0~5, + 대기석 제외 + 여러 명 합산. 기대값은 규칙표(a2-rules.json ← data/upgrade-bands.json)만 쓴다.
+type UpRule = { maxLevel: number; plusCostMult: number; bands: { id: string; minTier: number; maxTier: number; baseCost: number }[]; failureRule: string; decisionLock: { ok: boolean; errors: string[] } };
+const UP: UpRule = RULES.upgrade;
 const pickPhil = (min: number, max: number, plus: boolean) => ROSTER.philosophers.find((p: any) => p.tier >= min && p.tier <= max && !!p.plus === plus && !p.hidden)?.id as string | undefined;
-// 참고 대조값(오라클 아님 — 데이터에 강화 규칙이 없어 공식 판정은 Blocked): 설계 문서와 코드 상수
-const DOC_BASE: Record<string, number> = { common: 40, rare: 200, high: 650 };   // docs/UPGRADE_BANDS.md
-const codeBase = (): Record<string, number> => {
-  const s = fs.readFileSync('src/data.ts', 'utf8');
-  return Object.fromEntries([...s.matchAll(/id:\s*'(\w+)'[^}]*baseCost:\s*(\d+)/g)].map((m) => [m[1], Number(m[2])]));
-};
 
-test('A2-3 강화: 소모 골드·레벨 변화 (규칙 근거 없음 → 관측·참고 대조)', async ({ page }, info) => {
+test('A2-3 강화: 소모 골드·레벨 변화가 규칙표(data/upgrade-bands.json)와 같다', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', '데스크톱만');
   test.setTimeout(300_000);
   await openBattle(page);
-  const CODE = codeBase();
   const rows: any[] = [];
   const run = async (name: string, band: string, ids: string[], levels: number[], benchFlags: boolean[], plusFlags: boolean[]) => {
     const s = await seed(page, ids, { levels, bench: benchFlags, gold: 100000 });
     const pre = await board(page);
-    if (s !== true || pre.towers.length !== ids.length) { rows.push({ name, verdict: 'Blocked', why: '사전 검증 실패' }); return; }
+    if (s !== true || pre.towers.length !== ids.length || pre.towers.some((t, i) => t.bench !== !!benchFlags[i] || t.level !== levels[i])) { rows.push({ name, verdict: 'Blocked', why: '사전 검증 실패' }); return; }
     await page.locator(`[data-upgrade-band=${band}]`).dispatchEvent('click');
     const post = await board(page);
     const spent = pre.gold - post.gold;
-    const mult = (i: number) => (plusFlags[i] ? 1.5 : 1) * (levels[i] + 1);
-    const eligible = ids.map((_, i) => i).filter((i) => !benchFlags[i] && levels[i] < 5);
-    const docCost = eligible.reduce((a, i) => a + Math.round(DOC_BASE[band] * mult(i)), 0);
-    const codeCost = eligible.reduce((a, i) => a + Math.round(CODE[band] * mult(i)), 0);
-    const levelOk = post.towers.every((t, i) => t.level === levels[i] + (eligible.includes(i) ? 1 : 0));
-    rows.push({ name, band, benchBefore: pre.towers.map((t) => t.bench), spent, docCost, codeCost, levelsBefore: levels, levelsAfter: post.towers.map((t) => t.level), levelOk, matchDoc: spent === docCost && levelOk, matchCode: spent === codeCost && levelOk, verdict: 'Blocked', why: '규칙 근거 없음(데이터에 강화 규칙 없음)' });
+    const base = UP.bands.find((x) => x.id === band)!.baseCost;
+    const eligible = ids.map((_, i) => i).filter((i) => !benchFlags[i] && levels[i] < UP.maxLevel);
+    const want = eligible.reduce((a, i) => a + Math.round(base * (plusFlags[i] ? UP.plusCostMult : 1) * (levels[i] + 1)), 0);
+    const wantLevels = levels.map((l, i) => l + (eligible.includes(i) ? 1 : 0));
+    const gotLevels = post.towers.map((t) => t.level);
+    const ok = spent === want && JSON.stringify(gotLevels) === JSON.stringify(wantLevels);
+    rows.push({ name, band, spent, want, levelsBefore: levels, levelsAfter: gotLevels, wantLevels, verdict: ok ? 'Passed' : 'Failed', why: ok ? '' : `소모 ${spent}≠${want} 또는 레벨 ${gotLevels}≠${wantLevels}` });
   };
-  for (const b of BANDS) for (const plus of [false, true]) {
-    const id = pickPhil(b.min, b.max, plus);
+  for (const b of UP.bands) for (const plus of [false, true]) {
+    const id = pickPhil(b.minTier, b.maxTier, plus);
     if (!id) { rows.push({ name: `${b.id} plus=${plus}`, verdict: 'Blocked', why: '해당 등급 철학자 없음(데이터)' }); continue; }
-    for (let lv = 0; lv <= 5; lv++) await run(`${b.id} plus=${plus} Lv${lv}`, b.id, [id], [lv], [false], [plus]);
+    for (let lv = 0; lv <= UP.maxLevel; lv++) await run(`${b.id} plus=${plus} Lv${lv}`, b.id, [id], [lv], [false], [plus]);
     await run(`${b.id} plus=${plus} 대기석 제외`, b.id, [id, id], [0, 0], [false, true], [plus, plus]);
   }
   const c = pickPhil(1, 3, false)!, cp = pickPhil(1, 3, true);
   if (cp) await run('common 여러 명 합산(Lv0·Lv2·plus Lv1·Lv5)', 'common', [c, c, cp, c], [0, 2, 1, 5], [false, false, false, false], [false, false, true, false]);
-  rows.push({ name: '강화 실패 시 소모(전 구간)', verdict: 'Blocked', why: '실패 규칙 없음: 강화는 확률 없이 골드가 있으면 항상 성공(데이터·문서 어디에도 실패 규칙 없음)' });
-  save('upgrade', rows);
-  expect(rows.length).toBeGreaterThan(0);
+  rows.push({ name: '강화 실패 시 소모(전 구간)', verdict: '해당 없음', why: UP.failureRule });
+  save('upgrade', { decisionLock: UP.decisionLock, rows });
+  expect(UP.decisionLock.ok, `결정 고정 검사: ${UP.decisionLock.errors.join('; ')}`).toBe(true);
+  const failed = rows.filter((x) => x.verdict === 'Failed');
+  expect(failed, JSON.stringify(failed.slice(0, 3))).toEqual([]);
 });
 
 test('A2-4 모바일 표본: 레시피 10개 조합 결과가 데스크톱과 같다', async ({ page }, info) => {

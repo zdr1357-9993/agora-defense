@@ -25,18 +25,27 @@ const recipes = roster.recipes.map((r) => {
   };
 });
 
-// 강화: 데이터 파일(roster-v3.json, agora_master.xlsx)에 강화 비용·실패 규칙이 없다.
-// 참고값만 출처와 함께 적고, 판정은 '규칙 근거 없음'으로 분리한다.
+// 강화: data/upgrade-bands.json(손 관리 원본, RD-T055)에서 기대값을 계산한다.
+// 한 명 비용 = round(baseCost × (plus ? plusCostMult : 1) × (현재 레벨+1)), 구간 강화 = 전장 배치·Lv<maxLevel 전원 합계·각 +1, 대기석·최대 레벨 제외.
+const UP_SRC = 'data/upgrade-bands.json';
+const U = JSON.parse(fs.readFileSync(UP_SRC, 'utf8'));
+// 결정 고정 검사: 2026-11-20 현배 확정값과 데이터가 같은지. 밸런스를 바꾸면 여기도 의도적으로 갱신한다.
+const DECIDED = { baseCost: { common: 60, rare: 300, high: 975 }, perLevel: 0.2625, plusCostMult: 1.5, maxLevel: 5 };
+const lockErrors = [];
+for (const [id, v] of Object.entries(DECIDED.baseCost)) { const b = U.bands.find((x) => x.id === id); if (!b || b.baseCost !== v) lockErrors.push(`${id}.baseCost=${b?.baseCost} (결정 ${v})`); }
+for (const k of ['perLevel', 'plusCostMult', 'maxLevel']) if (U[k] !== DECIDED[k]) lockErrors.push(`${k}=${U[k]} (결정 ${DECIDED[k]})`);
 const upgrade = {
-  status: '규칙 근거 없음',
-  reason: 'roster-v3.json 키(version·philosophers·recipes·combat·rates)와 agora_master.xlsx 시트(Philosophers·Combat·Recipes·Catalysts·Rates·Stages·QA_Summary)에 강화 비용·성공/실패 규칙이 없다',
-  references: [
-    { source: 'docs/UPGRADE_BANDS.md (설계 문서)', baseCost: { common: 40, rare: 200, high: 650 }, perLevelAtk: 0.35, plusMult: 1.5, costRule: 'baseCost × (plus?1.5:1) × (현재 레벨+1), 전장 배치 유닛 전원 +1, 대기석·Lv.5 제외' },
-    { source: 'src/data.ts UPGRADE (코드, 비교용·오라클 아님)', note: '시험 결과 표에서 관측값과 대조만 한다' },
-  ],
-  failureRule: '없음 — 문서·데이터 어디에도 강화 실패·확률 규칙이 없다',
+  status: '규칙 있음',
+  source: `${UP_SRC} (2026-11-20 현배 확정: 코드값을 정답으로)`,
+  maxLevel: U.maxLevel, perLevel: U.perLevel, plusCostMult: U.plusCostMult,
+  bands: U.bands.map((b) => ({ id: b.id, minTier: b.minTier, maxTier: b.maxTier, baseCost: b.baseCost })),
+  costRule: 'round(baseCost × (plus ? plusCostMult : 1) × (현재 레벨+1)); 구간 강화는 전장 배치·Lv<maxLevel 전원 합계, 각 +1; 대기석·최대 레벨은 대상·비용 제외',
+  failureRule: '없음(의도, 2026-11-20 현배 확정) — 골드가 있으면 항상 성공. 시험의 실패 쪽은 해당 없음으로 분류',
+  decisionLock: { decided: DECIDED, ok: lockErrors.length === 0, errors: lockErrors },
 };
 
 const out = { generatedFrom: SRC, rosterVersion: roster.version, recipeCount: recipes.length, recipes, upgrade };
 fs.writeFileSync('qa/rules/a2-rules.json', JSON.stringify(out, null, 1));
-console.log(`a2-rules.json: 레시피 ${recipes.length}개, 강화=${upgrade.status}`);
+console.log(`a2-rules.json: 레시피 ${recipes.length}개, 강화=${upgrade.status} (${UP_SRC})`);
+console.log(lockErrors.length ? `결정 고정 검사 FAIL: ${lockErrors.join('; ')}` : '결정 고정 검사 OK: 60/300/975G · 레벨당 0.2625 · plus ×1.5 · 최대 Lv.5 = 2026-11-20 확정값');
+if (lockErrors.length) process.exitCode = 1;

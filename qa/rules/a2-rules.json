@@ -1487,25 +1487,46 @@
   }
  ],
  "upgrade": {
-  "status": "규칙 근거 없음",
-  "reason": "roster-v3.json 키(version·philosophers·recipes·combat·rates)와 agora_master.xlsx 시트(Philosophers·Combat·Recipes·Catalysts·Rates·Stages·QA_Summary)에 강화 비용·성공/실패 규칙이 없다",
-  "references": [
+  "status": "규칙 있음",
+  "source": "data/upgrade-bands.json (2026-11-20 현배 확정: 코드값을 정답으로)",
+  "maxLevel": 5,
+  "perLevel": 0.2625,
+  "plusCostMult": 1.5,
+  "bands": [
    {
-    "source": "docs/UPGRADE_BANDS.md (설계 문서)",
-    "baseCost": {
-     "common": 40,
-     "rare": 200,
-     "high": 650
-    },
-    "perLevelAtk": 0.35,
-    "plusMult": 1.5,
-    "costRule": "baseCost × (plus?1.5:1) × (현재 레벨+1), 전장 배치 유닛 전원 +1, 대기석·Lv.5 제외"
+    "id": "common",
+    "minTier": 1,
+    "maxTier": 3,
+    "baseCost": 60
    },
    {
-    "source": "src/data.ts UPGRADE (코드, 비교용·오라클 아님)",
-    "note": "시험 결과 표에서 관측값과 대조만 한다"
+    "id": "rare",
+    "minTier": 4,
+    "maxTier": 5,
+    "baseCost": 300
+   },
+   {
+    "id": "high",
+    "minTier": 6,
+    "maxTier": 7,
+    "baseCost": 975
    }
   ],
-  "failureRule": "없음 — 문서·데이터 어디에도 강화 실패·확률 규칙이 없다"
+  "costRule": "round(baseCost × (plus ? plusCostMult : 1) × (현재 레벨+1)); 구간 강화는 전장 배치·Lv<maxLevel 전원 합계, 각 +1; 대기석·최대 레벨은 대상·비용 제외",
+  "failureRule": "없음(의도, 2026-11-20 현배 확정) — 골드가 있으면 항상 성공. 시험의 실패 쪽은 해당 없음으로 분류",
+  "decisionLock": {
+   "decided": {
+    "baseCost": {
+     "common": 60,
+     "rare": 300,
+     "high": 975
+    },
+    "perLevel": 0.2625,
+    "plusCostMult": 1.5,
+    "maxLevel": 5
+   },
+   "ok": true,
+   "errors": []
+  }
  }
 }
