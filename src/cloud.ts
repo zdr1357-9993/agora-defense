@@ -17,6 +17,8 @@ const email = (id: string) => `${id.toLowerCase()}@players.agora-defense.app`;
 const pass = (pw: string) => `agora-${pw}`;
 
 export type CloudState = 'off' | 'ok' | 'error' | 'confirm';
+/** 마지막 로그인 실패가 '아이디·비밀번호 틀림'(auth)인지 '서버에 못 닿음'(network)인지 */
+export let cloudFailKind: 'auth' | 'network' | null = null;
 export let cloudState: CloudState = 'off';
 export let cloudMsg = '';
 let userId = '';
@@ -32,6 +34,9 @@ export const cloudBaseRevision = () => baseRev;
 /** 서버 값을 이 기기에 받아들였을 때 부른다: 이 revision 에서 이어서 저장한다 */
 export const cloudMarkSynced = (rev: number) => setRev(rev);
 let onConflict: (() => void | Promise<void>) | null = null;
+let onClamped: ((v: Partial<Record<'gonoe' | 'gems' | 'tickets', number>>) => void) | null = null;
+/** 서버가 재화 증가를 한도로 잘랐을 때(저장은 성공) 실제 저장된 값을 받는다 — 이 기기 값도 그 값으로 맞춘다 */
+export function setClampHook(f: (v: Partial<Record<'gonoe' | 'gems' | 'tickets', number>>) => void) { onClamped = f; }
 /** 저장이 다른 기기의 더 새로운 저장과 부딪혔을 때(서버가 거절) 부를 함수. 서버 값이 이긴다 */
 export function setConflictHook(f: () => void | Promise<void>) { onConflict = f; }
 
@@ -50,11 +55,12 @@ export async function cloudLogin(id: string, pw: string, create = true): Promise
     }
     if (error) throw error;
     setUser(data.user!.id, id);
-    cloudState = 'ok'; cloudMsg = '';
+    cloudState = 'ok'; cloudMsg = ''; cloudFailKind = null;
     return true;
   } catch (e) {
     const err = e as { message?: string; status?: number; code?: string };
     cloudState = 'error'; cloudMsg = `[로그인] ${err.message ?? String(e)}${err.code ? ` (${err.code})` : ''}`;
+    cloudFailKind = /invalid login|invalid_credentials|email not confirmed/i.test(`${err.message} ${err.code}`) || (err.status ?? 0) === 400 ? 'auth' : 'network';
     return false;
   }
 }
@@ -91,8 +97,8 @@ export async function flush() {
   // 저장은 서버 함수로만: base_revision 이 서버와 다르면 서버가 쓰지 않고 'conflict' 를 돌려준다
   const { data, error } = await client().rpc('save_progress', { p_login_id: loginId, p_data: p, p_base_revision: baseRev });
   if (error) { cloudState = 'error'; cloudMsg = `[저장] ${error.message}${error.code ? ` (${error.code})` : ''}`; return; }
-  const r = data as { status?: string; revision?: number } | null;
-  if (r?.status === 'ok' && typeof r.revision === 'number') setRev(r.revision);
+  const r = data as { status?: string; revision?: number; clamped?: Partial<Record<'gonoe' | 'gems' | 'tickets', number>> } | null;
+  if (r?.status === 'ok' && typeof r.revision === 'number') { setRev(r.revision); if (r.clamped) onClamped?.(r.clamped); }
   else if (r?.status === 'conflict') { pending = null; await onConflict?.(); }
 }
 export async function cloudLogout() { try { await flush(); await client().auth.signOut(); } catch { /* 무시 */ } cloudState = 'off'; userId = ''; }

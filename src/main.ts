@@ -6,7 +6,7 @@ import { wrapCanvasText } from './text-layout';
 import { artUrl, artImage, iconHtml, artworkBoss } from './artwork';
 import { journeyArt, drawPastelFloor, arenaArt, drawWaitingBench, GREEK_BACKDROPS } from './pastel-art';
 import { Game, GRID, BENCH, QA_MODE, setQA, CATALYST_IDS, RECRUIT_BANDS, type Tower, type FxEvent } from './game';
-import { ACCOUNTS, login, lastLogin, rememberLogin, seedVeteran, type Account } from './auth';
+import { lastLoginId, rememberLogin, seedVeteran, offlineAccount, type Account } from './auth';
 import { STAGE_PATHS } from './paths';
 import { STAGE_STARS, ERA_BONUS, STAR_BONUS } from './affinity';
 import { DIFFICULTIES, DIFF, clearKey } from './difficulty';
@@ -18,7 +18,7 @@ import { philosopherSprite, skinnedSprite, SKINS, monsterSprite, monsterSprite2,
 import { SKILLS, skillMode, skillModeLabel } from './skills';
 import { sfx, isMuted, toggleMute } from './sfx';
 import { daily, bump, MISSIONS, ALL_CLEAR, ATTEND, claimable, claimMission, missionDone, rewardText, canAttend, attend, attendStreak, adFree, adFreeLabel, passOn, passDaysLeft, claimPass, PASS_DAILY, adsLeft, useAd, give, RAID_PER_DAY } from './live';
-import { cloudSignUp, cloudLogin, cloudLoad, cloudSave, flush as cloudFlush, cloudLogout, cloudState, cloudMsg, cloudRole, cloudBaseRevision, cloudMarkSynced, setConflictHook } from './cloud';
+import { cloudSignUp, cloudLogin, cloudLoad, cloudSave, flush as cloudFlush, cloudLogout, cloudState, cloudMsg, cloudRole, cloudBaseRevision, cloudMarkSynced, setConflictHook, setClampHook, cloudFailKind } from './cloud';
 import { decideSync } from './syncrule';
 import type { Progress } from './save';
 import { setSaveHook, adoptProgress, setAccount, hasSave, loadProgress, saveProgress, resetProgress, cardLevel, cardMult, nextLevelAt, awakenLevel, CARD_MAX_LEVEL, CARD_ATK_PER_LEVEL, AWAKEN_MAX, AWAKEN_EVERY } from './save';
@@ -1289,10 +1289,12 @@ function showLogin() {
 $<HTMLFormElement>('login-form').onsubmit = async (e) => {
   e.preventDefault();
   const idv = $<HTMLInputElement>('login-id').value.trim(), pwv = $<HTMLInputElement>('login-pw').value;
-  let acc = await login(idv, pwv);
-  // 미리 정한 계정이 아니면: 서버에 가입된 일반 계정으로 로그인
-  if (!acc && idv && pwv) { $('login-err').textContent = '☁️ 서버 확인 중…'; if (await cloudLogin(idv, pwv, false)) acc = { id: idv, hash: '', role: (await cloudRole()) ?? 'fresh', label: '일반 계정' }; }
-  if (!acc) { $('login-err').textContent = '아이디 또는 비밀번호가 맞지 않아요'; shakeEl($('login-card')); return; }
+  let acc: Account | null = null;
+  // 로그인은 서버(Supabase Auth)만 기준. 역할도 서버에서 받는다
+  if (idv && pwv) { $('login-err').textContent = '☁️ 서버 확인 중…'; if (await cloudLogin(idv, pwv, false)) acc = { id: idv, role: (await cloudRole()) ?? 'fresh', label: '서버 계정' }; }
+  // 서버에 못 닿으면: 이 기기에서 마지막으로 쓰던 아이디만 기기 저장으로 계속(관리자 권한 없음)
+  if (!acc && idv && cloudFailKind === 'network' && lastLoginId() === idv) { acc = offlineAccount(idv); toast('☁️ 서버에 닿지 않아 이 기기 저장으로 계속해요'); }
+  if (!acc) { $('login-err').textContent = cloudFailKind === 'network' ? '서버에 닿지 않아요. 잠시 뒤 다시 시도해 주세요' : '아이디 또는 비밀번호가 맞지 않아요'; shakeEl($('login-card')); return; }
   $('login-err').textContent = '';
   sfx.reveal(5);
   enter(acc);
@@ -1315,9 +1317,25 @@ setConflictHook(async () => {
   const remote = await cloudLoad();
   if (remote) { applyRemote(remote); toast('☁️ 다른 기기에 더 새로운 저장이 있어 서버 값으로 맞췄어요'); }
 });
+// 서버가 재화 증가를 한도로 잘랐으면 이 기기 값도 서버 값으로 맞춘다
+setClampHook((v) => {
+  for (const k of ['gonoe', 'gems', 'tickets'] as const) if (typeof v[k] === 'number') progress[k] = v[k]!;
+  saveProgress(progress); refreshWallet();
+  toast('☁️ 서버 한도를 넘은 재화는 저장되지 않았어요');
+});
+/** 서버가 준 역할을 화면에 반영 (오프라인으로 들어왔다가 나중에 연결된 경우 포함) */
+async function refreshRole() {
+  const r = await cloudRole();
+  if (!me || !r || r === me.role) return;
+  setMe({ ...me, role: r, offline: false });
+  setQA(r === 'master' || new URLSearchParams(location.search).get('qa') === '1');
+  $('who').textContent = `👤 ${me.id}${r === 'master' ? ' 👑' : ''}`;
+  $('admin-bar').classList.toggle('hidden', r !== 'master');
+}
 async function syncCloud(id: string, pw: string) {
-  const ok = await cloudLogin(id, pw);
+  const ok = await cloudLogin(id, pw, false);
   if (ok) {
+    await refreshRole();
     const remote = await cloudLoad();
     // 승자는 기기 시계가 아니라 서버 revision 으로 정한다 (src/syncrule.ts · docs/SAVE_CONFLICT.md)
     if (remote && decideSync({ hasRemote: true, freshDevice, remoteRevision: remote.revision, baseRevision: cloudBaseRevision() }) === 'adopt') {
@@ -1341,8 +1359,8 @@ $('admin-gems').onclick = () => { progress.gems += 10000; progress.gonoe += 1000
 $('admin-unlock').onclick = () => { for (const s of STAGES) for (const d of DIFFICULTIES) { const k = clearKey(s.id, d.id); if (!progress.cleared.includes(k)) progress.cleared.push(k); } for (const s of STAGES) if (!progress.cleared.includes(s.id)) progress.cleared.push(s.id); saveProgress(progress); renderHome(); toast('👑 전 스테이지·난이도 클리어 처리'); };
 $('admin-cards').onclick = () => { for (const p of PHILOSOPHERS) { progress.cards[p.id] = (progress.cards[p.id] ?? 0) + 16; if (!progress.seen.includes(p.id)) progress.seen.push(p.id); } for (const it of ITEMS) progress.items[it.id] = (progress.items[it.id] ?? 0) + 1; saveProgress(progress); toast('👑 모든 카드 +16장 · 도구 전부 지급'); };
 
-const remembered = lastLogin();
-if (remembered) { $<HTMLInputElement>('login-id').value = remembered.id; }
+const remembered = lastLoginId();
+if (remembered) { $<HTMLInputElement>('login-id').value = remembered; }
 showLogin();
 // 로그인 없이 허브 화면을 캡처하기 위한 QA 경로(?qa-screen=home|room|gacha|codex|shop|tcg).
 // VITE_QA_ROUTES=1 로 빌드한 개발·스테이지에서만 켜진다. 운영 빌드(npm run build)에는 이 블록이 통째로 빠진다.
@@ -1351,7 +1369,7 @@ if (import.meta.env.VITE_QA_ROUTES) {
   const qaScreen = new URLSearchParams(location.search).get('qa-screen');
   const QA_TABS: Record<string, string> = { home: 'stages', room: 'room', gacha: 'gacha', codex: 'codex', shop: 'shop', tcg: 'codex' };
   if (qaScreen && QA_TABS[qaScreen]) setTimeout(() => {
-    enter({ id: 'qa-preview', hash: '', role: 'veteran', label: 'QA 미리보기' });
+    enter({ id: 'qa-preview', role: 'veteran', label: 'QA 미리보기' });
     switchTab(QA_TABS[qaScreen]);
     if (qaScreen === 'tcg') openTcg();
   }, 0);
@@ -1724,14 +1742,13 @@ $('signup').onclick = async () => {
   const err = $('login-err');
   if (!/^[a-zA-Z0-9]{3,12}$/.test(id)) { err.textContent = '아이디는 영문·숫자 3~12자로 만들어 주세요'; shakeEl($('login-card')); return; }
   if (pw.length < 4) { err.textContent = '비밀번호는 4자 이상이에요'; shakeEl($('login-card')); return; }
-  if (ACCOUNTS.some((a) => a.id === id.toLowerCase())) { err.textContent = '이미 쓰고 있는 아이디예요'; return; }
   err.textContent = '☁️ 가입 중…';
   const r = await cloudSignUp(id, pw);
   if (!r.ok) { err.textContent = r.msg; shakeEl($('login-card')); return; }
   err.textContent = '';
   sfx.reveal(5);
   lastPw = pw;
-  enter({ id, hash: '', role: 'fresh', label: '일반 계정' });
+  enter({ id, role: 'fresh', label: '서버 계정' });
   void syncCloud(id, pw);
 };
 
