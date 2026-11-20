@@ -1416,6 +1416,18 @@ if (import.meta.env.VITE_QA_ROUTES && new URLSearchParams(location.search).get('
     }
   }, 0);
 }
+// QA-A2(조합·강화 소모 시험) 경로: 전투 판은 진행 저장에 없어서 localStorage 주입으로는 시작 상태를 못 만든다.
+// 로컬 qa-preview 계정으로 첫 스테이지 전투를 띄우고, 시험이 판을 주입·읽도록 전투 객체 접근자만 넘긴다(규칙 계산은 넘기지 않음).
+// VITE_QA_ROUTES=1 빌드(개발)에서만 켜진다. 운영 빌드에서는 이 블록이 통째로 빠진다(qa-screen·boss-preview 와 같은 차단).
+if (import.meta.env.VITE_QA_ROUTES && new URLSearchParams(location.search).get('qa-a2') === '1') {
+  setTimeout(() => {
+    enter({ id: 'qa-preview', role: 'veteran', label: 'QA 미리보기' });
+    progress.battleTutDone = true;
+    startBattle(STAGES[0]);
+    tutAbort();
+    (window as unknown as { __qaA2?: { game: () => Game | null } }).__qaA2 = { game: () => game as unknown as Game | null };
+  }, 0);
+}
 setInterval(() => { if (!game && me) { settleIdle(progress, clearedStages()); saveProgress(progress); refreshWallet(); } }, 1000);
 requestAnimationFrame(loop);
 
