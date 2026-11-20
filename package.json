@@ -11,7 +11,7 @@
     "build:stage": "tsc --noEmit && vite build --outDir dist-stage",
     "preview": "vite preview",
     "preview:stage": "vite preview --host 127.0.0.1 --port 4173 --strictPort --outDir dist-stage",
-    "test": "node scripts/check-roster-v3.mjs && node scripts/check-skill-visuals.mjs && node scripts/check-modern-story.mjs && node qa/check-current-mechanics.cjs",
+    "test": "node scripts/check-roster-v3.mjs && node scripts/check-skill-visuals.mjs && node scripts/check-modern-story.mjs && node qa/check-current-mechanics.cjs && node qa/check-gacha-rates.mjs",
     "e2e": "playwright test"
   },
   "devDependencies": {

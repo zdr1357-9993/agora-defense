@@ -30,6 +30,7 @@ const checks = {
   roster: 'node scripts/check-roster-v3.mjs',
   story: 'node scripts/check-modern-story.mjs',
   mechanics: 'node qa/check-current-mechanics.cjs',
+  gacha: 'node qa/check-gacha-rates.mjs',
 };
 const out = {};
 for (const [k, cmd] of Object.entries(checks)) {
@@ -45,7 +46,7 @@ for (const [k, cmd] of Object.entries(checks)) {
 }
 const checkMap = [
   ['첫 뽑기는 정해진 시작 카드 풀에서만 나온다', 'roster'],
-  ['등급별 뽑기 확률이 설계 구간 안에 있다', 'roster'],
+  ['등급별 뽑기 확률이 설계 구간 안에 있다', 'gacha'],
   ['조합 시 재료가 정확한 수량만큼 소모된다', 'roster'],
   ['모든 조합 결과 카드가 실제로 존재한다', 'roster'],
   ['모든 스토리 보상이 실제 아이템으로 지급된다', 'story'],
