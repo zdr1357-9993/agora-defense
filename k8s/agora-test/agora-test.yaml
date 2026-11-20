@@ -1,0 +1,182 @@
+# 철랜디 A7/A8 시험 환경 — 쓰고 버리는 네임스페이스 하나에 전부.
+# 띄우기: ./k8s/agora-test/up.sh   시험: ./k8s/agora-test/run.sh   버리기: ./k8s/agora-test/down.sh
+# 운영 Supabase 와는 아무 연결이 없다. 비밀키(agora-secrets)는 up.sh 가 무작위로 만들고 git 에 들어가지 않는다.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agora-test
+---
+# ---------- DB: Postgres (StatefulSet → 파드 이름이 agora-db-0 으로 고정, 디스크(PVC)는 파드가 죽어도 남는다) ----------
+apiVersion: v1
+kind: Service
+metadata: { name: agora-db, namespace: agora-test }
+spec:
+  clusterIP: None
+  selector: { app: agora-db }
+  ports: [{ port: 5432 }]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: agora-db, namespace: agora-test }
+spec:
+  serviceName: agora-db
+  replicas: 1
+  selector: { matchLabels: { app: agora-db } }
+  template:
+    metadata: { labels: { app: agora-db } }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - { name: POSTGRES_PASSWORD, valueFrom: { secretKeyRef: { name: agora-secrets, key: pg_password } } }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          ports: [{ containerPort: 5432 }]
+          readinessProbe: { exec: { command: [pg_isready, -U, postgres] }, periodSeconds: 2 }
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: "1", memory: 512Mi } }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+            - { name: initsql, mountPath: /docker-entrypoint-initdb.d }
+      volumes:
+        - { name: initsql, configMap: { name: agora-initsql } }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Gi } } }
+---
+# ---------- API: PostgREST (Supabase 의 REST 층과 같은 것) ----------
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: agora-api, namespace: agora-test }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: agora-api } }
+  template:
+    metadata: { labels: { app: agora-api } }
+    spec:
+      containers:
+        - name: postgrest
+          image: postgrest/postgrest:v12.2.3
+          env:
+            - { name: PGRST_DB_URI, value: "postgres://authenticator:authenticator@agora-db:5432/postgres" }
+            - { name: PGRST_DB_SCHEMAS, value: public }
+            - { name: PGRST_DB_ANON_ROLE, value: anon }
+            - { name: PGRST_JWT_SECRET, valueFrom: { secretKeyRef: { name: agora-secrets, key: jwt_secret } } }
+            - { name: PGRST_ADMIN_SERVER_PORT, value: "3001" }
+          ports: [{ containerPort: 3000 }, { containerPort: 3001 }]
+          resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 500m, memory: 256Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: agora-api, namespace: agora-test }
+spec:
+  selector: { app: agora-api }
+  ports: [{ name: http, port: 3000 }, { name: admin, port: 3001 }]
+---
+# ---------- 시험 실행기가 DB 파드를 죽일 수 있게: 이 네임스페이스의 파드 삭제 권한만 ----------
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: agora-runner, namespace: agora-test }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: pod-killer, namespace: agora-test }
+rules: [{ apiGroups: [""], resources: [pods], verbs: [get, list, delete] }]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: agora-runner-pod-killer, namespace: agora-test }
+subjects: [{ kind: ServiceAccount, name: agora-runner, namespace: agora-test }]
+roleRef: { kind: Role, name: pod-killer, apiGroup: rbac.authorization.k8s.io }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: agora-runner, namespace: agora-test }
+spec:
+  selector: { app: agora-runner }
+  ports: [{ name: metrics, port: 9100 }]
+---
+# ---------- Prometheus: 2초마다 시험 실행기와 PostgREST 의 지표를 긁는다 ----------
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: prometheus-config, namespace: agora-test }
+data:
+  prometheus.yml: |
+    global: { scrape_interval: 2s }
+    scrape_configs:
+      - job_name: agora-runner
+        static_configs: [{ targets: ['agora-runner:9100'] }]
+      - job_name: postgrest
+        static_configs: [{ targets: ['agora-api:3001'] }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: prometheus, namespace: agora-test }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: prometheus } }
+  template:
+    metadata: { labels: { app: prometheus } }
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.53.0
+          args: [--config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.retention.time=1d]
+          ports: [{ containerPort: 9090 }]
+          resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          volumeMounts: [{ name: cfg, mountPath: /etc/prometheus }]
+      volumes: [{ name: cfg, configMap: { name: prometheus-config } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: prometheus, namespace: agora-test }
+spec:
+  selector: { app: prometheus }
+  ports: [{ port: 9090 }]
+---
+# ---------- Grafana: 로그인 없이 보기, 데이터 소스와 대시보드는 미리 넣어 둔다 ----------
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: grafana-provisioning, namespace: agora-test }
+data:
+  datasource.yml: |
+    apiVersion: 1
+    datasources:
+      - { name: Prometheus, uid: prom, type: prometheus, url: 'http://prometheus:9090', access: proxy, isDefault: true }
+  dashboards.yml: |
+    apiVersion: 1
+    providers:
+      - { name: agora, folder: '', type: file, options: { path: /var/lib/grafana/dashboards } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: grafana, namespace: agora-test }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: grafana } }
+  template:
+    metadata: { labels: { app: grafana } }
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.1.0
+          env:
+            - { name: GF_AUTH_ANONYMOUS_ENABLED, value: "true" }
+            - { name: GF_AUTH_ANONYMOUS_ORG_ROLE, value: Admin }
+            - { name: GF_AUTH_DISABLE_LOGIN_FORM, value: "true" }
+            - { name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH, value: /var/lib/grafana/dashboards/agora.json }
+          ports: [{ containerPort: 3000 }]
+          resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          volumeMounts:
+            - { name: ds, mountPath: /etc/grafana/provisioning/datasources/datasource.yml, subPath: datasource.yml }
+            - { name: ds, mountPath: /etc/grafana/provisioning/dashboards/dashboards.yml, subPath: dashboards.yml }
+            - { name: dash, mountPath: /var/lib/grafana/dashboards }
+      volumes:
+        - { name: ds, configMap: { name: grafana-provisioning } }
+        - { name: dash, configMap: { name: grafana-dashboard } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: grafana, namespace: agora-test }
+spec:
+  selector: { app: grafana }
+  ports: [{ port: 3000 }]
