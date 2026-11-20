@@ -6,7 +6,8 @@
 2. 각 기기는 "마지막으로 서버와 맞춘 revision"(localStorage `agora_cloud_rev:<userId>`)을 기억한다. 저장 요청(`save_progress`)에 이 번호를 `base_revision` 으로 싣는다.
 3. 서버는 `base_revision` 이 지금 revision 과 같을 때만 쓴다(성공하면 revision+1). 다르면 **쓰지 않고 `conflict`** 를 돌려주고, 클라이언트는 서버 값을 불러와 이 기기 저장을 덮는다.
 4. 로그인 때(`src/syncrule.ts` `decideSync`): 서버 줄 없음 → 내 것 올림 / 이 기기가 처음 → 서버 것 / 맞춘 기록 없음 → 서버 것 / 서버 revision == 내가 아는 revision → 내 것 올림 / 다르면 → 서버 것.
-5. 값 검사·role·재화 상한은 서버(`supabase/migrations/20261119_qa_rls_fix.sql`)가 강제한다. 클라이언트의 role 판정은 표시용.
+5. 값 검사·role·재화 한도는 서버(`supabase/migrations/20261120_1_additive.sql`·`_2_restrict.sql`, docs/ECONOMY_LIMITS.md)가 강제한다. 클라이언트의 role 은 서버 player_roles 에서 받아 표시에만 쓰고, 오프라인에서는 언제나 fresh.
+6. 옛 클라이언트(직접 upsert)가 1단계 DB 에 쓴 것도 서버 트리거가 revision 을 올리므로, 새 클라이언트는 그것을 충돌로 알아챈다.
 
 ## 알려진 한계 (일부러 두었거나 모름)
 - 서버가 이겨서 덮이는 쪽의 **저장 안 된 로컬 진행은 사라진다**(기준이 "DB 우선"이므로). 병합은 하지 않는다.
