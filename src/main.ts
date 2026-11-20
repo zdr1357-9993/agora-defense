@@ -39,7 +39,6 @@ import './ui/mobile';
 import { cardArt, sceneArt } from './tcg';
 import { STORY, STORY_MAP, CHAPTERS, START_POOL, type StoryStage, type Line } from './story';
 import { focusJourney, journeySign } from './journey-map';
-import { mountJourneyField, fieldEnabled } from './field/journey-field';
 import { gainXp, XP_RATE, summonPool, openEras } from './state/story-rules';
 import { initResult, eraWipe, resultPanel } from './screens/result';
 import { initTutorial, tutBegin, tutAbort, tutTick, pageTutStart, pageTutMore } from './screens/tutorial';
@@ -1471,7 +1470,6 @@ let replayTutorial = false;
 let journeySelectedId = '';
 let journeyFocusInitial = true;
 function renderStory(box: HTMLElement) {
-  const useField = fieldEnabled(); // ?field=0 이면 기존 DOM 지도
   if (!replayTutorial && (progress.storyCleared ?? []).some(id => STORY_MAP.get(id)?.chapter) && !(progress.storyCleared ?? []).includes('A5')) {
     progress.storyCleared = [...new Set([...(progress.storyCleared ?? []), 'A1','A2','A3','A4','A5'])]; saveProgress(progress);
   }
@@ -1492,7 +1490,6 @@ function renderStory(box: HTMLElement) {
     shortcuts.innerHTML = CHAPTERS.filter(ch => ch.n > 0).map(ch => `<button type="button" data-chapter="${ch.n}">${ch.n}장 ${ch.era}</button>`).join('');
     box.appendChild(shortcuts);
     shortcuts.querySelectorAll<HTMLButtonElement>('[data-chapter]').forEach(button => button.onclick = () => {
-      if (useField) { const st = STORY.find(s => s.chapter === Number(button.dataset.chapter) && storyOpen(s)); if (st) { journeySelectedId = st.id; journeyFocusInitial = false; renderHome(); } return; }
       const era = wrapEra(button.dataset.chapter!);
       if (era) wrap.scrollTo({top:era.offsetTop,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
     });
@@ -1500,7 +1497,7 @@ function renderStory(box: HTMLElement) {
   const wrap = document.createElement('div'); wrap.className = 'journey roam-map pixel-journey long-journey'; wrap.setAttribute('aria-label','튜토리얼부터 6장까지 이어지는 여정 지도');
   wrap.dataset.era = '고대';
   const world = document.createElement('div'); world.className = 'journey-world long-journey-world';
-  for (const chapter of useField ? [] : [...CHAPTERS].reverse()) {
+  for (const chapter of [...CHAPTERS].reverse()) {
     const stages = STORY.filter(st => st.chapter === chapter.n);
     const era = document.createElement('section'); era.className = `journey-era ${chapter.n === 0 ? 'tutorial-era' : ''}`; era.dataset.chapter = String(chapter.n);
     era.style.backgroundImage = `linear-gradient(180deg,rgba(255,251,236,.10),rgba(255,251,236,.18)),url(${chapter.n <= 1 ? '/journey/greek-tile-map.png' : journeyArt(chapter.era)})`;
@@ -1528,19 +1525,7 @@ function renderStory(box: HTMLElement) {
     });
     era.appendChild(track); world.appendChild(era);
   }
-  if (useField) mountJourneyField(box, {
-    stages: STORY, chapters: CHAPTERS, selectedId: selectedStage.id,
-    sprite: () => spriteFor(faceId),
-    status: (st) => {
-      const storyReady = storyOpen(st), unlocked = storyReady && (diffId === 'easy' || diffUnlocked(st.base, diffId));
-      const cleared = diffId === 'easy' ? done.includes(st.id) : progress.cleared.includes(clearKey(st.base, diffId));
-      return { cleared, unlocked, lockText: diffId !== 'easy' && storyReady ? '먼저 이전 난이도로 이 거점을 클리어하세요' : st.base === 'S6' && !modernUnlocked() ? modernLockText() : '앞선 기억을 먼저 되찾아 주세요' };
-    },
-    select: (id) => { journeySelectedId = id; journeyFocusInitial = false; renderHome(); },
-    enter: () => document.querySelector<HTMLButtonElement>('#j-go')?.click(),
-    openTab: switchTab,
-  });
-  else { wrap.appendChild(world); box.appendChild(wrap); }
+  wrap.appendChild(world); box.appendChild(wrap);
   const wrapEra = (chapter: string) => wrap.querySelector<HTMLElement>(`.journey-era[data-chapter="${chapter}"]`);
   const bar = document.createElement('div'); bar.className = 'j-bar journey-destination';
   bar.innerHTML = `<p class="destination-status" role="status"></p><div class="destination-actions"><button id="j-go" class="chunky mint j-go"></button><button class="journey-info" aria-label="선택한 목적지 상세 정보">정보</button></div><div class="j-prog"><small>쉬움 기억 ${done.length}/${STORY.length}</small><i style="--v:${done.length/STORY.length}"></i><button class="journey-current">다음 열린 거점</button></div>`;
