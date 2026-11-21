@@ -22,7 +22,7 @@
           <div class="set-head"><b>⚙️ 설정</b><button id="close-settings" class="icon-btn">✕</button></div>
           <div class="acct-bar"><span id="who"></span><button id="logout" class="ghost small">로그아웃</button></div>
           <small class="release-label">20261110v3 · 파스텔 도트</small><div id="cloud-state" class="cloud-state">☁️ 서버 저장 꺼짐</div>
-          <label class="backdrop-setting">고대 배경 (다른 시대는 자동)<select id="backdrop-select"><option value="greek-01">01 올리브 아고라</option><option value="greek-02">02 에게해 항구</option><option value="greek-03">03 월계수 학당</option><option value="greek-04">04 노을 신전</option><option value="greek-05">05 낙서 공책 아고라</option><option value="era" selected>시대에 맞는 전용 풍경 (기본)</option></select></label><div class="set-grid">
+          <label class="backdrop-setting">고대 배경 (다른 시대는 자동)<select id="backdrop-select"><option value="greek-01">01 올리브 아고라</option><option value="greek-02">02 에게해 항구</option><option value="greek-03">03 월계수 학당</option><option value="greek-04">04 노을 신전</option><option value="greek-05">05 낙서 공책 아고라</option><option value="greek-06">06 파스텔 유적 제단</option><option value="era" selected>시대에 맞는 전용 풍경 (기본)</option></select></label><div class="set-grid">
             <button id="mute" class="chunky blue">🔊</button>
             <button id="tut-again" class="chunky mint">🎓 튜토리얼 다시 보기</button>
             <button id="replay-start" class="chunky gold">🏛 처음부터 튜토리얼 진행 (오프닝부터)</button>
@@ -70,16 +70,26 @@
         <button id="speed">1x</button>
       </header>
       <div id="cats"></div>
-      <div id="battle-status-row"><div id="boss-status" role="status">보스는 10웨이브마다 등장해요</div><button id="battle-log" aria-label="철학자 대사 전체 보기">대사</button></div>
+      <div id="battle-status-row"><div id="boss-status" role="status">보스는 10웨이브마다 등장해요</div><div id="battle-gems" title="전투 전용 영감석 · 지혜석과 별도"><img class="insight-icon" src="/inspiration-stone.svg" alt="영감석"> <b>0</b></div></div>
       <div id="field-wrap"><canvas id="field"></canvas></div>
-      <div id="battle-quote" role="log" aria-live="off">철학자의 한마디 · 전투를 시작해 보세요</div>
       <section id="selbar"><div id="info"></div></section>
-      <nav id="actions">
-        <button id="sell"><i>🪙</i><span>판매</span></button>
-        <button id="merge"><i>⚗</i><span>합성</span></button>
-        <button id="upgrade-btn"><i>⬆</i><span>강화</span></button>
-        <button id="d-recipes"><i>📜</i><span>조합표</span></button>
-      </nav>
+      <div id="battle-actions">
+        <section id="recruit-panel" class="upgrade-panel recruit-panel hidden" aria-label="사유의 초대 및 학파 랜덤 영입">
+          <div class="upgrade-panel-head"><b><img class="invite-icon" src="/invitation-book.svg" alt=""> 사유의 초대</b><span>일반 처치 10회마다 영감석 +1 · 보스 +1 · 전투 종료 시 소멸</span></div>
+          <div id="recruit-grid"></div>
+        </section>
+        <section id="upgrade-panel" class="upgrade-panel hidden" aria-label="강화 구간 선택">
+          <div class="upgrade-panel-head"><b>구간 강화</b><span>전장 배치 유닛 대상 · 대기석 제외</span></div>
+          <div id="upgrade-bands"></div>
+          <small class="upgrade-provisional">임시 비용 · 조정 예정 · 대상 전원 공격력 +35% (최대 Lv.5)</small>
+        </section>
+        <nav id="actions">
+          <button id="sell"><i>🪙</i><span>판매</span></button>
+          <button id="merge"><i>⚗</i><span>합성</span></button>
+          <button id="upgrade-btn"><i>⬆</i><span>강화</span></button>
+          <button id="recruit-btn"><i><img class="invite-icon" src="/invitation-book.svg" alt=""></i><span>사유의 초대</span></button>
+        </nav>
+      </div>
       <nav id="dock">
         <button id="summon">소환 <small>(<span id="cost">40G</span>)</small></button>
         <button id="start">웨이브 시작</button>
@@ -96,7 +106,6 @@
         <input id="login-pw" type="password" placeholder="비밀번호" inputmode="numeric" autocomplete="current-password" />
         <p id="login-err" class="err"></p>
         <button type="submit" class="chunky gold">입장하기</button>
-        <button type="button" id="tester-login" class="ghost small">테스터로 경험해보기</button>
         <button type="button" id="signup" class="ghost small">처음이에요 · 이 아이디로 가입하기</button>
         <p class="hint login-hint">아이디는 영문·숫자 3~12자, 비밀번호는 4자 이상</p>
       </div>

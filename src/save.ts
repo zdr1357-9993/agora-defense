@@ -43,8 +43,6 @@ export interface Progress {
   cardXp?: Record<string, number>;
   /** 튜토리얼 뒤 소크라테스의 안내를 봤는지 */
   tourDone?: boolean;
-  /** 테스터 여정·난이도 안내 완료 (스토리 튜토리얼 클리어와 분리) */
-  testerMainTutDone?: boolean;
   /** 보스 레이드 최고 피해 */
   raidBest?: number;
   /** 오프닝을 봤는지 */

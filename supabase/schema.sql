@@ -1,5 +1,7 @@
 -- AGORA 철학사 랜덤 디펜스 · Supabase 테이블
 -- Supabase 대시보드 → SQL Editor → 새 쿼리에 전체를 붙여 넣고 Run
+-- 그다음 supabase/migrations/ 의 파일을 순서대로: 20261120_1_additive.sql → (새 클라이언트 배포) → 20261120_2_restrict.sql. 순서·점검·롤백: docs/DB_MIGRATION_ORDER.md
+-- 이 파일만으로는 직접 쓰기가 열려 있고 재화 검사가 없다
 
 -- 1) 플레이어 진행 상황: 로그인한 사람(auth.users) 한 명당 한 줄
 create table if not exists public.progress (

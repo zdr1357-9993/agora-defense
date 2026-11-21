@@ -24,9 +24,17 @@ export const SUMMON_COST = 40;
 export const SUMMON_STEP = 2;
 /** 보스를 잡으면 받는 무료 소환권 / 5·15·25…웨이브 광장 집회 보너스 */
 export const BOSS_TICKETS = 3, RALLY_TICKETS = 1;
+/** Temporary inspiration-stone recruitment prices, separate from paid wisdom stones. */
+export const RECRUIT_BANDS = [
+  { id: 'low', label: '1–3성', min: 1, max: 3, cost: 4 },
+  { id: 'middle', label: '4–5성', min: 4, max: 5, cost: 5 },
+  { id: 'high', label: '6–7성', min: 6, max: 7, cost: 6 },
+] as const;
 
-// QA 모드: 주소 뒤에 ?qa=1 (전 스테이지 해금·재화 지급). 기본은 처음 시작하는 상태
-export let QA_MODE = typeof location === 'undefined' ? false : new URLSearchParams(location.search).get('qa') === '1';
+// QA 모드: 전 스테이지 해금·재화 지급. 기본은 처음 시작하는 상태(false).
+// 켜는 길은 main.ts 에만 있다: master 역할(enter()/역할 갱신의 setQA), 그리고 주소 ?qa=1 은 VITE_QA_ROUTES=1 빌드(개발)에서만(RD-T054).
+// 여기서 URL·import.meta 를 읽지 않는다(노드 시뮬레이터가 이 파일을 CJS 로 불러 쓴다).
+export let QA_MODE = false;
 /** 마스터 계정 로그인 시 QA(전부 해금) 권한 */
 export function setQA(on: boolean) { QA_MODE = on; }
 /** 전투 시작 골드: 마스터(QA) 10000, 일반 200 */
@@ -44,7 +52,7 @@ export interface Enemy {
 /** 화면 연출용 이벤트 (게임 규칙에는 영향 없음) */
 export type FxEvent =
   | { type: 'hit'; x: number; y: number; dmg: number; big: boolean; uid?: number }
-  | { type: 'kill'; x: number; y: number; gold: number; boss: boolean }
+  | { type: 'kill'; x: number; y: number; gold: number; insight: number; boss: boolean }
   | { type: 'shot'; uid: number; tx?: number; ty?: number }
   | { type: 'ability'; uid: number; kind: Skill['kind']; mode: 'onHit' | 'trigger'; tx: number; ty: number }
   | { type: 'morph'; x: number; y: number; tier: number }
@@ -63,6 +71,10 @@ const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 
 export class Game {
   gold = startGold();
+  /** 전투 중 적 처치로 모으는 임시 영감석. 전투가 끝나면 소멸한다. */
+  insight = 0;
+  /** Ordinary kills carry between waves; bosses never advance this counter. */
+  ordinaryKills = 0;
   lives = 20;
   wave = 0;
   summonCost = SUMMON_COST;
@@ -162,6 +174,20 @@ export class Game {
     return t;
   }
 
+  canRecruit(cost: number) {
+    return !this.over && !this.oneTool && this.insight >= cost && (this.emptyCells().length > 0 || this.benchSlots().length > 0);
+  }
+
+  /** 논박/학파에서 고른 무작위 철학자를 전장 또는 대기석에 영입한다. */
+  recruit(philId: string, cost: number) {
+    const p = PHIL.get(philId);
+    if (!p || p.hidden || this.locked.has(philId) || !this.canRecruit(cost)) return null;
+    const tower = this.place(philId);
+    if (!tower) return null;
+    this.insight -= cost;
+    return tower;
+  }
+
   /** 흔함(1등급) 9명 중 무작위 1명. 무료 소환권이 있으면 먼저 쓴다 */
   canSummon() { return (this.emptyCells().length > 0 || this.benchSlots().length > 0) && (this.tickets > 0 || this.gold >= this.summonCost); }
   summon() {
@@ -215,11 +241,36 @@ export class Game {
       : { dmg: 1 + ITEM_BONUS.dmg, range: 0 };
   }
 
-  // ---------- 강화 (5성 이상) ----------
+  // ---------- 구간 강화 (전장 배치 유닛만) ----------
+  upgradeBandInfo(bandId: string) {
+    const band = UPGRADE.bands.find((x) => x.id === bandId);
+    if (!band) return null;
+    const fielded = this.fielded().filter((t) => {
+      const p = PHIL.get(t.philId)!;
+      return p.tier >= band.minTier && p.tier <= band.maxTier;
+    });
+    const eligible = fielded.filter((t) => t.level < UPGRADE.maxLevel);
+    const costOf = (t: Tower) => {
+      const p = PHIL.get(t.philId)!;
+      return Math.round(band.baseCost * (p.plus ? UPGRADE.plusCostMult : 1) * (t.level + 1));
+    };
+    return { band, fielded, eligible, totalCost: eligible.reduce((sum, t) => sum + costOf(t), 0), costOf };
+  }
+
+  upgradeBand(bandId: string) {
+    const info = this.upgradeBandInfo(bandId);
+    if (this.over || !info || !info.eligible.length || this.gold < info.totalCost) return false;
+    this.gold -= info.totalCost;
+    for (const t of info.eligible) t.level++;
+    return true;
+  }
+
+  // Kept for callers using the former one-tower API; new battle UI uses upgradeBand.
   upgradeCost(t: Tower) {
     const p = PHIL.get(t.philId)!;
-    if (p.tier < UPGRADE.minTier || t.level >= UPGRADE.maxLevel) return null;
-    return Math.round(UPGRADE.baseCost[p.tier] * (p.plus ? 1.5 : 1) * (t.level + 1));
+    const band = UPGRADE.bands.find((x) => p.tier >= x.minTier && p.tier <= x.maxTier);
+    if (!band || t.level >= UPGRADE.maxLevel) return null;
+    return Math.round(band.baseCost * (p.plus ? UPGRADE.plusCostMult : 1) * (t.level + 1));
   }
 
   upgrade(t: Tower) {
@@ -267,7 +318,6 @@ export class Game {
     keep.level = 0;
     this.fx.push({ type: 'morph', x: keep.cx + 0.5, y: keep.cy + 0.5, tier: PHIL.get(r.result)!.tier });
     this.discovered.add(r.result);
-    keep.sayCd = 0; this.say(keep);
     return keep;
   }
 
@@ -495,7 +545,9 @@ export class Game {
 
     for (const e of this.enemies) if (e.hp <= 0) {
       this.gold += e.reward;
-      { const [kx, ky] = this.enemyPos(e); this.fx.push({ type: 'kill', x: kx, y: ky, gold: e.reward, boss: e.boss }); }
+      const insight = e.boss ? 1 : (++this.ordinaryKills % 10 === 0 ? 1 : 0);
+      this.insight += insight;
+      { const [kx, ky] = this.enemyPos(e); this.fx.push({ type: 'kill', x: kx, y: ky, gold: e.reward, insight, boss: e.boss }); }
       if (!e.boss && Math.random() < 0.03) this.gainCatalyst(this.randomCatalyst());
     }
     this.enemies = this.enemies.filter((e) => e.hp > 0);
