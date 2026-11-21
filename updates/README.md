@@ -3,6 +3,7 @@
 모든 AI와 개발자는 작업 전에 이 색인과 최신 기록을 읽고 현재 코드·배포·실험 상태를 구분한다.
 
 ## 최신 기록
+- [2026-11-21 develop 에서 여정 UX·RPG 필드 되돌림](2026-11-21-journey-ux-revert.md) — 로컬 커밋·검증 완료(rd/revert-journey-ux), push·PR 전.
 - [2026-11-15 연속 여정 지도 UX](2026-11-15-journey-ux.md) — stage 로컬 구현 커밋 `d585a30`, 브라우저 점검·빌드 완료, preview 4173 실행 중. push/Pages 없음.
 - [2026-11-15 stage 현재 기능·장별 난이도 실험](2026-11-15-current-feature-stage.md) — 8,640 탐색, 20,700판 holdout, 완전해금 9,600판까지 검증 완료.
 - [문답과 도트 여정 지도](2026-11-15-mundap-pixel-journey.md) — 공유 stage 수정, 빌드·배포 미확인.

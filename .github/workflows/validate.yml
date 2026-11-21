@@ -25,3 +25,27 @@ jobs:
       - name: Production bundle check (QA routes, secrets)
         run: node scripts/check-prod-bundle.mjs dist
       - run: npm run build:stage
+
+  db-security:
+    # A7 권한 11종 + A8-1 응답 시간 + A8-2 동시 저장. 운영 Supabase 가 아니라 빈 Postgres 에 운영 스키마·마이그레이션을 그대로 올려 시험한다.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 2s --health-retries 30
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: DB security and save tests (A7, A8-1, A8-2)
+        run: bash scripts/ci-db-security.sh
