@@ -50,11 +50,8 @@ setInterval(tutTick, 300);
 // ---------- 🎓 화면별 튜토리얼 (탭을 처음 열 때) ----------
 const PAGE_TUT: Record<string, { sel: string; text: string }[]> = {
   stages: [
-    { sel: '.journey-point.open .j-dot', text: '이 긴 지도에서 거점을 고르면 캐릭터와 카메라가 그곳으로 이동해요. 길은 튜토리얼에서 1~6장으로 이어져요.' },
-    { sel: '#j-go', text: '아래 목적지 패널에서 <b>출발</b>을 누르면 전투가 시작돼요. 옆 <b>정보</b> 버튼에서 보스와 돌아오는 기억을 확인할 수 있어요.' },
-  ],
-  stages2: [
-    { sel: '#journey-difficulty', text: '난이도는 이 버튼 하나에서 바꿔요. 쉬움으로 튜토리얼과 1~6장을 모두 마치면 난이도 선택과 장 바로가기가 열려요.' },
+    { sel: '.srow:not(.locked) .sgo', text: '스테이지 이름을 누르면 바로 전투 시작! 처음엔 <b>쉬움</b>으로 해요. 모든 스테이지의 쉬움을 깨면 난이도 탭이 열려요.' },
+    { sel: '.srow:not(.locked) .sinfo', text: '<b>i</b>를 누르면 보스, 길 모양, 이 맵에서 강해지는 철학자 같은 정보를 볼 수 있어요.' },
     { sel: '#open-recipes', text: '📜 <b>조합표</b>에서 모든 조합식을, 🎲 확률에서 소환·등급 정보를 볼 수 있어요. 마음에 드는 조합은 💗로 찜해 두면 전투 중에 따라 보여요.' },
     { sel: '#tabs', text: '아래 탭에서 🤔고민방·🎴뽑기·📖도감·🛍상점으로 가요. 처음 들어가면 거기서도 안내해 드릴게요!' },
   ],
@@ -79,7 +76,7 @@ const PAGE_TUT: Record<string, { sel: string; text: string }[]> = {
   ],
 };
 let pageTut: { tab: string; i: number } | null = null, pageShown = '';
-export const tabOf = (k: string) => k.replace(/2$/, '');     // 'stages2'(첫 전투 뒤 더 알려 주는 안내)도 stages 탭에서 보인다
+export const tabOf = (k: string) => k.replace(/2$/, '');     // 'stages2'(첫 전투 뒤 더 알려 주는 안내)도 stages 탭에서 보인다. 여정 UX 를 되돌린 뒤(RD-T058)엔 PAGE_TUT 에 stages2 가 없어 pageTutMore 는 아무것도 안 한다(J031 다시 쓸 때를 위해 남김)
 /** 첫 전투를 마치고 홈으로 돌아왔을 때 나머지 안내 3단계(난이도·조합표·탭)를 한 번 보여 준다(J031: 첫 안내 4단계 → 2단계). */
 export function pageTutMore() {
   const done = progress.tabTut ?? [];
