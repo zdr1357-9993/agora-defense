@@ -364,3 +364,53 @@ button:focus-visible,select:focus-visible { outline:3px solid #577b69; outline-o
 .collection-archive summary { cursor:pointer;font-weight:bold;min-height:28px; }
 .collection-archive p { line-height:1.7; }
 .collection-archive>div { display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid #d8d0df; }
+
+/* RD-T062: existing theme, with reachable controls on narrow/short viewports. */
+.hub-top .top-right { flex:1; min-width:0; }
+.hub-top .wallet { flex:1; min-width:0; }
+.wallet-part { min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+#open-settings { flex:none; }
+.tab, .tab > *, .row > button, .codex-grid > *, .shop-grid > * { min-width:0; }
+.codex-grid { grid-template-columns:repeat(4,minmax(0,1fr)) !important; }
+.card b, .shop-item b { overflow-wrap:anywhere; }
+
+/* Four 44px HUD buttons plus counters cannot fit in one row on a phone. */
+#battle { overflow-y:auto; overscroll-behavior:contain; }
+#hud { flex-wrap:wrap; gap:4px; }
+#hud > span { flex:none; }
+#hud .wave-pill { flex:1; min-width:70px; }
+#cats { flex:none; }
+#field-wrap { flex:1 0 140px; min-height:140px; }
+.scard { width:100%; }
+
+/* The keyboard and browser chrome reduce the usable height independently of vh. */
+.login, .settings, .overlay, .vn {
+  height:var(--app-h,100dvh); bottom:auto;
+}
+.login {
+  overflow-y:auto; align-items:flex-start;
+  padding:max(16px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));
+}
+.login-card { flex:none; margin-block:auto; }
+#login-card input { min-width:0; width:100%; font-size:16px; }
+.settings { overflow-y:auto; padding-block:max(16px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-bottom)); }
+.settings-card { flex:none; }
+.backdrop-setting select { width:100%; min-width:0; }
+.overlay { padding-top:max(14px,env(safe-area-inset-top)); padding-bottom:max(14px,env(safe-area-inset-bottom)); }
+.pop { max-height:min(90dvh,calc(var(--app-h,100dvh) - 40px)); overscroll-behavior:contain; }
+.overlay.recipes .pop.rsheet { max-height:min(82dvh,calc(var(--app-h,100dvh) - 40px)); }
+.toast { width:max-content; max-width:calc(100vw - 28px); overflow-wrap:anywhere; text-align:center; }
+.tut-bubble { max-height:calc(var(--app-h,100dvh) - 32px); overflow-y:auto; }
+.tut-bubble.top { max-height:calc(var(--app-h,100dvh) / 2 - 16px); }
+.tut-bubble.upper { max-height:calc(var(--app-h,100dvh) - 86px); }
+.vn-box { min-height:0; max-height:calc(var(--app-h,100dvh) - 120px); margin-bottom:max(22px,env(safe-area-inset-bottom)); }
+.vn-body { min-width:0; overflow-y:auto; padding-bottom:16px; }
+.vn-text { overflow-wrap:anywhere; }
+.vn.over .vn-box { margin-bottom:clamp(22px,14dvh,110px); max-height:calc(var(--app-h,100dvh) - 180px); }
+.tcg-ov { overflow-y:auto; justify-content:flex-start; }
+.tcg-track { flex:none; margin-top:auto; }
+.tcg-detail { flex:none; margin-bottom:auto; }
+.tcg-nav { flex:none; }
+.tcg-face { overflow-y:auto; overscroll-behavior:contain; }
+.tcg-face > * { flex-shrink:0; }
+.tcg-top, .tcg-stars { flex-wrap:wrap; }

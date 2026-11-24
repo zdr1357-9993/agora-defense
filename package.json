@@ -12,7 +12,9 @@
     "preview": "vite preview",
     "preview:stage": "vite preview --host 127.0.0.1 --port 4173 --strictPort --outDir dist-stage",
     "test": "node scripts/check-roster-v3.mjs && node scripts/check-skill-visuals.mjs && node scripts/check-modern-story.mjs && node qa/check-current-mechanics.cjs && node qa/check-gacha-rates.mjs",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "test:ui-flow": "node qa/check-ui-flow.cjs",
+    "e2e:layout": "playwright test e2e/ui-layout.spec.ts --workers=1"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
