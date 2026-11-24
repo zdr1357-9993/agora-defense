@@ -1,3 +1,4 @@
+import { mountImageJourney } from './image-journey';
 import { gachaLayout } from './gacha-layout';
 import { ENEMY_ROLES, ENEMY_NAMES } from './enemy-designs';
 import { canWearSkin, revealAdminCollection, modernUnlockStatus } from './ui-policy';
@@ -1480,6 +1481,22 @@ function renderStory(box: HTMLElement) {
   journeySelectedId = selectedStage.id;
   const positions = stages.length === 5 ? [[17,76],[42,62],[75,72],[79,36],[43,20]] : [[18,75],[44,55],[78,65],[72,25]];
   const faceId = progress.favorite && PHIL.has(progress.favorite) && progress.cards[progress.favorite] ? progress.favorite : 'T106';
+  if (selectedStage.chapter <= 1) {
+    mountImageJourney(box, {
+      chapter: CHAPTERS.find(ch => ch.n === selectedStage.chapter)!, chapters: CHAPTERS,
+      stages: STORY.filter(st => st.chapter === selectedStage.chapter), selectedId: selectedStage.id,
+      sprite: portrait(faceId), cleared: done, unlocked: storyOpen,
+      select: st => { journeySelectedId = st.id; }, enter: startStory, info: storyInfo,
+      chapterSelect: n => { storyChapter = n; journeySelectedId = (STORY.find(st => st.chapter === n && storyOpen(st)) ?? STORY.find(st => st.chapter === n))!.id; renderHome(); },
+      next: () => { storyChapter = next.chapter; journeySelectedId = next.id; renderHome(); },
+      skipTutorial: STORY.filter(st => st.chapter === 0).some(st => !done.includes(st.id)) ? () => {
+        if (!window.confirm('시작 튜토리얼을 건너뛸까요?')) return;
+        progress.storyCleared = [...new Set([...done, ...STORY.filter(st => st.chapter === 0).map(st => st.id)])];
+        saveProgress(progress); storyChapter = 1; journeySelectedId = STORY.find(st => st.chapter === 1)!.id; renderHome();
+      } : undefined,
+    });
+    return;
+  }
   const heading = document.createElement('div'); heading.className = 'journey-heading';
   heading.innerHTML = '<h2>모험의 여정</h2><small>지도를 눌러 목적지를 고르고, 준비되면 출발해요</small>'; box.appendChild(heading);
   const chapters = document.createElement('nav'); chapters.className = 'journey-chapters'; chapters.setAttribute('aria-label','시대 선택');

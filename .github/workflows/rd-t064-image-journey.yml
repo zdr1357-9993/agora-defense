@@ -1,0 +1,30 @@
+name: RD-T064 image journey checks
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'src/image-journey*'
+      - 'src/assets/journey-agora-v1.webp'
+      - 'e2e/image-journey.spec.ts'
+      - '.github/workflows/rd-t064-image-journey.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  image-journey:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node qa/check-image-journey.cjs
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test e2e/image-journey.spec.ts --project=desktop --workers=1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rd-t064-screen-checks
+          path: /tmp/agora-e2e
