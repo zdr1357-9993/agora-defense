@@ -20,6 +20,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run data
       - run: node qa/check-image-journey.cjs
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test e2e/image-journey.spec.ts --project=desktop --workers=1
