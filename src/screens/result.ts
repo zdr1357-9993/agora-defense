@@ -44,7 +44,11 @@ export function resultPanel(g: Game, html: string) {
   let double = false;
   const dbl = ov.querySelector('.res-double') as HTMLButtonElement;
   if (!adFree(progress) && adsLeft(progress) <= 0) dbl.disabled = true;
-  dbl.onclick = () => watchAd(() => { double = true; dbl.disabled = true; dbl.textContent = '✅ 보상 2배 적용!'; (ov.querySelector('.res-reward b') as HTMLElement).textContent = rewardText({ gonoe: (base.gonoe ?? 0) * 2, gems: (base.gems ?? 0) * 2 }); });
+  dbl.onclick = () => {
+    if (dbl.disabled) return;
+    dbl.disabled = true;
+    watchAd(() => { double = true; dbl.textContent = '✅ 보상 2배 적용!'; (ov.querySelector('.res-reward b') as HTMLElement).textContent = rewardText({ gonoe: (base.gonoe ?? 0) * 2, gems: (base.gems ?? 0) * 2 }); });
+  };
   (ov.querySelector('.res-home') as HTMLElement).onclick = () => { ov.remove(); deps.endBattle({ double }); };
   const nx = ov.querySelector('.res-next') as HTMLElement | null;
   if (nx) nx.onclick = () => { ov.remove(); deps.endBattle({ double, next: true }); };

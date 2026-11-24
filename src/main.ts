@@ -125,13 +125,9 @@ function resize() {
   const wrap = $('field-wrap');
   const frameStyle = getComputedStyle(wrap);
   const W = wrap.clientWidth - (parseFloat(frameStyle.paddingLeft) || 0) - (parseFloat(frameStyle.paddingRight) || 0);
-  // 필드가 먼저: 상단·하단 버튼을 뺀 높이에서 아래 패널 최소 높이(104px)만 남기고 필드에 준다
-  const battle = $('battle');
-  const gap = parseFloat(getComputedStyle(battle).rowGap) || 8, pad = parseFloat(getComputedStyle(battle).paddingTop) + parseFloat(getComputedStyle(battle).paddingBottom);
-  const fixedIds = ['hud', 'cats', 'battle-status-row', 'selbar', 'battle-actions', 'dock'];
-  const fixed = fixedIds.reduce((a, id) => a + $(id).offsetHeight, 0) + gap * fixedIds.filter(id => $(id).offsetHeight > 0).length + pad;
-  const H = Math.max(150, battle.clientHeight - fixed - (parseFloat(frameStyle.paddingTop) || 0) - (parseFloat(frameStyle.paddingBottom) || 0) - (parseFloat(frameStyle.borderTopWidth) || 0) - (parseFloat(frameStyle.borderBottomWidth) || 0));
-  if (!W || !battle.clientHeight) return;
+  // Flex가 배정한 실제 공간을 쓴다. HUD 줄바꿈·글꼴·안전 영역도 자동 반영한다.
+  const H = wrap.clientHeight - (parseFloat(frameStyle.paddingTop) || 0) - (parseFloat(frameStyle.paddingBottom) || 0);
+  if (W <= 0 || H <= 0) return;
   // 세로에 맞춰 칸 크기를 정하고, 가로는 화면 폭까지 넓힌다 (칸이 최대 1.5배까지 옆으로 길어짐)
   const c = Math.min(W / (GRID + SCENERY_MARGIN * 2), H / (ROWS + SCENERY_MARGIN * 2));
   const width = Math.floor(c * (GRID + SCENERY_MARGIN * 2)); // 정사각형 칸
@@ -151,11 +147,14 @@ window.visualViewport?.addEventListener('resize', setAppHeight);
 window.addEventListener('resize', setAppHeight);
 window.addEventListener('orientationchange', () => setTimeout(() => { setAppHeight(); resize(); }, 250));
 new ResizeObserver(resize).observe($('battle'));
+new ResizeObserver(resize).observe($('field-wrap'));
 
 function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
   if ((story?.base === 'S6' || (!story && s.id === 'S6')) && !modernUnlocked()) { toast(modernLockText()); return; }
   if (story) { const base = STAGES.find((x) => x.id === story.base)!; s = { ...base, name: story.title, boss10: story.boss, boss20: story.boss, story: story.when }; }
   spawnAt.clear(); signatureCasts.clear(); signatureLast.clear(); speeches.clear();
+  $('upgrade-panel').classList.add('hidden');
+  $('recruit-panel').classList.add('hidden');
   $('field-wrap').style.backgroundImage = '';
   eraWipe(s.era, story ? story.title : s.name, story ? story.when : '');
   game = new Game(s, {
@@ -187,6 +186,8 @@ function startBattle(s: Stage, oneTool?: string, story?: StoryStage) {
 
 function endBattle(opt: { double?: boolean; next?: boolean } = {}) {
   let nextStory: StoryStage | undefined, nextStage: Stage | undefined;
+  let retryStory: StoryStage | undefined;
+  pendingNextStory = null;
   if (game) {
     progress.seen = [...new Set([...progress.seen, ...game.discovered])];
     const base = game.raid ? raidReward(game.raidDamage).gonoe ?? 0 : Math.round(battleReward(game.wave, game.over === 'win') * game.diff.reward);
@@ -195,7 +196,12 @@ function endBattle(opt: { double?: boolean; next?: boolean } = {}) {
     if (game.wave > 0) bump(progress, 'battles');
     if (game.over === 'win' && !game.raid) bump(progress, 'wins');
     if (opt.next) {
-      if (game.storyId) { const i = STORY.findIndex((x) => x.id === game!.storyId); nextStory = STORY[i + 1]; }
+      if (game.storyId) {
+        const i = STORY.findIndex((x) => x.id === game!.storyId);
+        const current = STORY[i];
+        if (current && game.over !== 'win' && current.chapter !== 0) retryStory = current;
+        else if (current) nextStory = STORY[i + 1];
+      }
       else if (!game.raid && !game.oneTool) { const i = STAGES.findIndex((x) => x.id === game!.stage.id); nextStage = game.over === 'win' ? STAGES[i + 1] ?? game.stage : game.stage; }
     }
     if (game.oneTool) {
@@ -243,6 +249,7 @@ function endBattle(opt: { double?: boolean; next?: boolean } = {}) {
   // ▶ 다음: 스토리는 기억 공개가 끝난 뒤 다음 사건으로, 본편은 바로 다음 판
   if (nextStage && (nextStage.id !== 'S6' || modernUnlocked())) setTimeout(() => startBattle(nextStage!), 50);
   if (wasStory) pendingNextStory = nextStory!;
+  if (retryStory) setTimeout(() => startStory(retryStory!), 50);
 }
 let pendingNextStory: StoryStage | null = null;
 function startStory(st: StoryStage) { if (st.base === 'S6' && !modernUnlocked()) { toast(modernLockText()); return; } startBattle(STAGES[0], undefined, st); playDialogue(st.intro, st, () => updateUI(), undefined, true); }
@@ -1564,7 +1571,10 @@ function playDialogue(lines: Line[], st: StoryStage | null, done: () => void, er
   };
   ov.onclick = (e) => {
     if ((e.target as HTMLElement).classList.contains('vn-skip')) return finish();
-    sfx.click(); next(); // 한 번 누르면 바로 다음 대사
+    sfx.click();
+    if (shown < full.length) {
+      clearInterval(timer); shown = full.length; textEl.textContent = full;
+    } else next();
   };
   next();
 }

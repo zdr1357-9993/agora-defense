@@ -21,13 +21,13 @@ const TUT: { sel: string; text: string; done?: (g: Game) => boolean; pos?: 'top'
   { sel: '#start', text: '준비 끝! <b>웨이브 시작</b>을 누르면 도그마(적)가 몰려와요.', done: (g) => g.running },
   { sel: '#lives', text: '🧠 이게 <b>멘탈</b>이에요. 도그마가 길 끝에 닿으면 1(보스는 5)씩 깎이고, 못 잡은 적은 <b>다시 돌아와요</b>. 0이 되면 패배!', pos: 'top' },
   { sel: '#cats', text: '웨이브를 깨면 골드와 <b>촉매</b>(🔥💎🌀⚙️🪞)를 얻어요. 촉매는 희귀 이상 조합 재료예요. 보스를 잡으면 🎟 무료 소환권도 줘요. 칩을 누르면 설명이 나와요.', pos: 'top' },
-  { sel: '#b-recipes', text: '📜 은 조합표, 1x 는 배속이에요. 이제 20웨이브까지 버텨 보세요. 화이팅! 🏛', pos: 'top' },
+  { sel: '#b-recipes', text: '📜 은 조합표, 1x 는 배속이에요. 상단에 표시된 마지막 웨이브까지 버텨 보세요. 화이팅! 🏛', pos: 'top' },
 ];
 let tutStep = -1, tutShown = -2;
 export function tutClear() { document.querySelector('.tut-bubble')?.remove(); document.querySelectorAll('.tut-glow').forEach((e) => e.classList.remove('tut-glow')); }
 function tutFinish() { tutStep = -1; tutClear(); progress.battleTutDone = true; saveProgress(progress); }
 export function tutTick() {
-  if (document.querySelector('.vn')) { if (tutShown !== -2) { tutClear(); tutShown = -2; } return; }
+  if (document.querySelector('.overlay, .vn, .ad-mock')) { if (tutShown !== -2) { tutClear(); tutShown = -2; } return; }
   const game = deps.getGame();
   if (tutStep < 0 || !game || $('battle').classList.contains('hidden')) { if (tutShown !== -2 && tutStep < 0) { tutClear(); tutShown = -2; } return; }
   const st = TUT[tutStep];
@@ -40,7 +40,14 @@ export function tutTick() {
   const manual = !st.done;
   b.innerHTML = `<div class="tut-step">튜토리얼 ${tutStep + 1}/${TUT.length}</div><p>${st.text}</p><div class="tut-btns"><button class="tut-skip">건너뛰기</button>${manual ? `<button class="tut-next">${tutStep === TUT.length - 1 ? '시작!' : '다음 ▶'}</button>` : ''}</div>`;
   document.body.appendChild(b);
-  if (st.pos !== 'top') { const row = document.querySelector('#merge')?.parentElement; if (row) b.style.bottom = `${Math.round(innerHeight - row.getBoundingClientRect().top + 8)}px`; }   // J031: 행동 버튼(판매·합성·강화·조합표)을 가리지 않는다
+  if (st.pos !== 'top') {
+    const row = document.querySelector('#merge')?.parentElement;
+    if (row) {
+      const bottom = Math.round(innerHeight - row.getBoundingClientRect().top + 8);
+      b.style.bottom = `${bottom}px`;
+      b.style.maxHeight = `${Math.max(80, innerHeight - bottom - 16)}px`;
+    }
+  } // 행동 버튼을 가리지 않고, 긴 설명은 말풍선 안에서 스크롤한다.
   (b.querySelector('.tut-skip') as HTMLElement).onclick = tutFinish;
   const nx = b.querySelector('.tut-next') as HTMLElement | null;
   if (nx) nx.onclick = () => { tutStep++; if (tutStep >= TUT.length) tutFinish(); else tutTick(); };
@@ -97,7 +104,7 @@ function pageTutTick() {
   const steps = PAGE_TUT[pageTut.tab], st = steps[pageTut.i], key = pageTut.tab + pageTut.i;
   if (pageShown === key) return;
   const target = document.querySelector(st.sel) as HTMLElement | null;
-  if (!target) { pageTut.i++; if (pageTut.i >= steps.length) pageTutEnd(); return; }
+  if (!target || !target.getClientRects().length) { pageTut.i++; if (pageTut.i >= steps.length) pageTutEnd(); return; }
   pageShown = key; tutClear();
   target.classList.add('tut-glow');
   target.scrollIntoView({ block: 'center', behavior: 'smooth' });
