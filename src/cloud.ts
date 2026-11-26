@@ -12,6 +12,11 @@ const KEY = 'sb_publishable_EwV0TpGMAZFSV5zZsksq3w_0eJbqg3d'; // 공개용 키 (
 let sb: SupabaseClient | null = null;
 const client = () => (sb ??= createClient(URL, KEY, { auth: { persistSession: true, storageKey: 'agora_cloud_auth' } }));
 
+/** RLS 가 적용되는 부가 기능에서 같은 로그인 세션을 사용한다. */
+export function cloudClientForFeature(): SupabaseClient | null {
+  return cloudState === 'ok' ? client() : null;
+}
+
 /** 아이디 → Supabase 계정용 이메일 / 비밀번호는 최소 길이를 맞추려 접두어를 붙인다 */
 const email = (id: string) => `${id.toLowerCase()}@players.agora-defense.app`;
 const pass = (pw: string) => `agora-${pw}`;
